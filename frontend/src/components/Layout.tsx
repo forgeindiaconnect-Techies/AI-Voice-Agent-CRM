@@ -280,11 +280,6 @@ export default function Layout() {
               <h1 className="text-[#0F4C9A] font-black text-sm md:text-base leading-none">
                 Welcome, {user?.name || "User"}
               </h1>
-              <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
-                <span>Role: <strong className="text-[#0F4C9A] capitalize">{user?.role.replace("_", " ")}</strong></span>
-                <span>·</span>
-                <span>ID: <strong className="text-slate-700">{user?.employee_id}</strong></span>
-              </div>
             </div>
           </div>
 
