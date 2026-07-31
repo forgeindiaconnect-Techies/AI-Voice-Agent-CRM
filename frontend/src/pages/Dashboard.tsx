@@ -695,8 +695,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Genesys / Five9 Contact Center Card-Rows */}
-            <div className="space-y-3">
+            {/* Genesys / Five9 Contact Center 3-Column Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredLiveCalls.map((call, idx) => {
                 const names = ["Rajesh Kumar", "Ananya Sharma", "Vikram Patel", "Priya Nair", "Suresh Reddy"];
                 const phones = ["+91 98765 43210", "+91 98123 56789", "+91 97456 12345", "+91 96321 87654", "+91 95123 45678"];
@@ -708,89 +708,96 @@ export default function Dashboard() {
                 return (
                   <div
                     key={call.id}
-                    className="bg-slate-50/60 hover:bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:border-[#0F4C9A]/40 hover:shadow-md transition-all duration-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4"
+                    className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#0F4C9A]/40 hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between h-full space-y-4"
                   >
-                    {/* Customer Info */}
-                    <div className="flex items-center gap-3 min-w-[200px]">
-                      <div className="h-9 w-9 rounded-xl bg-blue-50 border border-blue-100 text-[#0F4C9A] flex items-center justify-center font-black text-xs flex-shrink-0">
-                        <User className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="font-extrabold text-slate-900 text-xs leading-tight">{custName}</div>
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 font-medium">
-                          <span>{custPhone}</span>
-                          <span>·</span>
-                          <span className="text-[9px] font-black bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-1 py-0.2 rounded font-mono">
-                            {cleanLeadId}
-                          </span>
+                    {/* 1. Customer Info (Top Header) */}
+                    <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-2xl bg-blue-50 border border-blue-100 text-[#0F4C9A] flex items-center justify-center font-black text-sm flex-shrink-0 shadow-2xs">
+                          <User className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-slate-900 text-sm leading-tight">{custName}</div>
+                          <div className="text-xs text-slate-500 font-semibold mt-0.5">{custPhone}</div>
                         </div>
                       </div>
+                      <span className="text-[10px] font-black bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-2 py-0.5 rounded-md font-mono">
+                        {cleanLeadId}
+                      </span>
                     </div>
 
-                    {/* Agent Profile */}
-                    <div className="flex items-center gap-2.5 min-w-[170px]">
-                      <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#0F4C9A] to-blue-600 text-white font-black text-[11px] flex items-center justify-center shadow-2xs flex-shrink-0">
+                    {/* 2. Agent Profile */}
+                    <div className="flex items-center gap-3 bg-slate-50/70 p-3 rounded-xl border border-slate-100">
+                      <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4C9A] to-blue-600 text-white font-black text-xs flex items-center justify-center shadow-2xs flex-shrink-0">
                         {cleanAgentName.split(" ")[1]?.[0] || "A"}
                       </div>
-                      <div>
-                        <div className="font-extrabold text-slate-900 text-xs">{cleanAgentName}</div>
-                        <div className="text-[10px] text-slate-400 font-semibold">Shift Agent</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-extrabold text-slate-900 text-xs truncate">{cleanAgentName}</div>
+                        <div className="text-[10px] text-slate-400 font-semibold truncate">Shift Voice Agent</div>
                       </div>
                     </div>
 
-                    {/* Campaign & Queue */}
-                    <div className="flex flex-col gap-1 min-w-[150px]">
-                      <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 w-fit">
+                    {/* 3. Campaign & Queue Badges */}
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
                         <Megaphone className="h-3 w-3 text-purple-500" />
                         <span>{call.campaign || "Outbound Sales Pool"}</span>
                       </span>
-                      <span className="bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 w-fit">
+                      <span className="bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
                         <Layers className="h-3 w-3 text-blue-500" />
                         <span>{call.queue || "High Priority Sales"}</span>
                       </span>
                     </div>
 
-                    {/* Direction & Timer */}
-                    <div className="flex items-center gap-3 min-w-[150px]">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase flex items-center gap-1 border ${
-                        call.direction === "inbound"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-blue-50 text-blue-700 border-blue-200"
-                      }`}>
-                        {call.direction}
-                      </span>
-
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-mono font-black text-slate-900">{call.timer || "02:15"}</span>
-                        <span className="bg-rose-50 border border-rose-200 text-rose-600 text-[8px] font-black px-1 rounded uppercase animate-pulse">
-                          REC
+                    {/* 4. Call Telemetry Status */}
+                    <div className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase flex items-center gap-1 border ${
+                          call.direction === "inbound"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}>
+                          {call.direction}
                         </span>
+
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-mono font-black text-slate-900">{call.timer || "02:15"}</span>
+                          <span className="bg-rose-50 border border-rose-200 text-rose-600 text-[8px] font-black px-1.5 py-0.2 rounded uppercase animate-pulse flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
+                            <span>REC</span>
+                          </span>
+                        </div>
                       </div>
+
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        <span>Positive (94%)</span>
+                      </span>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* 5. Action Buttons (Aligned at bottom) */}
+                    <div className="pt-2 grid grid-cols-3 gap-1.5">
                       <button
                         onClick={() => handleMonitor(call.id, "listen")}
-                        className="h-8 px-2.5 bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-[11px] rounded-lg transition flex items-center gap-1 shadow-2xs"
+                        className="h-9 px-2 bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
                       >
-                        <Headphones className="h-3 w-3" />
+                        <Headphones className="h-3.5 w-3.5" />
                         <span>Listen</span>
                       </button>
 
                       <button
                         onClick={() => handleMonitor(call.id, "whisper")}
-                        className="h-8 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] rounded-lg transition flex items-center gap-1 shadow-2xs"
+                        className="h-9 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
                       >
-                        <Volume2 className="h-3 w-3" />
+                        <Volume2 className="h-3.5 w-3.5" />
                         <span>Whisper</span>
                       </button>
 
                       <button
                         onClick={() => handleMonitor(call.id, "barge")}
-                        className="h-8 px-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] rounded-lg transition flex items-center gap-1 shadow-2xs"
+                        className="h-9 px-2 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
                       >
-                        <Mic className="h-3 w-3" />
+                        <Mic className="h-3.5 w-3.5" />
                         <span>Barge</span>
                       </button>
                     </div>
@@ -799,7 +806,7 @@ export default function Dashboard() {
               })}
 
               {filteredLiveCalls.length === 0 && (
-                <div className="p-8 text-center text-slate-400 font-medium space-y-1">
+                <div className="p-8 text-center text-slate-400 font-medium space-y-1 col-span-full">
                   <Radio className="h-8 w-8 text-slate-300 mx-auto" />
                   <p className="text-xs font-bold text-slate-700">No Active Live Calls Detected</p>
                 </div>

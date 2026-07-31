@@ -40,7 +40,7 @@ type LiveCall = {
   sentiment_score?: number;
 };
 
-// Customer name generator for clean UI display
+// Customer name generator for clean enterprise UI display
 const CUSTOMERS = [
   { name: "Rajesh Kumar", phone: "+91 98765 43210" },
   { name: "Ananya Sharma", phone: "+91 98123 56789" },
@@ -55,7 +55,6 @@ export default function LiveCalls() {
   const [searchQuery, setSearchQuery] = useState("");
   const [directionFilter, setDirectionFilter] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
-  const [activeSignal, setActiveSignal] = useState<Record<string, string>>({});
 
   async function loadLiveCalls() {
     try {
@@ -93,7 +92,6 @@ export default function LiveCalls() {
   async function handleControlAction(callId: string, action: string) {
     try {
       await api.post(`/api/calls/${callId}/monitor?action=${action}`);
-      setActiveSignal((prev) => ({ ...prev, [callId]: `${action.toUpperCase()} Signal Active` }));
       showToast(`Telephony Signal [${action.toUpperCase()}] dispatched to channel #${callId.slice(-6)}`, "success");
     } catch (err: any) {
       showToast(`Signal [${action.toUpperCase()}] executed on live audio stream.`, "info");
@@ -202,8 +200,8 @@ export default function LiveCalls() {
         </div>
       </div>
 
-      {/* Modern Contact Center Card-Rows List */}
-      <div className="space-y-3">
+      {/* RESPONSIVE ENTERPRISE GRID (3 Cards/Row Desktop, 2 Tablet, 1 Mobile) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredCalls.map((call) => {
           const minutes = Math.floor((call.timer_seconds || 120) / 60);
           const seconds = String((call.timer_seconds || 120) % 60).padStart(2, "0");
@@ -211,78 +209,73 @@ export default function LiveCalls() {
           return (
             <div
               key={call.id}
-              className="bg-white p-4.5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#0F4C9A]/40 hover:shadow-md transition-all duration-200 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4"
+              className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#0F4C9A]/40 hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between h-full space-y-4"
             >
-              {/* Customer Info */}
-              <div className="flex items-center gap-3 min-w-[220px]">
-                <div className="h-10 w-10 rounded-2xl bg-blue-50 border border-blue-100 text-[#0F4C9A] flex items-center justify-center font-black text-sm flex-shrink-0">
-                  <User className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="font-extrabold text-slate-900 text-sm leading-tight">
-                    {call.customer_name}
+              {/* 1. Customer Info (Top Header) */}
+              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-blue-50 border border-blue-100 text-[#0F4C9A] flex items-center justify-center font-black text-sm flex-shrink-0 shadow-2xs">
+                    <User className="h-5 w-5" />
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 font-medium">
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-3 w-3 text-slate-400" />
-                      <span>{call.phone_number}</span>
-                    </span>
-                    <span>·</span>
-                    <span className="text-[10px] font-black bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-1.5 py-0.2 rounded font-mono">
-                      {call.formatted_lead_id}
-                    </span>
+                  <div>
+                    <div className="font-extrabold text-slate-900 text-sm leading-tight">
+                      {call.customer_name}
+                    </div>
+                    <div className="text-xs text-slate-500 font-semibold mt-0.5">
+                      {call.phone_number}
+                    </div>
                   </div>
                 </div>
+                <span className="text-[10px] font-black bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-2 py-0.5 rounded-md font-mono">
+                  {call.formatted_lead_id}
+                </span>
               </div>
 
-              {/* Agent Profile */}
-              <div className="flex items-center gap-2.5 min-w-[180px]">
+              {/* 2. Agent Info & Profile */}
+              <div className="flex items-center gap-3 bg-slate-50/70 p-3 rounded-xl border border-slate-100">
                 <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4C9A] to-blue-600 text-white font-black text-xs flex items-center justify-center shadow-2xs flex-shrink-0">
                   {call.agent_name ? call.agent_name.split(" ")[1]?.[0] || "A" : "A"}
                 </div>
-                <div>
-                  <div className="font-extrabold text-slate-900 text-xs">{call.agent_name}</div>
-                  <div className="text-[10px] text-slate-500 font-semibold">Shift Agent</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-slate-900 text-xs truncate">{call.agent_name}</div>
+                  <div className="text-[10px] text-slate-400 font-semibold truncate">Shift Voice Agent</div>
                 </div>
               </div>
 
-              {/* Campaign & Queue Badges */}
-              <div className="flex flex-col gap-1 min-w-[170px]">
-                <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1 w-fit">
+              {/* 3. Campaign & Queue Badges */}
+              <div className="flex items-center gap-2 flex-wrap text-xs">
+                <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
                   <Megaphone className="h-3 w-3 text-purple-500" />
                   <span>{call.campaign_name}</span>
                 </span>
-                <span className="bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-2.5 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1 w-fit">
+                <span className="bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
                   <Layers className="h-3 w-3 text-blue-500" />
                   <span>{call.queue_name}</span>
                 </span>
               </div>
 
-              {/* Direction & Live Timer */}
-              <div className="flex items-center gap-3 min-w-[170px]">
-                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-black uppercase flex items-center gap-1 border ${
-                  call.direction === "inbound"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-blue-50 text-blue-700 border-blue-200"
-                }`}>
-                  {call.direction === "inbound" ? <ArrowDownLeft className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
-                  <span>{call.direction}</span>
-                </span>
+              {/* 4. Call Status (Direction, Live Timer, REC, Sentiment) */}
+              <div className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase flex items-center gap-1 border ${
+                    call.direction === "inbound"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-blue-50 text-blue-700 border-blue-200"
+                  }`}>
+                    {call.direction === "inbound" ? <ArrowDownLeft className="h-3 w-3" /> : <ArrowUpRight className="h-3 w-3" />}
+                    <span>{call.direction}</span>
+                  </span>
 
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-mono font-black text-slate-900">
-                    0{minutes}:{seconds}
-                  </span>
-                  <span className="bg-rose-50 border border-rose-200 text-rose-600 text-[9px] font-black px-1.5 py-0.2 rounded uppercase animate-pulse flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
-                    <span>REC</span>
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-mono font-black text-slate-900">0{minutes}:{seconds}</span>
+                    <span className="bg-rose-50 border border-rose-200 text-rose-600 text-[8px] font-black px-1.5 py-0.2 rounded uppercase animate-pulse flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
+                      <span>REC</span>
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* AI Sentiment Badge */}
-              <div className="min-w-[130px]">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-black flex items-center gap-1 w-fit border ${
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black flex items-center gap-1 border ${
                   call.sentiment === "Positive"
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                     : "bg-blue-50 text-blue-700 border-blue-200"
@@ -292,65 +285,65 @@ export default function LiveCalls() {
                 </span>
               </div>
 
-              {/* Contact Center Action Toolbar */}
-              <div className="flex items-center gap-1.5 flex-wrap">
+              {/* 5. Action Buttons Toolbar (Aligned at bottom) */}
+              <div className="pt-2 grid grid-cols-5 gap-1.5">
                 <button
                   onClick={() => handleControlAction(call.id, "listen")}
-                  className="h-9 px-3 bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
-                  title="Listen to Live Audio Stream"
+                  className="h-9 px-1.5 bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
+                  title="Listen to Audio Stream"
                 >
                   <Headphones className="h-3.5 w-3.5" />
-                  <span>Listen</span>
+                  <span className="hidden xl:inline">Listen</span>
                 </button>
 
                 <button
                   onClick={() => handleControlAction(call.id, "whisper")}
-                  className="h-9 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
+                  className="h-9 px-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
                   title="Whisper Coach Agent"
                 >
                   <Volume2 className="h-3.5 w-3.5" />
-                  <span>Whisper</span>
+                  <span className="hidden xl:inline">Whisper</span>
                 </button>
 
                 <button
                   onClick={() => handleControlAction(call.id, "barge")}
-                  className="h-9 px-3 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
-                  title="Barge into Live Call"
+                  className="h-9 px-1.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
+                  title="Barge into Call"
                 >
                   <Mic className="h-3.5 w-3.5" />
-                  <span>Barge</span>
+                  <span className="hidden xl:inline">Barge</span>
                 </button>
 
                 <button
                   onClick={() => handleControlAction(call.id, "transfer")}
-                  className="h-9 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
+                  className="h-9 px-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
                   title="Transfer Call"
                 >
                   <PhoneForwarded className="h-3.5 w-3.5" />
-                  <span>Transfer</span>
+                  <span className="hidden xl:inline">Transfer</span>
                 </button>
 
                 <button
                   onClick={() => handleControlAction(call.id, "end")}
-                  className="h-9 px-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs rounded-xl transition flex items-center gap-1.5 shadow-2xs active:scale-95"
-                  title="Force Terminate Live Channel"
+                  className="h-9 px-1.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
+                  title="End Call"
                 >
                   <PhoneOff className="h-3.5 w-3.5" />
-                  <span>End</span>
+                  <span className="hidden xl:inline">End</span>
                 </button>
               </div>
             </div>
           );
         })}
-
-        {filteredCalls.length === 0 && (
-          <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 font-medium space-y-2">
-            <Radio className="h-10 w-10 text-slate-300 mx-auto" />
-            <p className="text-sm font-bold text-slate-700">No Active Live Calls Match Your Filter Criteria</p>
-            <p className="text-xs text-slate-400">Try adjusting your search keywords or direction filter dropdown.</p>
-          </div>
-        )}
       </div>
+
+      {filteredCalls.length === 0 && (
+        <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center text-slate-400 font-medium space-y-2">
+          <Radio className="h-10 w-10 text-slate-300 mx-auto" />
+          <p className="text-sm font-bold text-slate-700">No Active Live Calls Match Your Filter Criteria</p>
+          <p className="text-xs text-slate-400">Try adjusting your search keywords or direction filter dropdown.</p>
+        </div>
+      )}
     </div>
   );
 }
