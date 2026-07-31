@@ -77,22 +77,22 @@ export default function Layout() {
         {
           title: "MAIN WORKSPACE",
           items: [
-            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4.5 w-4.5" /> },
-            { to: "/leads", label: "Leads", icon: <Users className="h-4.5 w-4.5" /> },
-            { to: "/campaigns", label: "Campaigns", icon: <PhoneCall className="h-4.5 w-4.5" /> },
+            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-6 w-6" /> },
+            { to: "/leads", label: "Leads", icon: <Users className="h-6 w-6" /> },
+            { to: "/campaigns", label: "Campaigns", icon: <PhoneCall className="h-6 w-6" /> },
           ],
         },
         {
           title: "VOICE OPERATIONS",
           items: [
-            { to: "/live-calls", label: "Live Calls", icon: <Radio className="h-4.5 w-4.5" /> },
-            { to: "/reports", label: "Reports & Analytics", icon: <BarChart3 className="h-4.5 w-4.5" /> },
+            { to: "/live-calls", label: "Live Calls", icon: <Radio className="h-6 w-6" /> },
+            { to: "/reports", label: "Reports & Analytics", icon: <BarChart3 className="h-6 w-6" /> },
           ],
         },
         {
           title: "ADMINISTRATION",
           items: [
-            { to: "/users", label: "Users & Agents", icon: <UserCog className="h-4.5 w-4.5" /> },
+            { to: "/users", label: "Users & Agents", icon: <UserCog className="h-6 w-6" /> },
           ],
         },
       ];
@@ -101,24 +101,24 @@ export default function Layout() {
         {
           title: "MAIN WORKSPACE",
           items: [
-            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4.5 w-4.5" /> },
-            { to: "/leads", label: "Leads", icon: <Users className="h-4.5 w-4.5" /> },
-            { to: "/campaigns", label: "Campaigns", icon: <PhoneCall className="h-4.5 w-4.5" /> },
+            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-6 w-6" /> },
+            { to: "/leads", label: "Leads", icon: <Users className="h-6 w-6" /> },
+            { to: "/campaigns", label: "Campaigns", icon: <PhoneCall className="h-6 w-6" /> },
           ],
         },
         {
           title: "OPERATIONS & AUDIT",
           items: [
-            { to: "/live-calls", label: "Live Calls", icon: <Radio className="h-4.5 w-4.5" /> },
-            { to: "/quality", label: "Quality Audit", icon: <ShieldCheck className="h-4.5 w-4.5" /> },
-            { to: "/leave", label: "Leave Requests", icon: <Calendar className="h-4.5 w-4.5" /> },
-            { to: "/reports", label: "Reports", icon: <BarChart3 className="h-4.5 w-4.5" /> },
+            { to: "/live-calls", label: "Live Calls", icon: <Radio className="h-6 w-6" /> },
+            { to: "/quality", label: "Quality Audit", icon: <ShieldCheck className="h-6 w-6" /> },
+            { to: "/leave", label: "Leave Requests", icon: <Calendar className="h-6 w-6" /> },
+            { to: "/reports", label: "Reports", icon: <BarChart3 className="h-6 w-6" /> },
           ],
         },
         {
           title: "MANAGEMENT",
           items: [
-            { to: "/users", label: "Agents", icon: <UserCog className="h-4.5 w-4.5" /> },
+            { to: "/users", label: "Agents", icon: <UserCog className="h-6 w-6" /> },
           ],
         },
       ];
@@ -127,10 +127,10 @@ export default function Layout() {
         {
           title: "MAIN WORKSPACE",
           items: [
-            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4.5 w-4.5" /> },
-            { to: "/leads", label: "My Leads", icon: <Users className="h-4.5 w-4.5" /> },
-            { to: "/dialer", label: "Softphone Dialer", icon: <Phone className="h-4.5 w-4.5" /> },
-            { to: "/campaigns", label: "Inbound Campaigns", icon: <PhoneCall className="h-4.5 w-4.5" /> },
+            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-6 w-6" /> },
+            { to: "/leads", label: "My Leads", icon: <Users className="h-6 w-6" /> },
+            { to: "/dialer", label: "Softphone Dialer", icon: <Phone className="h-6 w-6" /> },
+            { to: "/campaigns", label: "Inbound Campaigns", icon: <PhoneCall className="h-6 w-6" /> },
           ],
         },
       ];
@@ -187,70 +187,88 @@ export default function Layout() {
         />
       )}
 
-      {/* 300px / 88px Enterprise Navigation Sidebar */}
+      {/* 300px Expanded / 80px Collapsed Enterprise Navigation Sidebar */}
       <aside
         className={`fixed md:static inset-y-0 left-0 ${
-          isSidebarCollapsed ? "w-[88px]" : "w-[300px]"
-        } h-full bg-[#0B192C] text-white flex flex-col flex-shrink-0 z-50 transform transition-all duration-300 ease-in-out shadow-2xl border-r border-slate-800/60 ${
+          isSidebarCollapsed ? "w-[80px]" : "w-[300px]"
+        } h-full bg-[#0B192C] text-white flex flex-col flex-shrink-0 z-50 transform transition-all duration-300 ease-in-out shadow-2xl border-r border-slate-800/80 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
-        {/* Logo & Brand Header */}
-        <div className="p-5 border-b border-slate-800/80 flex justify-between items-center bg-[#071324] relative">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#FACC15] to-amber-500 text-[#0B192C] font-black flex items-center justify-center shadow-md flex-shrink-0 text-lg">
-              FI
-            </div>
-            {!isSidebarCollapsed && (
-              <div>
-                <div className="font-black text-base tracking-tight leading-none text-white flex items-center gap-1">
-                  <span>Forge India</span>
-                  <span className="text-[10px] bg-[#FACC15] text-[#0B192C] px-1.5 py-0.5 rounded font-black">AI</span>
+        {/* Logo & Header Container */}
+        <div className="h-20 border-b border-slate-800/80 flex items-center px-4 bg-[#071324] relative justify-between">
+          {!isSidebarCollapsed ? (
+            /* Expanded Header: Logo + Title + Pin Button */
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#FACC15] to-amber-500 text-[#0B192C] font-black flex items-center justify-center shadow-md flex-shrink-0 text-base">
+                  FI
                 </div>
-                <div className="text-[11px] text-slate-400 font-medium mt-1">Voice Calling CRM</div>
+                <div>
+                  <div className="font-black text-base tracking-tight leading-none text-white flex items-center gap-1">
+                    <span>Forge India</span>
+                    <span className="text-[10px] bg-[#FACC15] text-[#0B192C] px-1.5 py-0.5 rounded font-black">AI</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 font-medium mt-1">Voice Calling CRM</div>
+                </div>
               </div>
-            )}
-          </div>
-          
-          {/* Pin / Collapse Toggle Button */}
-          <div className="relative">
-            <button
-              onClick={toggleSidebar}
-              onMouseEnter={() => setShowPinTooltip(true)}
-              onMouseLeave={() => setShowPinTooltip(false)}
-              className="hidden md:flex p-2 text-slate-400 hover:text-[#FACC15] hover:bg-slate-800/80 rounded-xl transition relative group"
-              title="Ctrl + B to toggle"
-            >
-              {isSidebarCollapsed ? <Pin className="h-4.5 w-4.5 text-[#FACC15] rotate-45" /> : <Pin className="h-4.5 w-4.5 text-slate-400" />}
-            </button>
 
-            {/* Floating Tooltip matching Reference Image 1 */}
-            {isSidebarCollapsed && showPinTooltip && (
-              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#0F172A] border border-slate-700 text-white text-xs font-extrabold px-3.5 py-2 rounded-full shadow-2xl flex items-center gap-2 whitespace-nowrap z-50 animate-fade-in pointer-events-none">
-                <Pin className="h-3.5 w-3.5 text-[#FACC15] rotate-45" />
-                <span>Click to Pin & Expand Sidebar</span>
-                <span className="text-[9px] text-slate-400 font-mono bg-slate-800 px-1.5 py-0.5 rounded ml-1">Ctrl+B</span>
+              <button
+                onClick={toggleSidebar}
+                className="hidden md:flex p-2 text-slate-400 hover:text-[#FACC15] hover:bg-slate-800/80 rounded-xl transition"
+                title="Collapse Sidebar (Ctrl + B)"
+              >
+                <Pin className="h-4.5 w-4.5" />
+              </button>
+            </div>
+          ) : (
+            /* Collapsed Header: Centered Logo & Hover Tooltip Pin Button */
+            <div className="flex flex-col items-center justify-center w-full relative">
+              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#FACC15] to-amber-500 text-[#0B192C] font-black flex items-center justify-center shadow-md text-base flex-shrink-0">
+                FI
               </div>
-            )}
-          </div>
-          
+
+              <button
+                onClick={toggleSidebar}
+                onMouseEnter={() => setShowPinTooltip(true)}
+                onMouseLeave={() => setShowPinTooltip(false)}
+                className="mt-1 p-1 text-slate-400 hover:text-[#FACC15] rounded-lg transition"
+                title="Expand Sidebar (Ctrl + B)"
+              >
+                <Pin className="h-3.5 w-3.5 text-[#FACC15] rotate-45" />
+              </button>
+
+              {/* Floating Tooltip matching Reference Image 1 */}
+              {showPinTooltip && (
+                <div className="absolute left-full ml-4 top-1/2 -translate-y-1/2 bg-[#0F172A] border border-slate-700 text-white text-xs font-extrabold px-3.5 py-2 rounded-full shadow-2xl flex items-center gap-2 whitespace-nowrap z-50 animate-fade-in pointer-events-none">
+                  <Pin className="h-3.5 w-3.5 text-[#FACC15] rotate-45" />
+                  <span>Click to Pin & Expand Sidebar</span>
+                  <span className="text-[9px] text-slate-400 font-mono bg-slate-800 px-1.5 py-0.5 rounded ml-1">Ctrl+B</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             onClick={() => setIsMobileOpen(false)}
-            className="md:hidden p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl"
+            className="md:hidden p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl absolute right-3"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Grouped Navigation List */}
-        <nav className="flex-1 px-3.5 py-5 space-y-6 overflow-y-auto softphone-scrollbar">
+        <nav className={`flex-1 ${isSidebarCollapsed ? "px-2 py-4 space-y-5" : "px-3.5 py-5 space-y-6"} overflow-y-auto softphone-scrollbar`}>
           {navGroups.map((group, gIdx) => (
-            <div key={gIdx} className="space-y-1.5">
-              {!isSidebarCollapsed && (
+            <div key={gIdx} className="space-y-3">
+              {!isSidebarCollapsed ? (
                 <div className="px-3 text-[10px] font-black text-slate-400/90 tracking-widest uppercase mb-2">
                   {group.title}
                 </div>
+              ) : (
+                gIdx > 0 && <div className="w-8 mx-auto border-t border-slate-800/80 my-2" />
               )}
+
               {group.items.map((item) => (
                 <NavLink
                   key={item.to}
@@ -258,18 +276,24 @@ export default function Layout() {
                   end={item.to === "/"}
                   onClick={() => setIsMobileOpen(false)}
                   className={({ isActive }) =>
-                    `group relative flex items-center ${
-                      isSidebarCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3"
-                    } rounded-[18px] text-xs transition-all duration-200 ${
-                      isActive
-                        ? "bg-gradient-to-r from-[#1D61E7] via-[#1A52C5] to-[#1447B2] text-white font-extrabold shadow-lg shadow-blue-600/30 border-l-[5px] border-[#FACC15]"
-                        : "text-slate-300 hover:bg-white/10 hover:text-white font-medium"
+                    `group relative flex items-center transition-all duration-200 ${
+                      isSidebarCollapsed
+                        ? `h-14 w-14 mx-auto justify-center rounded-[16px] ${
+                            isActive
+                              ? "bg-gradient-to-r from-[#1D61E7] via-[#1A52C5] to-[#1447B2] text-[#FACC15] shadow-lg shadow-blue-600/30 border-l-4 border-[#FACC15]"
+                              : "text-slate-300 hover:bg-white/10 hover:text-white"
+                          }`
+                        : `gap-3.5 px-4 py-3 rounded-[18px] text-xs ${
+                            isActive
+                              ? "bg-gradient-to-r from-[#1D61E7] via-[#1A52C5] to-[#1447B2] text-white font-extrabold shadow-lg shadow-blue-600/30 border-l-[5px] border-[#FACC15]"
+                              : "text-slate-300 hover:bg-white/10 hover:text-white font-medium"
+                          }`
                     }`
                   }
                 >
                   {({ isActive }) => (
                     <>
-                      <div className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                      <div className={`flex items-center justify-center flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
                         isActive ? "text-[#FACC15]" : "text-slate-400 group-hover:text-white"
                       }`}>
                         {item.icon}
@@ -281,7 +305,7 @@ export default function Layout() {
 
                       {/* Collapsed Tooltip on Hover */}
                       {isSidebarCollapsed && (
-                        <span className="absolute left-full ml-3 px-3 py-1.5 bg-[#0F172A] text-white text-xs font-bold rounded-xl shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <span className="absolute left-full ml-4 px-3 py-1.5 bg-[#0F172A] text-white text-xs font-bold rounded-xl shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           {item.label}
                         </span>
                       )}
@@ -293,26 +317,27 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Bottom User Profile Card */}
+        {/* Bottom User Profile Section */}
         <div className="p-4 border-t border-slate-800/80 bg-[#071324] text-xs">
-          <div className={`flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-3"}`}>
-            <div className="relative flex-shrink-0">
-              <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-[#1D61E7] to-blue-500 border border-blue-400 flex items-center justify-center font-black text-white text-xs shadow-md">
-                {user?.name ? user.name[0].toUpperCase() : "U"}
-              </div>
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 border-2 border-[#0B192C] rounded-full" />
-            </div>
-            
-            {!isSidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <div className="font-extrabold text-white truncate text-xs">{user?.name}</div>
-                <div className="text-[10px] text-slate-400 capitalize font-semibold truncate">
-                  {user?.role.replace("_", " ")} · {user?.employee_id}
+          {!isSidebarCollapsed ? (
+            /* Expanded User Card */
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="relative flex-shrink-0">
+                  <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-[#1D61E7] to-blue-500 border border-blue-400 flex items-center justify-center font-black text-white text-xs shadow-md">
+                    {user?.name ? user.name[0].toUpperCase() : "U"}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 border-2 border-[#0B192C] rounded-full" />
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-white truncate text-xs">{user?.name}</div>
+                  <div className="text-[10px] text-slate-400 capitalize font-semibold truncate">
+                    {user?.role.replace("_", " ")} · {user?.employee_id}
+                  </div>
                 </div>
               </div>
-            )}
 
-            {!isSidebarCollapsed && (
               <button
                 onClick={() => {
                   logout();
@@ -323,20 +348,28 @@ export default function Layout() {
               >
                 <LogOut className="h-4 w-4" />
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            /* Collapsed User Card (80px Centered) */
+            <div className="flex flex-col items-center justify-center gap-2">
+              <div className="relative">
+                <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-[#1D61E7] to-blue-500 border border-blue-400 flex items-center justify-center font-black text-white text-xs shadow-md">
+                  {user?.name ? user.name[0].toUpperCase() : "U"}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 border-2 border-[#0B192C] rounded-full" />
+              </div>
 
-          {isSidebarCollapsed && (
-            <button
-              onClick={() => {
-                logout();
-                window.location.href = "/login";
-              }}
-              className="mt-3 w-full p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition flex items-center justify-center"
-              title="Sign Out"
-            >
-              <LogOut className="h-4 w-4 text-rose-400" />
-            </button>
+              <button
+                onClick={() => {
+                  logout();
+                  window.location.href = "/login";
+                }}
+                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition flex items-center justify-center"
+                title="Sign Out"
+              >
+                <LogOut className="h-5 w-5 text-rose-400" />
+              </button>
+            </div>
           )}
         </div>
       </aside>
@@ -370,7 +403,7 @@ export default function Layout() {
               placeholder="Search leads, campaigns, calls, agents... (Ctrl + K)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-1.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-white text-xs font-medium text-slate-800 rounded-xl border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/30 transition"
+              className="w-full pl-9 pr-4 py-1.5 bg-slate-100/80 hover:bg-slate-100 focus:bg-[#0F4C9A]/5 text-xs font-medium text-slate-800 rounded-xl border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/30 transition"
             />
           </div>
 
@@ -404,7 +437,7 @@ export default function Layout() {
                 title="Notifications"
               >
                 <Bell className="h-4.5 w-4.5" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-[#F4B400] rounded-full border border-white" />
+                <span className="absolute top-1 right-1 h-2 w-2 bg-[#FACC15] rounded-full border border-white" />
               </button>
 
               {showNotifications && (
