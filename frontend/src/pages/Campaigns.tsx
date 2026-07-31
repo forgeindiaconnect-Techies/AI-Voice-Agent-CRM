@@ -684,26 +684,35 @@ export default function Campaigns() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Sticky Header Panel with tabs selector */}
-      <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div>
-            <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
-              <Megaphone className="h-6 w-6 text-forgeBlue" />
-              <span>Voice Campaigns Portal</span>
-            </h1>
-            <p className="text-sm text-gray-500 font-medium">Control outbound auto-dialers and inbound IVR queue allocations</p>
-          </div>
+      {/* Sticky Compact Header Toolbar */}
+      <div className="sticky top-0 z-20 bg-[#F5F7FB]/95 backdrop-blur-md pb-2 pt-1">
+        <div className="bg-white/95 backdrop-blur-md p-4 rounded-[22px] shadow-xs border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex bg-gray-100 p-1 rounded-xl border">
+            <div className="h-10 w-10 rounded-2xl bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-black shadow-2xs">
+              <Megaphone className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-black text-slate-900 tracking-tight">Voice Campaigns Portal</h1>
+                <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2.5 py-0.5 rounded-full">
+                  {campaigns.length} Active
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">Control outbound auto-dialers and inbound IVR queue allocations</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap w-full md:w-auto">
+            {/* Animated Segmented Control */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
               {user?.role !== "agent" && (
                 <button
                   onClick={() => {
                     setActiveTab("outbound");
                     loadData();
                   }}
-                  className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
-                    activeTab === "outbound" ? "bg-forgeBlue text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
+                  className={`px-4 py-2 text-xs font-extrabold rounded-xl transition duration-200 ${
+                    activeTab === "outbound" ? "bg-[#0F4C9A] text-white shadow-md" : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
                   Outbound Campaigns
@@ -714,18 +723,18 @@ export default function Campaigns() {
                   setActiveTab("inbound");
                   loadData();
                 }}
-                className={`px-4 py-2 text-xs font-bold rounded-lg transition ${
-                  activeTab === "inbound" || user?.role === "agent" ? "bg-forgeBlue text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
+                className={`px-4 py-2 text-xs font-extrabold rounded-xl transition duration-200 ${
+                  activeTab === "inbound" || user?.role === "agent" ? "bg-[#0F4C9A] text-white shadow-md" : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Inbound IVR queues
               </button>
             </div>
-            
+
             {!isSupervisor && activeTab === "outbound" && (
               <button
                 onClick={() => setShowLaunchModal(true)}
-                className="bg-forgeGold hover:bg-amber-500 text-forgeBlue font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                className="bg-[#F4B400] hover:bg-amber-400 text-[#0F4C9A] font-black text-xs px-5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md active:scale-95"
               >
                 <Plus className="h-4 w-4" />
                 <span>Create Campaign</span>
@@ -738,237 +747,258 @@ export default function Campaigns() {
       {/* --- TAB 1: OUTBOUND CAMPAIGNS --- */}
       {activeTab === "outbound" && (
         <div className="space-y-6">
-          {/* Stats Summary cards */}
+          {/* Stats Summary Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border p-5 rounded-2xl flex justify-between items-center shadow-xs">
+            <div className="bg-white border border-slate-200/60 p-5 rounded-[20px] flex justify-between items-center shadow-xs">
               <div>
-                <span className="text-2xl font-black text-gray-800">{campaigns.filter(c => c.status === "active").length}</span>
-                <span className="block text-xs font-bold text-gray-400 mt-1">Active Dialers</span>
+                <span className="text-2xl font-black text-slate-900">{campaigns.filter(c => c.status === "active").length}</span>
+                <span className="block text-xs font-bold text-slate-400 mt-1">Active Dialers</span>
               </div>
-              <span className="p-3 bg-green-50 rounded-xl"><Play className="h-5 w-5 text-green-600" /></span>
+              <span className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100"><Play className="h-5 w-5 text-emerald-600" /></span>
             </div>
-            <div className="bg-white border p-5 rounded-2xl flex justify-between items-center shadow-xs">
+            <div className="bg-white border border-slate-200/60 p-5 rounded-[20px] flex justify-between items-center shadow-xs">
               <div>
-                <span className="text-2xl font-black text-gray-800">{campaigns.filter(c => c.status === "paused").length}</span>
-                <span className="block text-xs font-bold text-gray-400 mt-1">Paused Campaigns</span>
+                <span className="text-2xl font-black text-slate-900">{campaigns.filter(c => c.status === "paused").length}</span>
+                <span className="block text-xs font-bold text-slate-400 mt-1">Paused Campaigns</span>
               </div>
-              <span className="p-3 bg-amber-50 rounded-xl"><Pause className="h-5 w-5 text-amber-600" /></span>
+              <span className="p-3 bg-amber-50 rounded-2xl border border-amber-100"><Pause className="h-5 w-5 text-amber-600" /></span>
             </div>
-            <div className="bg-white border p-5 rounded-2xl flex justify-between items-center shadow-xs">
+            <div className="bg-white border border-slate-200/60 p-5 rounded-[20px] flex justify-between items-center shadow-xs">
               <div>
-                <span className="text-2xl font-black text-gray-800">{campaigns.filter(c => c.status === "stopped").length}</span>
-                <span className="block text-xs font-bold text-gray-400 mt-1">Stopped Campaigns</span>
+                <span className="text-2xl font-black text-slate-900">{campaigns.filter(c => c.status === "stopped").length}</span>
+                <span className="block text-xs font-bold text-slate-400 mt-1">Stopped Campaigns</span>
               </div>
-              <span className="p-3 bg-red-50 rounded-xl"><X className="h-5 w-5 text-red-600" /></span>
+              <span className="p-3 bg-rose-50 rounded-2xl border border-rose-100"><X className="h-5 w-5 text-rose-600" /></span>
             </div>
-            <div className="bg-white border p-5 rounded-2xl flex justify-between items-center shadow-xs">
+            <div className="bg-white border border-slate-200/60 p-5 rounded-[20px] flex justify-between items-center shadow-xs">
               <div>
-                <span className="text-2xl font-black text-gray-800">
+                <span className="text-2xl font-black text-slate-900">
                   {campaigns.length > 0 ? "85.4%" : "0.0%"}
                 </span>
-                <span className="block text-xs font-bold text-gray-400 mt-1">Avg Success Rate</span>
+                <span className="block text-xs font-bold text-slate-400 mt-1">Avg Success Rate</span>
               </div>
-              <span className="p-3 bg-blue-50 rounded-xl"><CheckCircle className="h-5 w-5 text-forgeBlue" /></span>
+              <span className="p-3 bg-blue-50 rounded-2xl border border-blue-100"><CheckCircle className="h-5 w-5 text-[#0F4C9A]" /></span>
             </div>
           </div>
 
-          {/* Search, Filter grid */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
+          {/* Search, Filter & Refresh Grid */}
+          <div className="bg-white rounded-[22px] p-4 shadow-xs border border-slate-200/60 flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="relative w-full md:w-80">
+              <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 placeholder="Search campaigns by name, ID..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-forgeBlue"
+                className="w-full pl-9 pr-4 py-2 border border-slate-200/80 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
               />
-              <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
             </div>
             
-            <div className="flex items-center gap-1.5 w-full md:w-auto">
-              <Filter className="h-4 w-4 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="border rounded-xl px-3 py-1.5 text-xs bg-gray-50 font-bold text-gray-700 focus:outline-none w-full md:w-44"
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-1.5 w-full md:w-auto">
+                <Filter className="h-4 w-4 text-slate-400" />
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className="border border-slate-200/80 rounded-xl px-3 py-2 text-xs bg-slate-50 font-bold text-slate-700 focus:outline-none w-full md:w-44 cursor-pointer"
+                >
+                  <option value="">All Active / Paused</option>
+                  <option value="active">Active Only</option>
+                  <option value="paused">Paused Only</option>
+                  <option value="stopped">Stopped Only</option>
+                </select>
+              </div>
+
+              <button
+                onClick={loadData}
+                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition"
+                title="Refresh Data"
               >
-                <option value="">All Active / Paused</option>
-                <option value="active">Active Only</option>
-                <option value="paused">Paused Only</option>
-                <option value="stopped">Stopped Only</option>
-              </select>
+                <RotateCcw className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
-          {/* Campaigns Accordion List */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg font-black text-gray-800 mb-4">Outbound Campaign List</h2>
-            <div className="space-y-4">
-              {filteredCampaigns.map(c => {
-                const isExpanded = expandedCampaignId === c.id;
-                const stats = campaignStats[c.id];
-                
-                // Calculate progress
-                const total = stats?.total_leads || 100;
-                const completed = stats?.completed_leads || 0;
-                const progressPct = Math.min(Math.round((completed / total) * 100), 100);
+          {/* 2-Column Responsive Desktop Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredCampaigns.map(c => {
+              const isExpanded = expandedCampaignId === c.id;
+              const stats = campaignStats[c.id];
+              
+              // Calculate progress
+              const total = stats?.total_leads || 100;
+              const completed = stats?.completed_leads || 0;
+              const progressPct = Math.min(Math.round((completed / total) * 100), 100);
 
-                return (
-                  <div key={c.id} className="border rounded-2xl overflow-hidden bg-gray-50/50 hover:bg-white transition duration-200">
-                    
-                    {/* Collapsed Header */}
-                    <div
-                      onClick={() => handleExpandCampaign(c.id)}
-                      className="p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 cursor-pointer"
-                    >
-                      <div className="space-y-1.5 flex-1 w-full">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-gray-800 text-sm">{c.name}</span>
-                          <span className="text-[10px] text-gray-400 font-mono bg-white border px-2 py-0.5 rounded font-bold uppercase">
-                            {c.campaign_id}
-                          </span>
-                          <span
-                            className={`text-[9px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${
-                              c.status === "active"
-                                ? "bg-green-50 border-green-200 text-green-700"
-                                : c.status === "paused"
-                                ? "bg-amber-50 border-amber-200 text-amber-700"
-                                : "bg-red-50 border-red-200 text-red-700"
-                            }`}
-                          >
-                            {c.status}
-                          </span>
-                        </div>
-                        
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-400 font-semibold">
-                          <span>Pool: <strong className="text-forgeBlue capitalize">{pools.find(p => p.id === c.pool_id)?.name.replace("_", " ") || "No Pool"}</strong></span>
-                          <span>·</span>
-                          <span>Voice: <strong>{c.ai_voice || "N/A"}</strong></span>
-                          <span>·</span>
-                          <span>Assigned Agents: <strong className="text-forgeBlue">{c.agent_ids?.length || 0}</strong></span>
-                        </div>
-
-                        {/* Progress bar */}
-                        <div className="flex items-center gap-3 pt-2 max-w-md w-full">
-                          <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden">
-                            <div className="bg-forgeBlue h-full rounded-full transition-all duration-300" style={{ width: `${progressPct}%` }}></div>
-                          </div>
-                          <span className="text-[10px] text-gray-500 font-bold font-mono whitespace-nowrap">{progressPct}% Complete</span>
-                        </div>
+              return (
+                <div key={c.id} className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4">
+                  
+                  {/* Card Top Header */}
+                  <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-extrabold text-slate-900 text-base leading-tight">{c.name}</h3>
+                        <span className="text-[10px] text-slate-400 font-mono bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded font-bold uppercase">
+                          {c.campaign_id}
+                        </span>
                       </div>
-
-                      {/* Header controls & togglers */}
-                      <div className="flex items-center gap-3 self-stretch md:self-auto justify-between border-t md:border-t-0 pt-3 md:pt-0">
-                        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                          {c.status !== "active" && (
-                            <button
-                              onClick={() => handleUpdateStatus(c.id, "active")}
-                              className="p-2 bg-green-50 border border-green-200 text-green-600 rounded-xl hover:bg-green-100 transition"
-                              title="Start/Resume Campaign"
-                            >
-                              <Play className="h-4 w-4" />
-                            </button>
-                          )}
-                          {c.status === "active" && (
-                            <button
-                              onClick={() => handleUpdateStatus(c.id, "paused")}
-                              className="p-2 bg-amber-50 border border-amber-200 text-amber-600 rounded-xl hover:bg-amber-100 transition"
-                              title="Pause Campaign"
-                            >
-                              <Pause className="h-4 w-4" />
-                            </button>
-                          )}
-                          {c.status !== "stopped" && (
-                            <button
-                              onClick={() => handleUpdateStatus(c.id, "stopped")}
-                              className="p-2 bg-red-50 border border-red-200 text-red-600 rounded-xl hover:bg-red-100 transition"
-                              title="Stop Campaign"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          )}
-                          
-                          <button
-                            onClick={() => {
-                              setSelectedCampaign(c);
-                              setTempAgentIds(c.agent_ids || []);
-                              setIsAssignModalOpen(true);
-                            }}
-                            className="bg-white border text-gray-600 hover:bg-slate-50 text-xs px-3 py-2 rounded-xl font-bold transition flex items-center gap-1"
-                            title="Assign Agents"
-                          >
-                            <Users className="h-3.5 w-3.5" />
-                            <span>Assign</span>
-                          </button>
-                        </div>
-                        {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
+                      <div className="text-xs text-slate-400 font-medium">
+                        Pool: <strong className="text-[#0F4C9A] capitalize">{pools.find(p => p.id === c.pool_id)?.name.replace("_", " ") || "No Pool"}</strong> · Voice: <strong>{c.ai_voice || "N/A"}</strong>
                       </div>
                     </div>
 
-                    {/* Expandable Details Pane */}
-                    {isExpanded && (
-                      <div className="border-t bg-white p-5 space-y-5 animate-slide-in">
-                        {stats ? (
-                          <>
-                            {/* Performance Stats Metrics Grid */}
-                            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
-                              <div className="bg-slate-50 border p-3 rounded-xl text-center">
-                                <div className="text-lg font-black text-gray-800">{stats.total_leads}</div>
-                                <div className="text-[9px] text-gray-400 font-bold uppercase mt-0.5">Total Leads</div>
-                              </div>
-                              <div className="bg-blue-50/50 border border-blue-100 p-3 rounded-xl text-center">
-                                <div className="text-lg font-black text-forgeBlue">{stats.pending_leads}</div>
-                                <div className="text-[9px] text-forgeBlue font-bold uppercase mt-0.5">Pending Leads</div>
-                              </div>
-                              <div className="bg-green-50/50 border border-green-100 p-3 rounded-xl text-center">
-                                <div className="text-lg font-black text-green-700">{stats.interested}</div>
-                                <div className="text-[9px] text-green-600 font-bold uppercase mt-0.5">Qualified</div>
-                              </div>
-                              <div className="bg-red-50/50 border border-red-100 p-3 rounded-xl text-center">
-                                <div className="text-lg font-black text-red-700">{stats.not_interested}</div>
-                                <div className="text-[9px] text-red-600 font-bold uppercase mt-0.5">Not Interested</div>
-                              </div>
-                              <div className="bg-amber-50/50 border border-amber-100 p-3 rounded-xl text-center">
-                                <div className="text-lg font-black text-amber-700">{stats.callback_scheduled}</div>
-                                <div className="text-[9px] text-amber-600 font-bold uppercase mt-0.5">Callbacks</div>
-                              </div>
-                              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-center">
-                                <div className="text-lg font-black text-emerald-700">{stats.success_rate}%</div>
-                                <div className="text-[9px] text-emerald-600 font-bold uppercase mt-0.5">Success Rate</div>
-                              </div>
-                            </div>
-
-                            {/* Additional controls & parameters */}
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                              <div className="text-xs text-gray-500 font-medium">
-                                {c.description || "No custom description defined for this outbound dialer queue."}
-                              </div>
-                              {stats.not_interested > 0 && (
-                                <button
-                                  onClick={() => handleRetryFailed(c.id)}
-                                  className="bg-forgeGold hover:bg-amber-500 text-forgeBlue font-extrabold text-xs px-4 py-2 rounded-xl transition flex items-center gap-1 shadow-sm"
-                                >
-                                  <RotateCcw className="h-3.5 w-3.5" />
-                                  <span>Retry Failed Calls ({stats.not_interested})</span>
-                                </button>
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-center py-6">
-                            <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-forgeBlue border-t-transparent mb-2"></div>
-                            <p className="text-xs text-gray-400 font-bold">Fetching leads breakdown statistics...</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${
+                      c.status === "active"
+                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                        : c.status === "paused"
+                        ? "bg-amber-50 border-amber-200 text-amber-700"
+                        : "bg-rose-50 border-rose-200 text-rose-700"
+                    }`}>
+                      {c.status}
+                    </span>
                   </div>
-                );
-              })}
-              {filteredCampaigns.length === 0 && (
-                <p className="text-gray-400 text-center py-12 font-medium">No campaigns found matching criteria.</p>
-              )}
-            </div>
+
+                  {/* KPI Chips */}
+                  <div className="flex items-center gap-2 flex-wrap text-xs">
+                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Live 2</span>
+                    </span>
+                    <span className="bg-blue-50 text-blue-700 border border-blue-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-blue-500" />
+                      <span>AI Enabled</span>
+                    </span>
+                    <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1">
+                      <Award className="h-3 w-3 text-purple-500" />
+                      <span>High Priority</span>
+                    </span>
+                  </div>
+
+                  {/* Animated Progress Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center text-xs font-bold">
+                      <span className="text-slate-500">Campaign Progress</span>
+                      <span className="text-[#0F4C9A] font-mono">{progressPct}% Complete</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200/60">
+                      <div className="bg-gradient-to-r from-[#0F4C9A] to-blue-500 h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Action Toolbar */}
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {c.status !== "active" && (
+                        <button
+                          onClick={() => handleUpdateStatus(c.id, "active")}
+                          className="h-9 px-3 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs active:scale-95"
+                          title="Start/Resume Campaign"
+                        >
+                          <Play className="h-3.5 w-3.5 fill-emerald-700" />
+                          <span>Start</span>
+                        </button>
+                      )}
+                      {c.status === "active" && (
+                        <button
+                          onClick={() => handleUpdateStatus(c.id, "paused")}
+                          className="h-9 px-3 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs active:scale-95"
+                          title="Pause Campaign"
+                        >
+                          <Pause className="h-3.5 w-3.5 fill-amber-700" />
+                          <span>Pause</span>
+                        </button>
+                      )}
+                      {c.status !== "stopped" && (
+                        <button
+                          onClick={() => handleUpdateStatus(c.id, "stopped")}
+                          className="h-9 px-3 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs active:scale-95"
+                          title="Stop Campaign"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          <span>Stop</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedCampaign(c);
+                          setTempAgentIds(c.agent_ids || []);
+                          setIsAssignModalOpen(true);
+                        }}
+                        className="h-9 px-3 bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs"
+                      >
+                        <Users className="h-3.5 w-3.5 text-slate-500" />
+                        <span>Assign ({c.agent_ids?.length || 0})</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleExpandCampaign(c.id)}
+                        className="h-9 px-3 bg-blue-50 border border-blue-200 text-[#0F4C9A] hover:bg-blue-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs"
+                      >
+                        <BarChart2 className="h-3.5 w-3.5" />
+                        <span>Analytics</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expandable Details Pane */}
+                  {isExpanded && (
+                    <div className="border-t border-slate-100 pt-4 space-y-4 animate-slide-in">
+                      {stats ? (
+                        <>
+                          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
+                            <div className="bg-slate-50 border border-slate-200/60 p-2.5 rounded-xl">
+                              <div className="font-extrabold text-slate-900">{stats.total_leads}</div>
+                              <div className="text-[9px] text-slate-400 font-bold uppercase">Total Leads</div>
+                            </div>
+                            <div className="bg-blue-50 border border-blue-100 p-2.5 rounded-xl">
+                              <div className="font-extrabold text-[#0F4C9A]">{stats.pending_leads}</div>
+                              <div className="text-[9px] text-blue-600 font-bold uppercase">Pending</div>
+                            </div>
+                            <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl">
+                              <div className="font-extrabold text-emerald-700">{stats.interested}</div>
+                              <div className="text-[9px] text-emerald-600 font-bold uppercase">Qualified</div>
+                            </div>
+                            <div className="bg-rose-50 border border-rose-100 p-2.5 rounded-xl">
+                              <div className="font-extrabold text-rose-700">{stats.not_interested}</div>
+                              <div className="text-[9px] text-rose-600 font-bold uppercase">Rejected</div>
+                            </div>
+                            <div className="bg-amber-50 border border-amber-100 p-2.5 rounded-xl">
+                              <div className="font-extrabold text-amber-700">{stats.callback_scheduled}</div>
+                              <div className="text-[9px] text-amber-600 font-bold uppercase">Callbacks</div>
+                            </div>
+                            <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                              <div className="font-extrabold text-emerald-700">{stats.success_rate}%</div>
+                              <div className="text-[9px] text-emerald-600 font-bold uppercase">Success</div>
+                            </div>
+                          </div>
+
+                          {stats.not_interested > 0 && (
+                            <button
+                              onClick={() => handleRetryFailed(c.id)}
+                              className="w-full bg-[#F4B400] hover:bg-amber-400 text-[#0F4C9A] font-extrabold text-xs py-2 rounded-xl transition flex items-center justify-center gap-1 shadow-xs"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                              <span>Retry Failed Calls ({stats.not_interested})</span>
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-center py-4">
+                          <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-[#0F4C9A] border-t-transparent mb-1"></div>
+                          <p className="text-xs text-slate-400 font-bold">Fetching leads breakdown statistics...</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+          {filteredCampaigns.length === 0 && (
+            <p className="text-slate-400 text-center py-12 font-medium">No campaigns found matching criteria.</p>
+          )}
         </div>
       )}
 
