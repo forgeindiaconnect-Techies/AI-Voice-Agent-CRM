@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import PortalHeader from "../components/PortalHeader";
 import {
   Plus,
   X,
@@ -366,34 +367,29 @@ export default function Leads() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Header Wrapper */}
-      <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div>
-            <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
-              <FolderOpen className="h-6 w-6 text-forgeBlue" />
-              <span>Leads Management Workspace</span>
-            </h1>
-            <p className="text-sm text-gray-500 font-medium">Search, filter, bulk assign, or launch the lead file mapping wizard</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowImportSection(!showImportSection)}
-              className="bg-white border text-gray-700 hover:bg-slate-50 font-bold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
-            >
-              <UploadCloud className="h-4 w-4 text-forgeBlue" />
-              <span>{showImportSection ? "Hide Import Wizard" : "Import Leads File"}</span>
-            </button>
-            <button
-              onClick={() => setShowManualModal(true)}
-              className="bg-forgeGold hover:bg-amber-500 text-forgeBlue font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
-            >
-              <Plus className="h-4 w-4 animate-pulse" />
-              <span>Manual Entry</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <PortalHeader
+        icon={<Users className="h-5 w-5" />}
+        title="Leads Management Portal"
+        subtitle="Search, filter, bulk assign, or launch the lead file mapping wizard"
+        badgeText={`${leads.length} Total`}
+        secondaryButtons={[
+          {
+            label: showImportSection ? "Hide Wizard" : "Import CSV File",
+            icon: <UploadCloud className="h-4 w-4" />,
+            onClick: () => setShowImportSection(!showImportSection),
+          },
+          {
+            label: "Export CSV",
+            icon: <Download className="h-4 w-4" />,
+            onClick: handleExportCSV,
+          },
+        ]}
+        primaryButton={{
+          label: "Add Manual Lead",
+          icon: <Plus className="h-4 w-4" />,
+          onClick: () => setShowManualModal(true),
+        }}
+      />
 
       {/* Leads Importer Section */}
       {showImportSection && (

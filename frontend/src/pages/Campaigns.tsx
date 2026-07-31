@@ -3,6 +3,7 @@ import { api, BASE_URL } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import LiveCallModal from "../components/LiveCallModal";
+import PortalHeader from "../components/PortalHeader";
 import {
   Play,
   Pause,
@@ -684,65 +685,33 @@ export default function Campaigns() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Sticky Compact Header Toolbar */}
-      <div className="sticky top-0 z-20 bg-[#F5F7FB]/95 backdrop-blur-md pb-2 pt-1">
-        <div className="bg-white/95 backdrop-blur-md p-4 rounded-[22px] shadow-xs border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-2xl bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-black shadow-2xs">
-              <Megaphone className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-black text-slate-900 tracking-tight">Voice Campaigns Portal</h1>
-                <span className="bg-blue-100 text-blue-800 text-[10px] font-black px-2.5 py-0.5 rounded-full">
-                  {campaigns.length} Active
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">Control outbound auto-dialers and inbound IVR queue allocations</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap w-full md:w-auto">
-            {/* Animated Segmented Control */}
-            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
-              {user?.role !== "agent" && (
-                <button
-                  onClick={() => {
-                    setActiveTab("outbound");
-                    loadData();
-                  }}
-                  className={`px-4 py-2 text-xs font-extrabold rounded-xl transition duration-200 ${
-                    activeTab === "outbound" ? "bg-[#0F4C9A] text-white shadow-md" : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Outbound Campaigns
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  setActiveTab("inbound");
-                  loadData();
-                }}
-                className={`px-4 py-2 text-xs font-extrabold rounded-xl transition duration-200 ${
-                  activeTab === "inbound" || user?.role === "agent" ? "bg-[#0F4C9A] text-white shadow-md" : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                Inbound IVR queues
-              </button>
-            </div>
-
-            {!isSupervisor && activeTab === "outbound" && (
-              <button
-                onClick={() => setShowLaunchModal(true)}
-                className="bg-[#F4B400] hover:bg-amber-400 text-[#0F4C9A] font-black text-xs px-5 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md active:scale-95"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Create Campaign</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <PortalHeader
+        icon={<Megaphone className="h-5 w-5" />}
+        title="Voice Campaigns Portal"
+        subtitle="Control outbound auto-dialers and inbound IVR queue allocations"
+        badgeText={`${campaigns.length} Active`}
+        tabs={
+          user?.role !== "agent"
+            ? [
+                { id: "outbound", label: "Outbound Campaigns" },
+                { id: "inbound", label: "Inbound IVR queues" },
+              ]
+            : [{ id: "inbound", label: "Inbound IVR queues" }]
+        }
+        activeTab={activeTab}
+        onTabChange={(tabId) => {
+          setActiveTab(tabId as any);
+          loadData();
+        }}
+        primaryButton={
+          !isSupervisor && activeTab === "outbound"
+            ? {
+                label: "Create Campaign",
+                onClick: () => setShowLaunchModal(true),
+              }
+            : undefined
+        }
+      />
 
       {/* --- TAB 1: OUTBOUND CAMPAIGNS --- */}
       {activeTab === "outbound" && (
