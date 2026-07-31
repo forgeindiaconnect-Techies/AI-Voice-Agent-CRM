@@ -36,7 +36,9 @@ import {
   AlertTriangle,
   X,
   Pause,
-  Play
+  Play,
+  Radio,
+  BarChart3
 } from "lucide-react";
 
 type Summary = {
