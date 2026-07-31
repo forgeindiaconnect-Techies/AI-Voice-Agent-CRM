@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -19,8 +19,7 @@ import {
   Sun,
   Moon,
   ChevronRight,
-  PanelLeftClose,
-  PanelLeft,
+  Pin,
   Activity,
   RefreshCw
 } from "lucide-react";
@@ -34,10 +33,41 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
+  // Load collapse state from localStorage
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebar_collapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
+
   const [darkMode, setDarkMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showPinTooltip, setShowPinTooltip] = useState(false);
+
+  // Ctrl + B keybinding to toggle sidebar expansion
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setIsSidebarCollapsed((prev: boolean) => {
+          const next = !prev;
+          localStorage.setItem("sidebar_collapsed", JSON.stringify(next));
+          return next;
+        });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev: boolean) => {
+      const next = !prev;
+      localStorage.setItem("sidebar_collapsed", JSON.stringify(next));
+      return next;
+    });
+  };
 
   const role = user?.role || "agent";
 
@@ -47,22 +77,22 @@ export default function Layout() {
         {
           title: "MAIN WORKSPACE",
           items: [
-            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-            { to: "/leads", label: "Leads", icon: <Users className="h-4 w-4" /> },
-            { to: "/campaigns", label: "Campaigns", icon: <PhoneCall className="h-4 w-4" /> },
+            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4.5 w-4.5" /> },
+            { to: "/leads", label: "Leads", icon: <Users className="h-4.5 w-4.5" /> },
+            { to: "/campaigns", label: "Campaigns", icon: <PhoneCall className="h-4.5 w-4.5" /> },
           ],
         },
         {
           title: "VOICE OPERATIONS",
           items: [
-            { to: "/live-calls", label: "Live Calls", icon: <Radio className="h-4 w-4" /> },
-            { to: "/reports", label: "Reports & Analytics", icon: <BarChart3 className="h-4 w-4" /> },
+            { to: "/live-calls", label: "Live Calls", icon: <Radio className="h-4.5 w-4.5" /> },
+            { to: "/reports", label: "Reports & Analytics", icon: <BarChart3 className="h-4.5 w-4.5" /> },
           ],
         },
         {
           title: "ADMINISTRATION",
           items: [
-            { to: "/users", label: "Users & Agents", icon: <UserCog className="h-4 w-4" /> },
+            { to: "/users", label: "Users & Agents", icon: <UserCog className="h-4.5 w-4.5" /> },
           ],
         },
       ];
@@ -71,24 +101,24 @@ export default function Layout() {
         {
           title: "MAIN WORKSPACE",
           items: [
-            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-            { to: "/leads", label: "Leads", icon: <Users className="h-4 w-4" /> },
-            { to: "/campaigns", label: "Campaigns", icon: <PhoneCall className="h-4 w-4" /> },
+            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4.5 w-4.5" /> },
+            { to: "/leads", label: "Leads", icon: <Users className="h-4.5 w-4.5" /> },
+            { to: "/campaigns", label: "Campaigns", icon: <PhoneCall className="h-4.5 w-4.5" /> },
           ],
         },
         {
           title: "OPERATIONS & AUDIT",
           items: [
-            { to: "/live-calls", label: "Live Calls", icon: <Radio className="h-4 w-4" /> },
-            { to: "/quality", label: "Quality Audit", icon: <ShieldCheck className="h-4 w-4" /> },
-            { to: "/leave", label: "Leave Requests", icon: <Calendar className="h-4 w-4" /> },
-            { to: "/reports", label: "Reports", icon: <BarChart3 className="h-4 w-4" /> },
+            { to: "/live-calls", label: "Live Calls", icon: <Radio className="h-4.5 w-4.5" /> },
+            { to: "/quality", label: "Quality Audit", icon: <ShieldCheck className="h-4.5 w-4.5" /> },
+            { to: "/leave", label: "Leave Requests", icon: <Calendar className="h-4.5 w-4.5" /> },
+            { to: "/reports", label: "Reports", icon: <BarChart3 className="h-4.5 w-4.5" /> },
           ],
         },
         {
           title: "MANAGEMENT",
           items: [
-            { to: "/users", label: "Agents", icon: <UserCog className="h-4 w-4" /> },
+            { to: "/users", label: "Agents", icon: <UserCog className="h-4.5 w-4.5" /> },
           ],
         },
       ];
@@ -97,10 +127,10 @@ export default function Layout() {
         {
           title: "MAIN WORKSPACE",
           items: [
-            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-            { to: "/leads", label: "My Leads", icon: <Users className="h-4 w-4" /> },
-            { to: "/dialer", label: "Softphone Dialer", icon: <Phone className="h-4 w-4" /> },
-            { to: "/campaigns", label: "Inbound Campaigns", icon: <PhoneCall className="h-4 w-4" /> },
+            { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-4.5 w-4.5" /> },
+            { to: "/leads", label: "My Leads", icon: <Users className="h-4.5 w-4.5" /> },
+            { to: "/dialer", label: "Softphone Dialer", icon: <Phone className="h-4.5 w-4.5" /> },
+            { to: "/campaigns", label: "Inbound Campaigns", icon: <PhoneCall className="h-4.5 w-4.5" /> },
           ],
         },
       ];
@@ -127,11 +157,11 @@ export default function Layout() {
     <div className={`h-screen w-screen overflow-hidden flex flex-col md:flex-row ${darkMode ? "bg-slate-950 text-white" : "bg-[#F5F7FB] text-slate-800"}`}>
       
       {/* Mobile Top Bar */}
-      <header className="md:hidden flex items-center justify-between px-5 py-3 bg-[#0F4C9A] text-white shadow-md z-40">
+      <header className="md:hidden flex items-center justify-between px-5 py-3 bg-[#0B192C] text-white shadow-md z-40">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileOpen(true)}
-            className="p-1.5 hover:bg-blue-800 rounded-xl transition"
+            className="p-1.5 hover:bg-slate-800 rounded-xl transition"
             aria-label="Open Menu"
           >
             <Menu className="h-5 w-5" />
@@ -139,9 +169,9 @@ export default function Layout() {
           <div>
             <div className="font-black text-sm tracking-tight flex items-center gap-1.5">
               <span>Forge India</span>
-              <span className="text-[#F4B400] text-[10px] font-extrabold px-1.5 py-0.2 bg-white/10 rounded">CRM</span>
+              <span className="text-[#FACC15] text-[10px] font-extrabold px-1.5 py-0.2 bg-white/10 rounded">AI</span>
             </div>
-            <div className="text-[10px] text-blue-200">AI Voice Calling Platform</div>
+            <div className="text-[10px] text-slate-400">Voice Calling CRM</div>
           </div>
         </div>
         <div className="text-xs font-bold text-right">
@@ -157,53 +187,67 @@ export default function Layout() {
         />
       )}
 
-      {/* 280px Fixed Enterprise Sidebar */}
+      {/* 300px / 88px Enterprise Navigation Sidebar */}
       <aside
         className={`fixed md:static inset-y-0 left-0 ${
-          isSidebarCollapsed ? "w-20" : "w-[280px]"
-        } h-full bg-gradient-to-b from-[#0F4C9A] via-[#0B3C7A] to-[#0A3266] text-white flex flex-col flex-shrink-0 z-50 transform transition-all duration-300 ease-in-out shadow-2xl border-r border-blue-900/40 ${
+          isSidebarCollapsed ? "w-[88px]" : "w-[300px]"
+        } h-full bg-[#0B192C] text-white flex flex-col flex-shrink-0 z-50 transform transition-all duration-300 ease-in-out shadow-2xl border-r border-slate-800/60 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
         {/* Logo & Brand Header */}
-        <div className="p-5 border-b border-blue-800/60 flex justify-between items-center bg-blue-950/30">
+        <div className="p-5 border-b border-slate-800/80 flex justify-between items-center bg-[#071324] relative">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#F4B400] to-amber-500 text-[#0F4C9A] font-black flex items-center justify-center shadow-md flex-shrink-0 text-lg">
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-[#FACC15] to-amber-500 text-[#0B192C] font-black flex items-center justify-center shadow-md flex-shrink-0 text-lg">
               FI
             </div>
             {!isSidebarCollapsed && (
               <div>
                 <div className="font-black text-base tracking-tight leading-none text-white flex items-center gap-1">
                   <span>Forge India</span>
-                  <span className="text-[10px] bg-[#F4B400] text-[#0F4C9A] px-1.5 py-0.5 rounded font-black">AI</span>
+                  <span className="text-[10px] bg-[#FACC15] text-[#0B192C] px-1.5 py-0.5 rounded font-black">AI</span>
                 </div>
-                <div className="text-[11px] text-blue-200/90 font-medium mt-1">Voice Calling CRM</div>
+                <div className="text-[11px] text-slate-400 font-medium mt-1">Voice Calling CRM</div>
+              </div>
+            )}
+          </div>
+          
+          {/* Pin / Collapse Toggle Button */}
+          <div className="relative">
+            <button
+              onClick={toggleSidebar}
+              onMouseEnter={() => setShowPinTooltip(true)}
+              onMouseLeave={() => setShowPinTooltip(false)}
+              className="hidden md:flex p-2 text-slate-400 hover:text-[#FACC15] hover:bg-slate-800/80 rounded-xl transition relative group"
+              title="Ctrl + B to toggle"
+            >
+              {isSidebarCollapsed ? <Pin className="h-4.5 w-4.5 text-[#FACC15] rotate-45" /> : <Pin className="h-4.5 w-4.5 text-slate-400" />}
+            </button>
+
+            {/* Floating Tooltip matching Reference Image 1 */}
+            {isSidebarCollapsed && showPinTooltip && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#0F172A] border border-slate-700 text-white text-xs font-extrabold px-3.5 py-2 rounded-full shadow-2xl flex items-center gap-2 whitespace-nowrap z-50 animate-fade-in pointer-events-none">
+                <Pin className="h-3.5 w-3.5 text-[#FACC15] rotate-45" />
+                <span>Click to Pin & Expand Sidebar</span>
+                <span className="text-[9px] text-slate-400 font-mono bg-slate-800 px-1.5 py-0.5 rounded ml-1">Ctrl+B</span>
               </div>
             )}
           </div>
           
           <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="hidden md:flex p-1.5 text-blue-200 hover:text-white hover:bg-blue-800/60 rounded-xl transition"
-            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isSidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-          </button>
-          
-          <button
             onClick={() => setIsMobileOpen(false)}
-            className="md:hidden p-1.5 text-blue-200 hover:text-white hover:bg-blue-800/60 rounded-xl"
+            className="md:hidden p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Grouped Navigation List */}
-        <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto softphone-scrollbar">
+        <nav className="flex-1 px-3.5 py-5 space-y-6 overflow-y-auto softphone-scrollbar">
           {navGroups.map((group, gIdx) => (
-            <div key={gIdx} className="space-y-1">
+            <div key={gIdx} className="space-y-1.5">
               {!isSidebarCollapsed && (
-                <div className="px-3 text-[10px] font-black text-blue-300/80 tracking-wider uppercase mb-2">
+                <div className="px-3 text-[10px] font-black text-slate-400/90 tracking-widest uppercase mb-2">
                   {group.title}
                 </div>
               )}
@@ -214,51 +258,86 @@ export default function Layout() {
                   end={item.to === "/"}
                   onClick={() => setIsMobileOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition duration-150 ${
+                    `group relative flex items-center ${
+                      isSidebarCollapsed ? "justify-center p-3" : "gap-3 px-4 py-3"
+                    } rounded-[18px] text-xs transition-all duration-200 ${
                       isActive
-                        ? "bg-white/15 text-white font-extrabold border-l-4 border-[#F4B400] shadow-xs backdrop-blur-xs pl-3"
-                        : "text-blue-100/80 hover:bg-blue-800/50 hover:text-white font-semibold"
+                        ? "bg-gradient-to-r from-[#1D61E7] via-[#1A52C5] to-[#1447B2] text-white font-extrabold shadow-lg shadow-blue-600/30 border-l-[5px] border-[#FACC15]"
+                        : "text-slate-300 hover:bg-white/10 hover:text-white font-medium"
                     }`
                   }
                 >
-                  <div className="flex-shrink-0 text-blue-200">{item.icon}</div>
-                  {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                  {({ isActive }) => (
+                    <>
+                      <div className={`flex-shrink-0 transition-transform duration-200 group-hover:scale-110 ${
+                        isActive ? "text-[#FACC15]" : "text-slate-400 group-hover:text-white"
+                      }`}>
+                        {item.icon}
+                      </div>
+
+                      {!isSidebarCollapsed && (
+                        <span className="truncate text-xs tracking-tight">{item.label}</span>
+                      )}
+
+                      {/* Collapsed Tooltip on Hover */}
+                      {isSidebarCollapsed && (
+                        <span className="absolute left-full ml-3 px-3 py-1.5 bg-[#0F172A] text-white text-xs font-bold rounded-xl shadow-xl border border-slate-700/80 whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          {item.label}
+                        </span>
+                      )}
+                    </>
+                  )}
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
 
-        {/* User Profile Footer */}
-        <div className="p-4 border-t border-blue-800/60 bg-blue-950/60 text-xs">
-          <div className="flex items-center gap-3">
+        {/* Bottom User Profile Card */}
+        <div className="p-4 border-t border-slate-800/80 bg-[#071324] text-xs">
+          <div className={`flex items-center ${isSidebarCollapsed ? "justify-center" : "gap-3"}`}>
             <div className="relative flex-shrink-0">
-              <div className="h-9 w-9 rounded-xl bg-blue-700 border border-blue-500 flex items-center justify-center font-black text-white text-xs shadow-inner">
+              <div className="h-9 w-9 rounded-2xl bg-gradient-to-tr from-[#1D61E7] to-blue-500 border border-blue-400 flex items-center justify-center font-black text-white text-xs shadow-md">
                 {user?.name ? user.name[0].toUpperCase() : "U"}
               </div>
-              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 border-2 border-[#0F4C9A] rounded-full" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-emerald-500 border-2 border-[#0B192C] rounded-full" />
             </div>
             
             {!isSidebarCollapsed && (
               <div className="flex-1 min-w-0">
                 <div className="font-extrabold text-white truncate text-xs">{user?.name}</div>
-                <div className="text-[10px] text-blue-200/90 capitalize font-medium truncate">
+                <div className="text-[10px] text-slate-400 capitalize font-semibold truncate">
                   {user?.role.replace("_", " ")} · {user?.employee_id}
                 </div>
               </div>
             )}
 
+            {!isSidebarCollapsed && (
+              <button
+                onClick={() => {
+                  logout();
+                  window.location.href = "/login";
+                }}
+                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition flex-shrink-0"
+                title="Sign Out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          {isSidebarCollapsed && (
             <button
               onClick={() => {
                 logout();
                 window.location.href = "/login";
               }}
-              className="p-2 text-blue-300 hover:text-rose-400 hover:bg-blue-900/80 rounded-xl transition flex-shrink-0"
+              className="mt-3 w-full p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl transition flex items-center justify-center"
               title="Sign Out"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4 text-rose-400" />
             </button>
-          </div>
+          )}
         </div>
       </aside>
 
@@ -268,7 +347,7 @@ export default function Layout() {
         {/* Sticky Compact Enterprise Header Toolbar */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md h-16 border-b border-slate-200/80 px-6 flex items-center justify-between gap-4 shadow-2xs">
           
-          {/* Left: Welcome Title & User Metadata */}
+          {/* Left: Welcome Title */}
           <div className="flex items-center gap-3">
             <div className="hidden xl:flex items-center gap-1.5 text-xs text-slate-400 font-bold border-r pr-3.5 border-slate-200">
               <span>Dashboard</span>
@@ -367,13 +446,11 @@ export default function Layout() {
 
         </header>
 
-        {/* Main Scrollable Workspace Page Container */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F5F7FB] softphone-scrollbar">
+        {/* Scrollable Content Viewport */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 softphone-scrollbar">
           <Outlet />
         </main>
-
       </div>
-
     </div>
   );
 }
