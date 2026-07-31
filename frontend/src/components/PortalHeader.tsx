@@ -43,7 +43,7 @@ export default function PortalHeader({
   secondaryButtons,
 }: PortalHeaderProps) {
   return (
-    <div className="sticky top-0 z-20 bg-[#F5F7FB]/95 backdrop-blur-md pb-2 pt-1 mb-6">
+    <div className="relative mb-6">
       <div className="bg-white/95 backdrop-blur-md p-4 rounded-[22px] shadow-xs border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         {/* Left: Icon + Title + Badge + Subtitle */}
         <div className="flex items-center gap-3">
