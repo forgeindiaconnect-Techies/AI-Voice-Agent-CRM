@@ -21,7 +21,8 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeft,
-  Activity
+  Activity,
+  RefreshCw
 } from "lucide-react";
 
 type NavGroup = {
