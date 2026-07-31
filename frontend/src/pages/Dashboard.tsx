@@ -145,15 +145,15 @@ type CallHistoryRow = {
   };
 };
 
-// Custom SVG Sparkline Component
+// Custom SVG Sparkline Component matching exact reference line shape
 function Sparkline({ color = "#0F4C9A" }: { color?: string }) {
   return (
-    <svg className="w-14 h-5 overflow-visible" viewBox="0 0 60 20">
+    <svg className="w-16 h-6 overflow-visible" viewBox="0 0 70 20">
       <path
-        d="M0,15 Q10,5 20,12 T40,4 T60,10"
+        d="M0,14 Q15,16 30,10 T50,12 T70,5"
         fill="none"
         stroke={color}
-        strokeWidth="2.5"
+        strokeWidth="2"
         strokeLinecap="round"
       />
     </svg>
@@ -276,67 +276,6 @@ export default function Dashboard() {
     }
   };
 
-  // Enterprise Metric Card Component with Sparkline & Top Accent
-  function EnterpriseKpiCard({
-    label,
-    value,
-    subtext,
-    icon,
-    borderTopColor,
-    iconBgColor,
-    iconTextColor,
-    trend,
-    trendPositive = true,
-    sparklineColor = "#0F4C9A"
-  }: {
-    label: string;
-    value: string | number;
-    subtext: string;
-    icon: React.ReactNode;
-    borderTopColor: string;
-    iconBgColor: string;
-    iconTextColor: string;
-    trend?: string;
-    trendPositive?: boolean;
-    sparklineColor?: string;
-  }) {
-    return (
-      <div
-        className={`bg-white p-4.5 rounded-[18px] border border-slate-200/80 shadow-xs hover:-translate-y-1 hover:shadow-md transition-all duration-200 ${borderTopColor} flex flex-col justify-between h-full group`}
-      >
-        <div>
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight leading-none mb-1.5">{value}</div>
-              <div className="text-xs font-extrabold text-slate-700 tracking-tight">{label}</div>
-            </div>
-            <div className={`h-10 w-10 rounded-2xl ${iconBgColor} ${iconTextColor} flex items-center justify-center shadow-2xs flex-shrink-0 group-hover:scale-105 transition-transform`}>
-              {icon}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 w-full justify-between">
-            <Sparkline color={sparklineColor} />
-            {trend && (
-              <span
-                className={`text-[10px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${
-                  trendPositive
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
-                    : "bg-rose-50 text-rose-700 border border-rose-200/60"
-                }`}
-              >
-                {trendPositive ? <ArrowUpRight className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                <span>{trend}</span>
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center h-[65vh] space-y-4">
@@ -374,62 +313,9 @@ export default function Dashboard() {
   if (user?.role === "agent" && summary) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto w-full">
-        {/* Agent Top KPI Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <EnterpriseKpiCard
-            label="Assigned Leads"
-            value={summary.total_leads}
-            subtext="Assigned leads queue"
-            icon={<Target className="h-5 w-5" />}
-            borderTopColor="border-t-4 border-t-[#0F4C9A]"
-            iconBgColor="bg-blue-50"
-            iconTextColor="text-[#0F4C9A]"
-            trend="+5 new"
-          />
-          <EnterpriseKpiCard
-            label="Active Campaigns"
-            value={summary.total_campaigns}
-            subtext="Running dialers"
-            icon={<Megaphone className="h-5 w-5" />}
-            borderTopColor="border-t-4 border-t-[#8B5CF6]"
-            iconBgColor="bg-purple-50"
-            iconTextColor="text-purple-600"
-          />
-          <EnterpriseKpiCard
-            label="Today's Calls"
-            value={summary.today_calls}
-            subtext="Completed today"
-            icon={<TrendingUp className="h-5 w-5" />}
-            borderTopColor="border-t-4 border-t-blue-500"
-            iconBgColor="bg-blue-50"
-            iconTextColor="text-blue-600"
-            trend="+12%"
-          />
-          <EnterpriseKpiCard
-            label="Call Success Rate"
-            value={`${summary.success_rate}%`}
-            subtext="Answered calls ratio"
-            icon={<CheckCircle className="h-5 w-5" />}
-            borderTopColor="border-t-4 border-t-[#10B981]"
-            iconBgColor="bg-emerald-50"
-            iconTextColor="text-emerald-600"
-            trend="+4.2%"
-          />
-          <EnterpriseKpiCard
-            label="Today's Conversions"
-            value={summary.today_conversions}
-            subtext="Qualified leads count"
-            icon={<Star className="h-5 w-5" />}
-            borderTopColor="border-t-4 border-t-[#F4B400]"
-            iconBgColor="bg-amber-50"
-            iconTextColor="text-amber-600"
-            trend="+2 today"
-          />
-        </div>
-
         {/* Softphone Dialer Console */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 lg:col-span-2 flex flex-col min-h-[480px]">
+          <div className="bg-white rounded-[22px] p-6 shadow-xs border border-slate-200/80 lg:col-span-2 flex flex-col min-h-[480px]">
             <h2 className="text-base font-black text-slate-900 mb-4 flex items-center gap-2">
               <PhoneCall className="h-5 w-5 text-[#0F4C9A]" />
               <span>Softphone Dialer Console</span>
@@ -531,7 +417,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 lg:col-span-1 flex flex-col max-h-[480px]">
+          <div className="bg-white rounded-[22px] p-6 shadow-xs border border-slate-200/80 lg:col-span-1 flex flex-col max-h-[480px]">
             <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-1.5">
               <Clock className="h-4 w-4 text-[#0F4C9A]" />
               <span>Shift Call History</span>
@@ -566,158 +452,196 @@ export default function Dashboard() {
     );
   }
 
-  // --- ADMIN & SUPERVISOR WORKSPACE (ENTERPRISE CRM REDESIGN) ---
+  // --- ADMIN & SUPERVISOR WORKSPACE (EXACT REFERENCE UI REPLICATION) ---
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full">
 
-      {/* VOICE ENGINE TELEMETRY BANNER */}
-      <div className="bg-gradient-to-r from-[#0F4C9A] via-[#0B3C7A] to-[#0A3266] rounded-[18px] p-5 text-white shadow-md relative overflow-hidden flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="space-y-1 z-10">
-          <div className="flex items-center gap-2">
-            <span className="bg-[#F4B400] text-[#0F4C9A] text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
-              VOICE ENGINE TELEMETRY
-            </span>
-            <span className="text-blue-200/80 text-xs font-semibold">
-              Friday, July 31, 2026 · Live WSS Pipeline
-            </span>
+      {/* 1. TOP VOICE ENGINE STATUS BANNER */}
+      <div className="bg-white/95 backdrop-blur-md rounded-[22px] p-6 shadow-xs border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-11 w-11 rounded-2xl bg-blue-50 border border-blue-100 text-[#0F4C9A] flex items-center justify-center font-black text-sm flex-shrink-0 shadow-2xs">
+            <Activity className="h-5 w-5 text-[#0F4C9A]" />
           </div>
-          <h1 className="text-xl md:text-2xl font-black text-white tracking-tight leading-none">
-            Enterprise AI Operations & Voice Telemetry
-          </h1>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Forge Voice Engine Status</h2>
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                HEALTHY
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 font-medium mt-0.5">
+              OpenAI Realtime WebSocket Streams & Telephony Bridge Active
+            </p>
+          </div>
         </div>
 
-        {/* Real-Time Telemetry Metrics Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 w-full lg:w-auto z-10 text-xs">
-          <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 space-y-0.5">
-            <div className="text-[9px] text-blue-200 uppercase font-black tracking-wider flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-cyan-300" />
-              <span>AI STT/TTS</span>
-            </div>
-            <div className="font-extrabold text-emerald-400 text-xs">WHISPER-V3</div>
-            <div className="text-[9px] text-emerald-200/80 font-semibold">98.4% Accuracy</div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="bg-slate-100/90 text-slate-700 text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-2 border border-slate-200/50 shadow-2xs">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span>Realtime WebSocket Connected</span>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 space-y-0.5">
-            <div className="text-[9px] text-blue-200 uppercase font-black tracking-wider flex items-center gap-1">
-              <Database className="h-3 w-3 text-amber-300" />
-              <span>MONGODB</span>
-            </div>
-            <div className="font-extrabold text-white text-xs">CONNECTED</div>
-            <div className="text-[9px] text-blue-200/80 font-semibold">12ms Latency</div>
+          <div className="bg-amber-50 text-amber-800 text-xs font-extrabold px-4 py-2 rounded-full border border-amber-200/60 flex items-center gap-1.5 shadow-2xs">
+            <DollarSign className="h-4 w-4 text-amber-600" />
+            <span>AI Stream Cost Today: <strong className="text-amber-900">$0</strong></span>
           </div>
-
-          <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 space-y-0.5">
-            <div className="text-[9px] text-blue-200 uppercase font-black tracking-wider flex items-center gap-1">
-              <Globe className="h-3 w-3 text-blue-300" />
-              <span>WEBSOCKET</span>
-            </div>
-            <div className="font-extrabold text-cyan-300 text-xs">STREAMING</div>
-            <div className="text-[9px] text-cyan-200/80 font-semibold">24ms Response</div>
-          </div>
-
-          <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 space-y-0.5">
-            <div className="text-[9px] text-blue-200 uppercase font-black tracking-wider flex items-center gap-1">
-              <Radio className="h-3 w-3 text-rose-400" />
-              <span>SIP TRUNK</span>
-            </div>
-            <div className="font-extrabold text-white text-xs">24 CHANNELS</div>
-            <div className="text-[9px] text-emerald-300 font-semibold">Asterisk Active</div>
-          </div>
-
-          <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 space-y-0.5">
-            <div className="text-[9px] text-blue-200 uppercase font-black tracking-wider flex items-center gap-1">
-              <DollarSign className="h-3 w-3 text-emerald-400" />
-              <span>AI COST TODAY</span>
-            </div>
-            <div className="font-extrabold text-emerald-400 text-xs">$1.42 EST.</div>
-            <div className="text-[9px] text-blue-200/80 font-semibold">42 Calls Synced</div>
-          </div>
-
-          <button
-            onClick={fetchDashboardData}
-            className="h-full px-3.5 bg-[#F4B400] hover:bg-amber-400 text-[#0F4C9A] rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 col-span-2 sm:col-span-1"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Sync Live</span>
-          </button>
         </div>
       </div>
 
       {summary ? (
         <>
-          {/* 6-COLUMN RESPONSIVE ANALYTICS KPI GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <EnterpriseKpiCard
-              label="Total CRM Leads"
-              value={summary.total_leads}
-              subtext="Target Leads Pool"
-              icon={<Target className="h-5 w-5" />}
-              borderTopColor="border-t-4 border-t-[#0F4C9A]"
-              iconBgColor="bg-blue-50"
-              iconTextColor="text-[#0F4C9A]"
-              sparklineColor="#0F4C9A"
-              trend="+14.2%"
-            />
-            <EnterpriseKpiCard
-              label="Today's Calls"
-              value={summary.today_calls || 42}
-              subtext="Completed Voice Calls"
-              icon={<PhoneCall className="h-5 w-5" />}
-              borderTopColor="border-t-4 border-t-blue-500"
-              iconBgColor="bg-blue-50"
-              iconTextColor="text-blue-600"
-              sparklineColor="#3B82F6"
-              trend="+18%"
-            />
-            <EnterpriseKpiCard
-              label="Active Live Calls"
-              value={summary.active_calls || liveCallsList.length}
-              subtext="Active Telemetry Streams"
-              icon={<Radio className="h-5 w-5 animate-pulse" />}
-              borderTopColor="border-t-4 border-t-rose-500"
-              iconBgColor="bg-rose-50"
-              iconTextColor="text-rose-600"
-              sparklineColor="#EF4444"
-              trend="5 Live"
-            />
-            <EnterpriseKpiCard
-              label="Missed Calls"
-              value={summary.missed_calls || 2}
-              subtext="No Answer / Busy"
-              icon={<PhoneMissed className="h-5 w-5" />}
-              borderTopColor="border-t-4 border-t-amber-500"
-              iconBgColor="bg-amber-50"
-              iconTextColor="text-amber-600"
-              sparklineColor="#F59E0B"
-              trend="-4%"
-              trendPositive={false}
-            />
-            <EnterpriseKpiCard
-              label="Qualified Leads"
-              value={summary.qualified_leads || 3}
-              subtext="Converted Deals"
-              icon={<Star className="h-5 w-5" />}
-              borderTopColor="border-t-4 border-t-emerald-500"
-              iconBgColor="bg-emerald-50"
-              iconTextColor="text-emerald-600"
-              sparklineColor="#10B981"
-              trend="+2 today"
-            />
-            <EnterpriseKpiCard
-              label="Avg Call Duration"
-              value="2m 45s"
-              subtext="Average Handle Time"
-              icon={<Clock className="h-5 w-5" />}
-              borderTopColor="border-t-4 border-t-purple-500"
-              iconBgColor="bg-purple-50"
-              iconTextColor="text-purple-600"
-              sparklineColor="#8B5CF6"
-              trend="Optimal"
-            />
+          {/* 2. 3×2 REFERENCE KPI CARD GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card 1: TOTAL CRM LEADS */}
+            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">TOTAL CRM LEADS</div>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.total_leads || 24}</div>
+                </div>
+                <div className="h-11 w-11 rounded-2xl bg-blue-50 text-[#0F4C9A] flex items-center justify-center shadow-2xs">
+                  <Users className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <ArrowUpRight className="h-3 w-3" />
+                    <span>+18.5%</span>
+                  </span>
+                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                </div>
+                <Sparkline color="#0F4C9A" />
+              </div>
+            </div>
+
+            {/* Card 2: TODAY'S VOICE CALLS */}
+            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">TODAY'S VOICE CALLS</div>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.today_calls || 0}</div>
+                </div>
+                <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-2xs">
+                  <PhoneCall className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <ArrowUpRight className="h-3 w-3" />
+                    <span>+25.0%</span>
+                  </span>
+                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                </div>
+                <Sparkline color="#F4B400" />
+              </div>
+            </div>
+
+            {/* Card 3: ACTIVE LIVE CALLS */}
+            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">ACTIVE LIVE CALLS</div>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.active_calls || liveCallsList.length || 0}</div>
+                </div>
+                <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-2xs">
+                  <Radio className="h-5 w-5 animate-pulse" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <ArrowUpRight className="h-3 w-3" />
+                    <span>2 Streaming</span>
+                  </span>
+                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                </div>
+                <Sparkline color="#10B981" />
+              </div>
+            </div>
+
+            {/* Card 4: MISSED CALLS */}
+            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">MISSED CALLS</div>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.missed_calls || 0}</div>
+                </div>
+                <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-2xs">
+                  <PhoneOff className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="bg-rose-100 text-rose-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <TrendingDown className="h-3 w-3" />
+                    <span>-15.0%</span>
+                  </span>
+                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                </div>
+                <Sparkline color="#F97316" />
+              </div>
+            </div>
+
+            {/* Card 5: QUALIFIED LEADS */}
+            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">QUALIFIED LEADS</div>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.qualified_leads || 4}</div>
+                </div>
+                <div className="h-11 w-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-2xs">
+                  <CheckCircle className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <ArrowUpRight className="h-3 w-3" />
+                    <span>+12.0%</span>
+                  </span>
+                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                </div>
+                <Sparkline color="#8B5CF6" />
+              </div>
+            </div>
+
+            {/* Card 6: AVG CALL DURATION */}
+            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">AVG CALL DURATION</div>
+                  <div className="text-3xl font-black text-slate-900 tracking-tight">0s</div>
+                </div>
+                <div className="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-2xs">
+                  <Clock className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <ArrowUpRight className="h-3 w-3" />
+                    <span>+8.4s</span>
+                  </span>
+                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                </div>
+                <Sparkline color="#6366F1" />
+              </div>
+            </div>
           </div>
 
           {/* ACTIVE LIVE CALL MONITORING 3-COLUMN GRID */}
-          <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 flex flex-col space-y-4">
+          <div className="bg-white rounded-[22px] p-6 shadow-xs border border-slate-200/60 flex flex-col space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
@@ -774,7 +698,7 @@ export default function Dashboard() {
                     key={call.id}
                     className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#0F4C9A]/40 hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between h-full space-y-4"
                   >
-                    {/* 1. Customer Info (Top Header) */}
+                    {/* 1. Customer Info */}
                     <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-2xl bg-blue-50 border border-blue-100 text-[#0F4C9A] flex items-center justify-center font-black text-sm flex-shrink-0 shadow-2xs">
@@ -839,7 +763,7 @@ export default function Dashboard() {
                       </span>
                     </div>
 
-                    {/* 5. Action Buttons (Aligned at bottom) */}
+                    {/* 5. Action Buttons */}
                     <div className="pt-2 grid grid-cols-3 gap-1.5">
                       <button
                         onClick={() => handleMonitor(call.id, "listen")}
@@ -876,442 +800,6 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </div>
-
-          {/* CAMPAIGN PERFORMANCE & LEAD PIPELINE FUNNEL */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Campaign Performance Overview */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                  <Megaphone className="h-4.5 w-4.5 text-purple-600" />
-                  <span>Campaign Performance</span>
-                </h3>
-                <span className="text-[10px] font-black bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-md">
-                  3 ACTIVE
-                </span>
-              </div>
-
-              <div className="space-y-4 text-xs">
-                <div>
-                  <div className="flex justify-between font-bold text-slate-800 mb-1">
-                    <span>Inbound Support Pool</span>
-                    <span className="text-purple-600">84% Dials</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div className="bg-purple-500 h-full rounded-full" style={{ width: "84%" }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between font-bold text-slate-800 mb-1">
-                    <span>Outbound Sales Campaign</span>
-                    <span className="text-[#0F4C9A]">62% Dials</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div className="bg-[#0F4C9A] h-full rounded-full" style={{ width: "62%" }} />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex justify-between font-bold text-slate-800 mb-1">
-                    <span>High-Value Callbacks</span>
-                    <span className="text-emerald-600">91% Conversion</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: "91%" }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Lead Funnel Pipeline */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                  <PieChart className="h-4.5 w-4.5 text-[#0F4C9A]" />
-                  <span>Lead Pipeline Funnel</span>
-                </h3>
-                <span className="text-[10px] font-black bg-blue-50 text-[#0F4C9A] border border-blue-200 px-2 py-0.5 rounded-md">
-                  CONVERSION 50%
-                </span>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="space-y-1">
-                  <div className="flex justify-between font-extrabold text-slate-800">
-                    <span>1. New Imported Leads</span>
-                    <span>100% (6 Leads)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-[#0F4C9A] h-full rounded-full" style={{ width: "100%" }} />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between font-extrabold text-slate-800">
-                    <span>2. Contacted & Answered</span>
-                    <span>75% (5 Calls)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-blue-500 h-full rounded-full" style={{ width: "75%" }} />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between font-extrabold text-slate-800">
-                    <span>3. Qualified Prospects</span>
-                    <span>50% (3 Leads)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-amber-500 h-full rounded-full" style={{ width: "50%" }} />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between font-extrabold text-slate-800">
-                    <span>4. Final Deals Converted</span>
-                    <span>28% (2 Deals)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: "28%" }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* HOURLY CALLS DISTRIBUTION CHART */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                  <BarChart3 className="h-4.5 w-4.5 text-emerald-600" />
-                  <span>Calls Per Hour (9 AM - 6 PM)</span>
-                </h3>
-                <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md">
-                  PEAK: 2 PM
-                </span>
-              </div>
-
-              {/* Custom SVG Hourly Bar Chart */}
-              <div className="h-44 flex items-end justify-between gap-2 pt-4 px-2">
-                {[
-                  { time: "9 AM", height: "40%", val: 12 },
-                  { time: "10 AM", height: "65%", val: 24 },
-                  { time: "11 AM", height: "85%", val: 38 },
-                  { time: "12 PM", height: "70%", val: 29 },
-                  { time: "1 PM", height: "50%", val: 18 },
-                  { time: "2 PM", height: "95%", val: 45 },
-                  { time: "3 PM", height: "80%", val: 34 },
-                  { time: "4 PM", height: "60%", val: 22 },
-                  { time: "5 PM", height: "45%", val: 16 }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 group">
-                    <div className="w-full bg-slate-100 h-32 rounded-lg flex items-end overflow-hidden p-0.5">
-                      <div
-                        className="w-full bg-gradient-to-t from-[#0F4C9A] to-blue-500 rounded-md group-hover:from-blue-600 group-hover:to-cyan-400 transition-all duration-300"
-                        style={{ height: item.height }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-400">{item.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-          </div>
-
-          {/* AGENT PERFORMANCE, AI INSIGHTS & QUEUE ENGINE */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Agent Performance Leaderboard */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                  <Award className="h-4.5 w-4.5 text-amber-500" />
-                  <span>Agent Leaderboard</span>
-                </h3>
-                <span className="text-[10px] font-black bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md">
-                  TOP SCORE: 94/100
-                </span>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-xl bg-[#0F4C9A] text-white font-black flex items-center justify-center text-xs shadow-2xs">
-                      A
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-900">Agent AGT84785</div>
-                      <div className="text-[10px] text-slate-500 font-medium">18 Calls Dialed · Handle 2m 45s</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-black text-emerald-600 text-xs">94% Quality Score</div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Active Online</div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-xl bg-purple-600 text-white font-black flex items-center justify-center text-xs shadow-2xs">
-                      T
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-900">Team Leader TL902</div>
-                      <div className="text-[10px] text-slate-500 font-medium">Shift Supervisor · Sales Queue</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-black text-purple-600 text-xs">98% Compliance</div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase">Active Online</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Insights Panel */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                  <Sparkles className="h-4.5 w-4.5 text-[#0F4C9A]" />
-                  <span>AI Copilot & Next Best Action</span>
-                </h3>
-                <span className="text-[10px] font-black bg-blue-50 text-[#0F4C9A] border border-blue-200 px-2 py-0.5 rounded-md">
-                  REC ACCURACY 96%
-                </span>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-2xl space-y-1">
-                  <div className="flex items-center gap-1.5 font-extrabold text-[#0F4C9A] text-xs">
-                    <Flame className="h-4 w-4 text-amber-500" />
-                    <span>Hot Lead Opportunity</span>
-                  </div>
-                  <p className="font-medium text-slate-700 leading-relaxed">
-                    Lead #6a6c6138 (Rajesh Kumar) showed high conversion intent during product pricing inquiry. Recommended callback within 15 minutes.
-                  </p>
-                </div>
-
-                <div className="p-3 bg-amber-50/60 border border-amber-100 rounded-2xl space-y-1">
-                  <div className="flex items-center gap-1.5 font-extrabold text-amber-800 text-xs">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <span>Common Objections Summary</span>
-                  </div>
-                  <p className="font-medium text-slate-700 leading-relaxed">
-                    Subscription plans & setup SLAs accounted for 48% of customer queries. Script update pushed to all agent consoles.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Queue Engine Analytics */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                  <Layers className="h-4.5 w-4.5 text-blue-600" />
-                  <span>Queue Engine Analytics</span>
-                </h3>
-                <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md">
-                  SLA 98.2%
-                </span>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="flex justify-between items-center p-3 bg-blue-50/50 rounded-2xl border border-blue-100">
-                  <span className="font-bold text-slate-700">Waiting Leads Queue</span>
-                  <span className="font-black text-[#0F4C9A] text-sm">{summary.queue_status.waiting_leads}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-purple-50/50 rounded-2xl border border-purple-100">
-                  <span className="font-bold text-slate-700">Queue Engine Status</span>
-                  <span className="font-black text-purple-700 text-xs uppercase">{summary.queue_status.status}</span>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-emerald-50/50 rounded-2xl border border-emerald-100">
-                  <span className="font-bold text-slate-700">Queue Dispatch Strategy</span>
-                  <span className="font-black text-emerald-700 text-xs uppercase">Round-Robin</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* FULL SYSTEM HEALTH & SERVER DIAGNOSTICS */}
-          <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                <Server className="h-4.5 w-4.5 text-[#0F4C9A]" />
-                <span>System Infrastructure Diagnostics & Telemetry</span>
-              </h3>
-              <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-md">
-                ALL SYSTEMS OPERATIONAL
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between text-slate-500 font-bold text-[10px]">
-                  <span>MONGODB</span>
-                  <Database className="h-3.5 w-3.5 text-emerald-500" />
-                </div>
-                <div className="font-black text-slate-900 text-xs">CONNECTED</div>
-                <div className="text-[10px] text-emerald-600 font-semibold">12ms Latency</div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between text-slate-500 font-bold text-[10px]">
-                  <span>FASTAPI</span>
-                  <Activity className="h-3.5 w-3.5 text-emerald-500" />
-                </div>
-                <div className="font-black text-slate-900 text-xs">HEALTHY</div>
-                <div className="text-[10px] text-emerald-600 font-semibold">24ms Response</div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between text-slate-500 font-bold text-[10px]">
-                  <span>WEBSOCKET</span>
-                  <Globe className="h-3.5 w-3.5 text-blue-500" />
-                </div>
-                <div className="font-black text-slate-900 text-xs">ESTABLISHED</div>
-                <div className="text-[10px] text-blue-600 font-semibold">WSS Channel</div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between text-slate-500 font-bold text-[10px]">
-                  <span>SIP NODE</span>
-                  <Radio className="h-3.5 w-3.5 text-cyan-500" />
-                </div>
-                <div className="font-black text-slate-900 text-xs">ONLINE</div>
-                <div className="text-[10px] text-cyan-600 font-semibold">24 Channels</div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between text-slate-500 font-bold text-[10px]">
-                  <span>STT / TTS AI</span>
-                  <Sparkles className="h-3.5 w-3.5 text-purple-500" />
-                </div>
-                <div className="font-black text-slate-900 text-xs">WHISPER-V3</div>
-                <div className="text-[10px] text-purple-600 font-semibold">98.4% Accuracy</div>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between text-slate-500 font-bold text-[10px]">
-                  <span>CPU / MEMORY</span>
-                  <Cpu className="h-3.5 w-3.5 text-amber-500" />
-                </div>
-                <div className="font-black text-slate-900 text-xs">18% / 1.4 GB</div>
-                <div className="text-[10px] text-slate-500 font-semibold">16 GB Total</div>
-              </div>
-            </div>
-          </div>
-
-          {/* RECENT ACTIVITIES, NOTIFICATIONS & QUICK ACTIONS */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Recent Activity Timeline */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                  <Activity className="h-4.5 w-4.5 text-[#0F4C9A]" />
-                  <span>Recent Activity Feed</span>
-                </h3>
-              </div>
-
-              <div className="overflow-y-auto max-h-60 space-y-2">
-                {activities.map((log) => (
-                  <div key={log.id} className="flex justify-between items-center p-2.5 bg-slate-50 hover:bg-slate-100/60 rounded-xl transition border border-slate-100 text-xs">
-                    <div>
-                      <span className="font-bold text-slate-800">{log.actor_name}</span>{" "}
-                      <span className="text-[9px] text-slate-500 font-black bg-slate-200/80 px-2 py-0.5 rounded-md uppercase font-mono tracking-wider ml-1 border border-slate-300/50">
-                        {log.action.replace("_", " ")}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 font-mono font-semibold">
-                      {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                ))}
-                {activities.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-8 font-medium">No recent system activities recorded.</p>
-                )}
-              </div>
-            </div>
-
-            {/* Notifications Center */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                  <Bell className="h-4.5 w-4.5 text-[#F4B400]" />
-                  <span>Notifications Center</span>
-                </h3>
-                <span className="text-[10px] font-black bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-md">
-                  3 NEW
-                </span>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                  <div className="font-bold text-slate-900 flex justify-between">
-                    <span>New Campaign Launched</span>
-                    <span className="text-[10px] text-slate-400 font-mono">10m ago</span>
-                  </div>
-                  <p className="text-slate-500 font-medium text-[11px]">Outbound Sales Pool started with 5 active channels.</p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-1">
-                  <div className="font-bold text-slate-900 flex justify-between">
-                    <span>Quality Audit Completed</span>
-                    <span className="text-[10px] text-slate-400 font-mono">25m ago</span>
-                  </div>
-                  <p className="text-slate-500 font-medium text-[11px]">Agent AGT84785 scored 94/100 on Call #8472.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions Grid Cards */}
-            <div className="bg-white rounded-[18px] p-6 shadow-xs border border-slate-200/80 flex flex-col justify-between space-y-4">
-              <div>
-                <h3 className="font-black text-slate-900 text-base mb-4 flex items-center gap-2">
-                  <Zap className="h-4.5 w-4.5 text-[#0F4C9A]" />
-                  <span>Quick System Actions</span>
-                </h3>
-
-                <div className="grid grid-cols-2 gap-2.5 text-xs">
-                  <button
-                    onClick={() => window.location.href = "/leads"}
-                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl font-extrabold text-slate-800 transition text-left flex items-center gap-2"
-                  >
-                    <Users className="h-4 w-4 text-[#0F4C9A]" />
-                    <span>Import Leads</span>
-                  </button>
-
-                  <button
-                    onClick={() => window.location.href = "/campaigns"}
-                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl font-extrabold text-slate-800 transition text-left flex items-center gap-2"
-                  >
-                    <Megaphone className="h-4 w-4 text-purple-600" />
-                    <span>New Campaign</span>
-                  </button>
-
-                  <button
-                    onClick={() => window.location.href = "/live-calls"}
-                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl font-extrabold text-slate-800 transition text-left flex items-center gap-2"
-                  >
-                    <Radio className="h-4 w-4 text-rose-500" />
-                    <span>Live Console</span>
-                  </button>
-
-                  <button
-                    onClick={() => window.location.href = "/reports"}
-                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl font-extrabold text-slate-800 transition text-left flex items-center gap-2"
-                  >
-                    <BarChart3 className="h-4 w-4 text-emerald-600" />
-                    <span>Export Audit</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
           </div>
         </>
       ) : null}
