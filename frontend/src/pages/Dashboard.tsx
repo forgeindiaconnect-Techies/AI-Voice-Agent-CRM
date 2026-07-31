@@ -463,15 +463,15 @@ export default function Dashboard() {
   if (user?.role === "agent" && summary) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto w-full">
-        {/* Agent Sticky Top Header Banner */}
-        <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 pt-1 pb-3 mb-2 shadow-xs border-b border-gray-200/50">
-          <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        {/* Agent Compact Enterprise Header */}
+        <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 pt-0 pb-1 mb-4">
+          <div className="bg-white/95 backdrop-blur-md px-6 md:px-8 py-3 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between gap-4 min-h-[80px]">
             <div>
-              <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Welcome, {user.name}</h1>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-gray-400 mt-1">
+              <h1 className="text-lg md:text-xl font-extrabold text-gray-900 tracking-tight leading-none">Welcome, {user.name}</h1>
+              <div className="flex flex-wrap items-center gap-x-2 text-xs text-gray-500 font-semibold mt-1">
                 <span>Role: <strong className="text-forgeBlue capitalize">Agent</strong></span>
                 <span>·</span>
-                <span>Agent ID: <strong className="text-gray-700">{user.employee_id}</strong></span>
+                <span>ID: <strong className="text-gray-700">{user.employee_id}</strong></span>
                 <span>·</span>
                 <span>Pool: <strong className="text-forgeBlue capitalize">{user.pool_id?.replace("_", " ") || "General"}</strong></span>
                 <span>·</span>
@@ -479,17 +479,17 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-2 bg-slate-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <label className="text-xs font-bold text-gray-500">Status:</label>
+                <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Status:</label>
                 <select
                   value={agentStatus}
                   onChange={e => handleStatusChange(e.target.value)}
-                  className="border rounded-xl px-3 py-1.5 text-xs font-bold text-gray-700 bg-gray-50 focus:outline-none"
+                  className="bg-transparent text-xs font-extrabold text-gray-800 focus:outline-none cursor-pointer"
                 >
                   <option value="online">Online (Available)</option>
                   <option value="busy">Busy (In call)</option>
@@ -497,9 +497,10 @@ export default function Dashboard() {
                   <option value="offline">Offline</option>
                 </select>
               </div>
+              
               <button
                 onClick={fetchDashboardData}
-                className="bg-forgeBlue hover:bg-blue-800 text-white text-xs px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 transition shadow-sm"
+                className="h-10 px-4 bg-forgeBlue hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 <span>Sync Data</span>
@@ -821,14 +822,14 @@ export default function Dashboard() {
   // --- ADMIN & SUPERVISOR WORKSPACE ---
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full">
-      {/* Sticky Top Header Banner */}
-      <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 pt-1 pb-3 mb-2 shadow-xs border-b border-gray-200/50">
-        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      {/* Admin / TL Compact Enterprise Header */}
+      <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 pt-0 pb-1 mb-4">
+        <div className="bg-white/95 backdrop-blur-md px-6 md:px-8 py-3 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between gap-4 min-h-[80px]">
           <div>
-            <h1 className="text-xl md:text-2xl font-black text-gray-800 tracking-tight">
+            <h1 className="text-lg md:text-xl font-extrabold text-gray-900 tracking-tight leading-none">
               Welcome, {user?.name || "User"}
             </h1>
-            <p className="text-sm text-gray-500 font-medium capitalize mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-xs text-gray-500 font-semibold capitalize mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>Role: <span className="text-forgeBlue font-bold">{user?.role.replace("_", " ")}</span></span>
               <span>·</span>
               <span>ID: <span className="font-bold text-gray-700">{user?.employee_id}</span></span>
@@ -839,23 +840,27 @@ export default function Dashboard() {
                   <span>·</span>
                   <span>Shift: <span className="font-bold text-gray-700">{user?.shift || "Day Shift (9 AM - 6 PM)"}</span></span>
                   <span>·</span>
-                  <span>Status: <span className="font-bold text-green-600">Active</span></span>
+                  <span>Status: <span className="font-bold text-emerald-600">Active</span></span>
                 </>
               )}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="flex h-2.5 w-2.5 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {/* Compact Green Live Pill */}
+            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/70 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-2xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <Activity className="h-3 w-3 text-emerald-600 animate-pulse" />
+              <span>LIVE UPDATES</span>
             </span>
-            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
-              <Activity className="h-3.5 w-3.5 text-green-500 animate-pulse" />
-              <span>Live updates enabled</span>
-            </span>
+
+            {/* Sync Data Button */}
             <button
               onClick={fetchDashboardData}
-              className="ml-2 bg-forgeBlue hover:bg-blue-800 text-white text-xs px-4 py-2 rounded-xl font-bold flex items-center gap-1.5 transition shadow-sm"
+              className="h-10 px-4 bg-forgeBlue hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               <span>Sync Data</span>
