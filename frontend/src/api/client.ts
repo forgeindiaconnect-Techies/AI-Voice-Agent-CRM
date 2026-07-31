@@ -1,10 +1,13 @@
 const getBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    return `${window.location.protocol}//${hostname}:8000`;
+    // When accessed via LAN IP (e.g. 192.168.x.x), target the backend on the same LAN IP
+    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
+      return `${window.location.protocol}//${hostname}:8000`;
+    }
+  }
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
   }
   return "http://localhost:8000";
 };

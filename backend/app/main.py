@@ -28,8 +28,10 @@ allowed_origins = [
     settings.FRONTEND_ORIGIN,          # http://localhost:5173
     "http://localhost:5173",            # explicit fallback
     "http://127.0.0.1:5173",           # alt localhost
+    "http://192.168.1.54:5173",         # LAN origin
     "http://localhost:3000",            # alternate dev port
     "app://.",                          # Electron origin
+    "file://*",                         # Electron origin
 ]
 # De-duplicate while preserving order
 allowed_origins = list(dict.fromkeys(allowed_origins))
