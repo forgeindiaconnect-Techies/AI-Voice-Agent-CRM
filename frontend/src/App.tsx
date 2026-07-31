@@ -1,0 +1,101 @@
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
+import Layout from "./components/Layout";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Leads from "./pages/Leads";
+import Campaigns from "./pages/Campaigns";
+import Users from "./pages/Users";
+import LiveCalls from "./pages/LiveCalls";
+import Reports from "./pages/Reports";
+import Leave from "./pages/Leave";
+import Dialer from "./pages/Dialer";
+import Quality from "./pages/Quality";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+
+function ProtectedRoute({ children, roles }: { children: JSX.Element; roles?: string[] }) {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  return children;
+}
+
+export default function App() {
+  const { user } = useAuth();
+
+  return (
+    <ErrorBoundary>
+      <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+
+        <Route index element={<Dashboard />} />
+        <Route path="leads" element={<Leads />} />
+        <Route
+          path="campaigns"
+          element={
+            <ProtectedRoute roles={["admin", "team_leader"]}>
+              <Campaigns />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="users"
+          element={
+            <ProtectedRoute roles={["admin", "team_leader"]}>
+              <Users />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="live-calls"
+          element={
+            <ProtectedRoute roles={["admin", "team_leader"]}>
+              <LiveCalls />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <ProtectedRoute roles={["admin", "team_leader"]}>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="leave"
+          element={
+            <ProtectedRoute roles={["admin", "team_leader"]}>
+              <Leave />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="quality"
+          element={
+            <ProtectedRoute roles={["admin", "team_leader"]}>
+              <Quality />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="dialer"
+          element={
+            <ProtectedRoute roles={["agent"]}>
+              <Dialer />
+            </ProtectedRoute>
+          }
+        />
+      </Route>
+    </Routes>
+    </ErrorBoundary>
+  );
+}
