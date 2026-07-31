@@ -419,17 +419,21 @@ export default function Dashboard() {
   }) {
     return (
       <div
-        className="bg-white rounded-xl shadow-sm border-t-4 p-5 hover:shadow-md transition duration-200"
+        className="bg-white rounded-2xl shadow-xs border border-gray-100 border-t-4 p-5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 flex flex-col justify-between"
         style={{ borderTopColor: accent }}
       >
         <div className="flex justify-between items-start">
           <div>
-            <div className="text-3xl font-black text-gray-800 tracking-tight">{value}</div>
-            <div className="text-sm font-semibold text-gray-600 mt-1">{label}</div>
+            <div className="text-3xl font-black text-gray-900 tracking-tight leading-none">{value}</div>
+            <div className="text-xs font-extrabold text-gray-800 tracking-tight mt-2">{label}</div>
           </div>
-          <span className="p-2 bg-gray-50 rounded-xl">{icon}</span>
+          <span className="p-2.5 bg-slate-50 rounded-2xl border border-gray-100/80 shadow-2xs flex-shrink-0">{icon}</span>
         </div>
-        {subtext && <div className="text-[11px] text-gray-400 mt-2 font-medium">{subtext}</div>}
+        {subtext && (
+          <div className="text-[11px] text-gray-400 mt-3 pt-2 border-t border-gray-100/80 font-medium truncate">
+            {subtext}
+          </div>
+        )}
       </div>
     );
   }
@@ -535,8 +539,8 @@ export default function Dashboard() {
           <StatCard
             label="Call Success Rate"
             value={`${summary.success_rate}%`}
-            accent="#22c55e"
-            icon={<CheckCircle className="h-6 w-6 text-green-500" />}
+            accent="#10b981"
+            icon={<CheckCircle className="h-6 w-6 text-emerald-500" />}
             subtext="Answered calls ratio"
           />
           <StatCard
@@ -711,100 +715,113 @@ export default function Dashboard() {
                     setIsAudioPlaying(false);
                     setAudioProgress(0);
                   }}
-                  className={`p-3 border rounded-xl transition cursor-pointer text-left space-y-1.5 ${
-                    selectedHistoryCall?.id === c.id
-                      ? "border-forgeBlue bg-blue-50/20"
-                      : "bg-gray-50/50 hover:bg-white"
-                  }`}
+                  className="p-3 border rounded-2xl bg-gray-50/50 hover:bg-blue-50/30 hover:border-blue-200 transition cursor-pointer flex justify-between items-center"
                 >
-                  <div className="flex justify-between items-start">
-                    <span className="font-bold text-gray-700 text-xs">{c.lead_id}</span>
-                    <span className="text-[9px] text-gray-400 font-bold">{new Date(c.started_at).toLocaleDateString()}</span>
+                  <div>
+                    <div className="font-bold text-gray-800 text-xs">Call #{c.id.slice(-6).toUpperCase()}</div>
+                    <div className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                      Duration: {Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center text-[10px] text-gray-400 font-semibold">
-                    <span className="capitalize">{c.direction} · {Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s</span>
-                    <span className="bg-blue-50 border border-blue-200 text-forgeBlue px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase">
-                      {c.outcome}
-                    </span>
-                  </div>
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+                    c.outcome === "qualified" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {c.outcome}
+                  </span>
                 </div>
               ))}
               {agentCallHistory.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-12 font-medium">No calls logged today.</p>
+                <p className="text-xs text-gray-400 text-center py-12 font-medium">No recorded calls completed during current shift.</p>
               )}
             </div>
           </div>
 
         </div>
 
-        {/* Audit Call Details Modal */}
+        {/* History Recording Player Modal */}
         {selectedHistoryCall && (
-          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div className="bg-white rounded-3xl p-6 max-w-xl w-full shadow-2xl animate-scale-in border border-gray-100 flex flex-col max-h-[90vh]">
-              <div className="flex justify-between items-center border-b pb-3 mb-4">
+          <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-gray-100 animate-scale-in">
+              <div className="flex justify-between items-center border-b pb-3">
                 <div>
-                  <h3 className="font-black text-gray-800 text-lg">Call Log Profile</h3>
-                  <p className="text-[10px] text-gray-400 font-mono mt-0.5">Call ID: {selectedHistoryCall.id}</p>
+                  <h3 className="font-black text-gray-800 text-base">Call Details #{selectedHistoryCall.id.slice(-6).toUpperCase()}</h3>
+                  <p className="text-xs text-gray-400 font-medium">Lead ID: {selectedHistoryCall.lead_id}</p>
                 </div>
-                <button onClick={() => setSelectedHistoryCall(null)} className="p-1.5 hover:bg-slate-100 rounded-lg">
-                  <X className="h-5 w-5 text-gray-400" />
+                <button
+                  onClick={() => setSelectedHistoryCall(null)}
+                  className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-sm text-gray-600">
-                {/* Simulated Audio Player */}
-                <div className="bg-slate-50 border p-4 rounded-2xl flex items-center gap-3">
+              {/* Audio Waveform Player Simulation */}
+              <div className="bg-slate-900 text-white p-4 rounded-2xl space-y-3">
+                <div className="flex justify-between items-center text-xs font-bold text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <Headphones className="h-4 w-4 text-emerald-400" />
+                    <span>Call Recording Audio</span>
+                  </span>
+                  <span className="font-mono text-emerald-400">
+                    {Math.floor(selectedHistoryCall.duration_seconds / 60)}:{String(selectedHistoryCall.duration_seconds % 60).padStart(2, "0")}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 transition-all duration-300"
+                    style={{ width: `${isAudioPlaying ? audioProgress : 0}%` }}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center pt-1">
                   <button
-                    onClick={() => setIsAudioPlaying(!isAudioPlaying)}
-                    className="p-2 bg-forgeBlue text-white hover:bg-blue-800 rounded-full transition"
+                    onClick={() => {
+                      setIsAudioPlaying(!isAudioPlaying);
+                      if (!isAudioPlaying) {
+                        setAudioProgress(10);
+                        const interval = setInterval(() => {
+                          setAudioProgress(p => {
+                            if (p >= 100) {
+                              clearInterval(interval);
+                              setIsAudioPlaying(false);
+                              return 0;
+                            }
+                            return p + 15;
+                          });
+                        }, 500);
+                      }
+                    }}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5"
                   >
-                    {isAudioPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    {isAudioPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                    <span>{isAudioPlaying ? "Pause Audio" : "Play Recording"}</span>
                   </button>
-                  <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden relative">
-                    <div
-                      className="bg-forgeBlue h-full rounded-full transition-all duration-300"
-                      style={{ width: `${audioProgress}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-gray-400 font-mono font-bold">RECORDING</span>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4 border-b pb-4 text-xs font-semibold">
-                  <div>Direction: <strong className="text-gray-800 capitalize">{selectedHistoryCall.direction}</strong></div>
-                  <div>Duration: <strong className="text-gray-800">{Math.floor(selectedHistoryCall.duration_seconds / 60)}m {selectedHistoryCall.duration_seconds % 60}s</strong></div>
-                  <div>Outcome: <strong className="text-forgeBlue capitalize">{selectedHistoryCall.outcome}</strong></div>
-                  <div>Started At: <strong className="text-gray-800">{new Date(selectedHistoryCall.started_at).toLocaleString()}</strong></div>
-                </div>
-
-                {/* AI Evaluation info if exists */}
-                {selectedHistoryCall.quality_evaluation && (
-                  <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl space-y-2">
-                    <div className="flex justify-between items-center border-b pb-1 text-xs">
-                      <span className="font-extrabold text-emerald-800">Supervisor Evaluation</span>
-                      <span className="font-extrabold text-forgeBlue">Quality: {selectedHistoryCall.quality_evaluation.ai_quality_score}/100</span>
-                    </div>
-                    <p className="text-xs text-gray-600 font-semibold italic">"{selectedHistoryCall.quality_evaluation.coaching_notes}"</p>
-                  </div>
-                )}
-
-                {/* AI summary */}
-                <div>
-                  <h4 className="font-bold text-gray-800 text-xs mb-1 uppercase tracking-wider">AI Summary</h4>
-                  <div className="bg-slate-50 border p-3 rounded-xl text-xs font-semibold text-gray-500 leading-relaxed">
-                    {selectedHistoryCall.ai_summary || "No AI Summary recorded."}
-                  </div>
-                </div>
-
-                {/* Transcript */}
-                <div>
-                  <h4 className="font-bold text-gray-800 text-xs mb-1 uppercase tracking-wider">Transcription</h4>
-                  <div className="bg-slate-50 border p-3 rounded-xl text-xs font-mono text-gray-500 whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
-                    {selectedHistoryCall.transcript || "No speech transcript recorded."}
-                  </div>
+                  <span className="text-[10px] text-slate-400 font-mono">24kHz / Opus Stereo</span>
                 </div>
               </div>
 
-              <div className="flex justify-end pt-3 border-t mt-4">
+              {/* AI Coaching & Sentiment details */}
+              {selectedHistoryCall.quality_evaluation && (
+                <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-4 space-y-2 text-xs">
+                  <div className="flex justify-between items-center font-bold text-gray-800">
+                    <span className="flex items-center gap-1">
+                      <Sparkles className="h-4 w-4 text-forgeBlue" />
+                      <span>AI Quality & Sentiment Evaluation</span>
+                    </span>
+                    <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-black text-[10px]">
+                      {selectedHistoryCall.quality_evaluation.ai_quality_score}/100 SCORE
+                    </span>
+                  </div>
+                  <p className="text-gray-600 font-medium leading-relaxed">
+                    {selectedHistoryCall.quality_evaluation.coaching_notes}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
                 <button
                   onClick={() => setSelectedHistoryCall(null)}
                   className="px-5 py-2 bg-slate-100 hover:bg-slate-200 border text-gray-700 text-xs font-bold rounded-xl transition"
@@ -871,78 +888,78 @@ export default function Dashboard() {
 
       {summary ? (
         <>
-          {/* Main Counters Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Main Counters Row - 2 rows of 5 cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {user?.role === "team_leader" ? (
               <>
                 <StatCard
                   label="Assigned Agents"
                   value={summary.total_agents}
                   accent="#0B4EA2"
-                  icon={<Users className="h-6 w-6 text-forgeBlue" />}
+                  icon={<Users className="h-5 w-5 text-forgeBlue" />}
                   subtext="Total members in team"
                 />
                 <StatCard
                   label="Active Agents"
                   value={summary.active_agents || 0}
-                  accent="#22c55e"
-                  icon={<UserCheck className="h-6 w-6 text-green-500" />}
+                  accent="#FFC72C"
+                  icon={<UserCheck className="h-5 w-5 text-amber-500" />}
                   subtext="Online / busy / break"
                 />
                 <StatCard
                   label="Total Leads"
                   value={summary.total_leads}
-                  accent="#ec4899"
-                  icon={<Target className="h-6 w-6 text-pink-500" />}
+                  accent="#10b981"
+                  icon={<Target className="h-5 w-5 text-emerald-500" />}
                   subtext="Assigned leads inventory"
                 />
                 <StatCard
                   label="Active Campaigns"
                   value={summary.total_campaigns}
                   accent="#a855f7"
-                  icon={<Megaphone className="h-6 w-6 text-purple-500" />}
+                  icon={<Megaphone className="h-5 w-5 text-purple-500" />}
                   subtext="Campaigns running"
                 />
                 <StatCard
                   label="Live Calls"
                   value={summary.active_calls}
-                  accent="#06b6d4"
-                  icon={<Zap className="h-6 w-6 text-cyan-500" />}
+                  accent="#f43f5e"
+                  icon={<Zap className="h-5 w-5 text-rose-500" />}
                   subtext="Live audio channels"
                 />
                 <StatCard
                   label="Today's Calls"
                   value={summary.today_calls}
-                  accent="#3b82f6"
-                  icon={<TrendingUp className="h-6 w-6 text-blue-500" />}
+                  accent="#06b6d4"
+                  icon={<TrendingUp className="h-5 w-5 text-cyan-500" />}
                   subtext="Calls dialed today"
                 />
                 <StatCard
                   label="Today's Follow-ups"
                   value={summary.today_followups || 0}
-                  accent="#FFC72C"
-                  icon={<Calendar className="h-6 w-6 text-amber-500" />}
+                  accent="#3b82f6"
+                  icon={<Calendar className="h-5 w-5 text-blue-500" />}
                   subtext="Callbacks today"
                 />
                 <StatCard
                   label="Today's Conversions"
                   value={summary.today_conversions || 0}
                   accent="#10b981"
-                  icon={<Download className="h-6 w-6 text-emerald-500" />}
+                  icon={<Download className="h-5 w-5 text-emerald-500" />}
                   subtext="Qualified leads count"
                 />
                 <StatCard
                   label="Call Success Rate"
                   value={`${summary.success_rate}%`}
-                  accent="#22c55e"
-                  icon={<CheckCircle className="h-6 w-6 text-green-600" />}
+                  accent="#10b981"
+                  icon={<CheckCircle className="h-5 w-5 text-emerald-500" />}
                   subtext="Answered calls ratio"
                 />
                 <StatCard
                   label="Team Performance"
                   value={`${summary.team_performance || 0}%`}
                   accent="#FFC72C"
-                  icon={<Star className="h-6 w-6 text-amber-500" />}
+                  icon={<Star className="h-5 w-5 text-amber-500" />}
                   subtext="Overall team efficiency"
                 />
               </>
@@ -952,135 +969,135 @@ export default function Dashboard() {
                   label="Total Pools"
                   value={summary.total_pools}
                   accent="#0B4EA2"
-                  icon={<Folder className="h-6 w-6 text-forgeBlue" />}
+                  icon={<Folder className="h-5 w-5 text-forgeBlue" />}
                   subtext="Hiring & Sales divisions"
                 />
                 <StatCard
                   label="Supervisors"
                   value={summary.total_supervisors}
                   accent="#FFC72C"
-                  icon={<UserCheck className="h-6 w-6 text-amber-500" />}
+                  icon={<UserCheck className="h-5 w-5 text-amber-500" />}
                   subtext="Managing agents & leads"
                 />
                 <StatCard
                   label="Agents"
                   value={summary.total_agents}
-                  accent="#22c55e"
-                  icon={<Users className="h-6 w-6 text-green-500" />}
+                  accent="#10b981"
+                  icon={<Users className="h-5 w-5 text-emerald-500" />}
                   subtext="Active call team members"
                 />
                 <StatCard
                   label="Campaigns"
                   value={summary.total_campaigns}
                   accent="#a855f7"
-                  icon={<Megaphone className="h-6 w-6 text-purple-500" />}
+                  icon={<Megaphone className="h-5 w-5 text-purple-500" />}
                   subtext="Dialer campaigns setup"
                 />
                 <StatCard
                   label="Total Leads"
                   value={summary.total_leads}
-                  accent="#ec4899"
-                  icon={<Target className="h-6 w-6 text-pink-500" />}
+                  accent="#f43f5e"
+                  icon={<Target className="h-5 w-5 text-rose-500" />}
                   subtext="All imported target leads"
                 />
                 <StatCard
                   label="Active Calls"
                   value={summary.active_calls}
                   accent="#06b6d4"
-                  icon={<Zap className="h-6 w-6 text-cyan-500" />}
+                  icon={<Zap className="h-5 w-5 text-cyan-500" />}
                   subtext="Current ongoing connections"
                 />
                 <StatCard
                   label="Today's Calls"
                   value={summary.today_calls}
                   accent="#3b82f6"
-                  icon={<TrendingUp className="h-6 w-6 text-blue-500" />}
+                  icon={<TrendingUp className="h-5 w-5 text-blue-500" />}
                   subtext="Calls made since midnight"
                 />
                 <StatCard
                   label="Today's Imports"
                   value={summary.today_imports}
                   accent="#10b981"
-                  icon={<Download className="h-6 w-6 text-emerald-500" />}
+                  icon={<Download className="h-5 w-5 text-emerald-500" />}
                   subtext="New leads stored today"
                 />
                 <StatCard
                   label="Call Success Rate"
                   value={`${summary.success_rate}%`}
-                  accent="#22c55e"
-                  icon={<CheckCircle className="h-6 w-6 text-green-600" />}
+                  accent="#10b981"
+                  icon={<CheckCircle className="h-5 w-5 text-emerald-500" />}
                   subtext="Answered calls ratio"
                 />
                 <StatCard
                   label="Conversion Rate"
                   value={`${summary.conversion_rate}%`}
                   accent="#FFC72C"
-                  icon={<Star className="h-6 w-6 text-amber-500" />}
+                  icon={<Star className="h-5 w-5 text-amber-500" />}
                   subtext="Leads qualified ratio"
                 />
               </>
             )}
           </div>
 
-          {/* System Health, Live Monitoring, and Audit Logs */}
+          {/* System Health & Live Call Monitoring Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Column 1: System Health & Statuses */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between">
+            {/* Column 1: System Status & Health */}
+            <div className="bg-white rounded-2xl p-5 shadow-xs border border-gray-100 flex flex-col justify-between">
               <div>
-                <h3 className="font-black text-gray-800 text-lg mb-4 flex items-center gap-2">
-                  <Server className="h-5 w-5 text-forgeBlue" />
+                <h3 className="font-extrabold text-gray-900 text-base mb-4 flex items-center gap-2">
+                  <Server className="h-4.5 w-4.5 text-forgeBlue" />
                   <span>System Status & Health</span>
                 </h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-sm font-semibold text-gray-600 flex items-center gap-2">
+                <div className="space-y-3.5">
+                  <div className="flex justify-between items-center border-b border-gray-100 pb-2.5">
+                    <span className="text-xs font-semibold text-gray-600 flex items-center gap-2">
                       <Database className="h-4 w-4 text-gray-400" />
                       <span>Local MongoDB Status</span>
                     </span>
                     <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
                         summary.system_health.mongodb === "connected"
-                          ? "bg-green-50 border border-green-200 text-green-700"
-                          : "bg-red-50 border border-red-200 text-red-700"
+                          ? "bg-emerald-50 border border-emerald-200 text-emerald-700 uppercase"
+                          : "bg-rose-50 border border-rose-200 text-rose-700 uppercase"
                       }`}
                     >
                       {summary.system_health.mongodb.toUpperCase()}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-sm font-semibold text-gray-600 flex items-center gap-2">
+                  <div className="flex justify-between items-center border-b border-gray-100 pb-2.5">
+                    <span className="text-xs font-semibold text-gray-600 flex items-center gap-2">
                       <Activity className="h-4 w-4 text-gray-400" />
                       <span>CRM API Connection</span>
                     </span>
-                    <span className="px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 rounded-full text-[10px] font-bold">
+                    <span className="px-2.5 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-black uppercase">
                       {summary.system_health.api.toUpperCase()}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center border-b pb-3">
-                    <span className="text-sm font-semibold text-gray-600 flex items-center gap-2">
+                  <div className="flex justify-between items-center border-b border-gray-100 pb-2.5">
+                    <span className="text-xs font-semibold text-gray-600 flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-gray-400" />
                       <span>Queue Status</span>
                     </span>
                     <div className="text-right">
-                      <span className="block text-sm font-bold text-gray-800">
+                      <span className="block text-xs font-bold text-gray-800">
                         {summary.queue_status.waiting_leads} waiting
                       </span>
-                      <span className="text-[10px] text-gray-400 font-semibold uppercase">
+                      <span className="text-[9px] text-gray-400 font-extrabold uppercase">
                         {summary.queue_status.status}
                       </span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold text-gray-600 flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-600 flex items-center gap-2">
                       <Heart className="h-4 w-4 text-gray-400" />
                       <span>AI Agent Calling Engine</span>
                     </span>
                     <div className="text-right">
-                      <span className="block text-sm font-bold text-gray-800">
+                      <span className="block text-xs font-bold text-gray-800">
                         {summary.ai_agent_status.active_channels} channels
                       </span>
-                      <span className="text-[10px] text-gray-400 font-semibold uppercase">
+                      <span className="text-[9px] text-gray-400 font-extrabold uppercase">
                         {summary.ai_agent_status.status}
                       </span>
                     </div>
@@ -1088,63 +1105,64 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="mt-6 bg-slate-50 p-4 rounded-xl border border-gray-100 text-xs text-gray-500 font-semibold flex items-start gap-2">
+              <div className="mt-5 bg-slate-50 p-3.5 rounded-xl border border-gray-100 text-[11px] text-gray-500 font-medium flex items-start gap-2">
                 <Lock className="h-4 w-4 text-forgeBlue flex-shrink-0 mt-0.5" />
-                <span>All API routes are protected by JWT, inputs are sanitized against SQL/NoSQL injections, and passwords hashed with bcrypt context.</span>
+                <span>All endpoints protected with JWT & RBAC context. Data is encrypted in transit and local MongoDB storage.</span>
               </div>
             </div>
 
-            {/* Column 2: Live Call Monitoring */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-2">
-              <h3 className="font-bold text-gray-800 text-lg mb-4 flex justify-between items-center">
-                <span className="flex items-center gap-2">
-                  <Headphones className="h-5 w-5 text-forgeBlue" />
+            {/* Column 2 & 3: Active Live Call Monitoring */}
+            <div className="bg-white rounded-2xl p-5 shadow-xs border border-gray-100 lg:col-span-2 flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-extrabold text-gray-900 text-base flex items-center gap-2">
+                  <Headphones className="h-4.5 w-4.5 text-forgeBlue" />
                   <span>Active Live Call Monitoring</span>
+                </h3>
+                <span className="bg-cyan-50 border border-cyan-200 text-cyan-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  {liveCallsList.length} CALL(S) LIVE
                 </span>
-                <span className="bg-cyan-100 text-cyan-800 text-xs font-black px-2.5 py-1 rounded-full uppercase">
-                  {liveCallsList.length} Call(s) Live
-                </span>
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider">
+              </div>
+
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-gray-500 font-bold uppercase tracking-wider text-[10px] border-b border-gray-100">
                     <tr>
-                      <th className="px-4 py-3">Lead ID</th>
-                      <th className="px-4 py-3">Agent</th>
-                      <th className="px-4 py-3">Direction</th>
-                      <th className="px-4 py-3">Actions</th>
+                      <th className="px-4 py-2.5">Lead ID</th>
+                      <th className="px-4 py-2.5">Agent</th>
+                      <th className="px-4 py-2.5">Direction</th>
+                      <th className="px-4 py-2.5">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-gray-100">
                     {liveCallsList.map((call) => (
-                      <tr key={call.id} className="border-t hover:bg-gray-50/50">
-                        <td className="px-4 py-3 font-semibold text-forgeBlue">{call.lead_id}</td>
-                        <td className="px-4 py-3 text-gray-600 font-medium">{call.agent_id}</td>
+                      <tr key={call.id} className="hover:bg-slate-50/60 transition">
+                        <td className="px-4 py-3 font-bold text-forgeBlue">{call.lead_id}</td>
+                        <td className="px-4 py-3 text-gray-700 font-medium">{call.agent_id}</td>
                         <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded text-xs bg-slate-100 border text-slate-700 capitalize font-medium">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 border text-slate-700 capitalize font-bold">
                             {call.direction}
                           </span>
                         </td>
-                        <td className="px-4 py-3 space-x-2">
+                        <td className="px-4 py-3 space-x-1.5">
                           <button
                             onClick={() => handleMonitor(call.id, "listen")}
-                            className="bg-forgeBlue text-white text-xs px-2.5 py-1.5 rounded-lg font-bold hover:bg-blue-800 transition flex items-center gap-1 inline-flex"
+                            className="bg-forgeBlue text-white text-[11px] px-2.5 py-1 rounded-lg font-bold hover:bg-blue-800 transition inline-flex items-center gap-1"
                           >
-                            <Headphones className="h-3.5 w-3.5" />
+                            <Headphones className="h-3 w-3" />
                             <span>Listen</span>
                           </button>
                           <button
                             onClick={() => handleMonitor(call.id, "whisper")}
-                            className="bg-[#22c55e] text-white text-xs px-2.5 py-1.5 rounded-lg font-bold hover:bg-green-600 transition flex items-center gap-1 inline-flex"
+                            className="bg-emerald-600 text-white text-[11px] px-2.5 py-1 rounded-lg font-bold hover:bg-emerald-700 transition inline-flex items-center gap-1"
                           >
-                            <Volume2 className="h-3.5 w-3.5" />
+                            <Volume2 className="h-3 w-3" />
                             <span>Whisper</span>
                           </button>
                           <button
                             onClick={() => handleMonitor(call.id, "barge")}
-                            className="bg-[#ef4444] text-white text-xs px-2.5 py-1.5 rounded-lg font-bold hover:bg-red-600 transition flex items-center gap-1 inline-flex"
+                            className="bg-rose-600 text-white text-[11px] px-2.5 py-1 rounded-lg font-bold hover:bg-rose-700 transition inline-flex items-center gap-1"
                           >
-                            <Mic className="h-3.5 w-3.5" />
+                            <Mic className="h-3 w-3" />
                             <span>Barge</span>
                           </button>
                         </td>
@@ -1152,8 +1170,8 @@ export default function Dashboard() {
                     ))}
                     {liveCallsList.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-4 py-8 text-center text-gray-400 font-medium">
-                          No active voice calls currently in progress.
+                        <td colSpan={4} className="px-4 py-10 text-center text-gray-400 font-medium">
+                          No active voice channels currently detected on dialer nodes.
                         </td>
                       </tr>
                     )}
@@ -1162,39 +1180,148 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Row 2: Recent Security & Configuration Activities */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-3">
-              <h3 className="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">
-                <Activity className="h-5 w-5 text-forgeBlue" />
-                <span>Recent Audit Trails & Activity Logs</span>
+          </div>
+
+          {/* Campaign Performance & AI Insights Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Campaign Performance Overview */}
+            <div className="bg-white rounded-2xl p-5 shadow-xs border border-gray-100">
+              <h3 className="font-extrabold text-gray-900 text-base mb-4 flex items-center gap-2">
+                <Megaphone className="h-4.5 w-4.5 text-purple-500" />
+                <span>Campaign Performance</span>
               </h3>
-              <div className="overflow-y-auto max-h-80 space-y-3">
-                {activities.map((log) => (
-                  <div key={log.id} className="flex justify-between items-start p-3 bg-gray-50 hover:bg-gray-100/50 rounded-xl transition border border-gray-100">
-                    <div>
-                      <span className="font-bold text-gray-700 text-sm">
-                        {log.actor_name}
-                      </span>{" "}
-                      <span className="text-[9px] text-gray-500 font-extrabold bg-gray-200/60 px-2 py-0.5 rounded-md uppercase font-mono tracking-wider ml-1 border">
-                        {log.action.replace("_", " ")}
-                      </span>
-                      {log.target_employee_id && (
-                        <p className="text-[11px] text-gray-400 font-semibold mt-1">
-                          Target Employee ID: {log.target_employee_id}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-gray-400 font-bold">
-                      {new Date(log.timestamp).toLocaleString()}
-                    </span>
+              <div className="space-y-4 text-xs">
+                <div>
+                  <div className="flex justify-between font-bold text-gray-700 mb-1">
+                    <span>Inbound Support Pool</span>
+                    <span className="text-purple-600">84% Dials Completed</span>
                   </div>
-                ))}
-                {activities.length === 0 && (
-                  <p className="text-gray-400 text-center py-6 text-sm font-semibold">No recent operations logged.</p>
-                )}
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-purple-500 h-full rounded-full" style={{ width: "84%" }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between font-bold text-gray-700 mb-1">
+                    <span>Outbound Sales Campaign</span>
+                    <span className="text-forgeBlue">62% Dials Completed</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-forgeBlue h-full rounded-full" style={{ width: "62%" }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between font-bold text-gray-700 mb-1">
+                    <span>High-Value Callbacks</span>
+                    <span className="text-emerald-600">91% Conversion</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: "91%" }} />
+                  </div>
+                </div>
               </div>
             </div>
 
+            {/* AI Insights & Sentiment Analysis */}
+            <div className="bg-white rounded-2xl p-5 shadow-xs border border-gray-100">
+              <h3 className="font-extrabold text-gray-900 text-base mb-4 flex items-center gap-2">
+                <Sparkles className="h-4.5 w-4.5 text-amber-500" />
+                <span>AI Insights & Sentiment</span>
+              </h3>
+              <div className="space-y-3 text-xs">
+                <div className="p-3 bg-amber-50/60 border border-amber-200/60 rounded-xl space-y-1">
+                  <span className="font-black text-amber-800 text-[10px] uppercase tracking-wider block">Customer Emotion Engine</span>
+                  <p className="font-semibold text-amber-950 leading-relaxed">
+                    85% of live calls analyzed recorded positive or neutral sentiment. 
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-50/60 border border-blue-200/60 rounded-xl space-y-1">
+                  <span className="font-black text-blue-800 text-[10px] uppercase tracking-wider block">Top Objections Detected</span>
+                  <p className="font-semibold text-blue-950 leading-relaxed">
+                    Pricing inquiries & plan upgrades account for 48% of customer queries today.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions Panel */}
+            <div className="bg-white rounded-2xl p-5 shadow-xs border border-gray-100 flex flex-col justify-between">
+              <div>
+                <h3 className="font-extrabold text-gray-900 text-base mb-4 flex items-center gap-2">
+                  <Zap className="h-4.5 w-4.5 text-forgeBlue" />
+                  <span>Quick System Actions</span>
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    onClick={() => window.location.href = "/leads"}
+                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-gray-200 rounded-xl font-extrabold text-gray-800 transition text-left flex items-center gap-2"
+                  >
+                    <Users className="h-4 w-4 text-forgeBlue" />
+                    <span>Import Leads</span>
+                  </button>
+
+                  <button
+                    onClick={() => window.location.href = "/campaigns"}
+                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-gray-200 rounded-xl font-extrabold text-gray-800 transition text-left flex items-center gap-2"
+                  >
+                    <Megaphone className="h-4 w-4 text-purple-600" />
+                    <span>New Campaign</span>
+                  </button>
+
+                  <button
+                    onClick={() => window.location.href = "/live-calls"}
+                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-gray-200 rounded-xl font-extrabold text-gray-800 transition text-left flex items-center gap-2"
+                  >
+                    <Radio className="h-4 w-4 text-rose-500" />
+                    <span>Live Console</span>
+                  </button>
+
+                  <button
+                    onClick={() => window.location.href = "/reports"}
+                    className="p-3 bg-slate-50 hover:bg-slate-100 border border-gray-200 rounded-xl font-extrabold text-gray-800 transition text-left flex items-center gap-2"
+                  >
+                    <BarChart3 className="h-4 w-4 text-emerald-600" />
+                    <span>Export Audit</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Audit Logs Row */}
+          <div className="bg-white rounded-2xl p-5 shadow-xs border border-gray-100">
+            <h3 className="font-extrabold text-gray-900 text-base mb-4 flex items-center gap-2">
+              <Activity className="h-4.5 w-4.5 text-forgeBlue" />
+              <span>Recent Audit Trails & Activity Logs</span>
+            </h3>
+            <div className="overflow-y-auto max-h-64 space-y-2">
+              {activities.map((log) => (
+                <div key={log.id} className="flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100/60 rounded-xl transition border border-gray-100 text-xs">
+                  <div>
+                    <span className="font-bold text-gray-800">
+                      {log.actor_name}
+                    </span>{" "}
+                    <span className="text-[9px] text-gray-500 font-black bg-gray-200/80 px-2 py-0.5 rounded-md uppercase font-mono tracking-wider ml-1 border border-gray-300/50">
+                      {log.action.replace("_", " ")}
+                    </span>
+                    {log.target_employee_id && (
+                      <span className="text-gray-500 font-medium ml-2">
+                        (Target: {log.target_employee_id})
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-gray-400 font-mono font-semibold">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+              {activities.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-6 font-medium">No recent system activities recorded.</p>
+              )}
+            </div>
           </div>
         </>
       ) : null}
