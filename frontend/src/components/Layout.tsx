@@ -39,6 +39,7 @@ const NAV_BY_ROLE: Record<string, { to: string; label: string }[]> = {
     { to: "/", label: "Dashboard" },
     { to: "/leads", label: "My Leads" },
     { to: "/dialer", label: "Dialer" },
+    { to: "/campaigns", label: "Inbound Campaigns" },
   ],
 };
 
@@ -50,6 +51,7 @@ const getIcon = (label: string, className = "h-4 w-4") => {
     case "my leads":
       return <Users className={className} />;
     case "campaigns":
+    case "inbound campaigns":
       return <PhoneCall className={className} />;
     case "users":
     case "agents":

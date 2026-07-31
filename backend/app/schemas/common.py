@@ -183,3 +183,32 @@ class BulkAssignPoolPayload(BaseModel):
     pool_id: str
     user_ids: list[str]
 
+
+class ManualDialPayload(BaseModel):
+    phone: str
+    name: Optional[str] = None
+    pool_id: str
+    language: str
+    agent_assign_mode: str
+    assigned_agent_id: Optional[str] = None
+    priority: str
+    notes: Optional[str] = None
+
+
+class ManualCallActionPayload(BaseModel):
+    action: str
+
+
+class ManualCallTransferPayload(BaseModel):
+    target_agent_id: str
+
+
+class ManualDTMFPayload(BaseModel):
+    digit: str
+
+
+class ManualConferencePayload(BaseModel):
+    invitee_agent_id: str
+
+
+

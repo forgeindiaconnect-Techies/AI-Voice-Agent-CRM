@@ -201,7 +201,8 @@ export default function Dashboard() {
         } catch (e) {}
       }
 
-      const wsUrl = `${BASE_URL.replace("http://", "ws://").replace("https://", "wss://")}/ws/pool/global`;
+      const token = localStorage.getItem("access_token") || "";
+      const wsUrl = `${BASE_URL.replace("http://", "ws://").replace("https://", "wss://")}/ws/pool/global?token=${token}`;
       console.log(`Connecting to WebSocket at ${wsUrl}...`);
       
       try {

@@ -351,3 +351,12 @@ async def update_disposition(lead_id: str, payload: DispositionUpdate, user: dic
     await ws_manager.broadcast("global", {"event": "leads_updated"})
 
     return {"status": "updated"}
+
+
+@router.get("/{lead_id}")
+async def get_lead(lead_id: str, user: dict = Depends(get_current_user)):
+    lead = await leads_col.find_one({"_id": ObjectId(lead_id)})
+    if not lead:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
+    return oid_str(lead)
+
