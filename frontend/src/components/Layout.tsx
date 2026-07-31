@@ -267,15 +267,28 @@ export default function Layout() {
         {/* Sticky Compact Enterprise Header Toolbar */}
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md h-16 border-b border-slate-200/80 px-6 flex items-center justify-between gap-4 shadow-2xs">
           
-          {/* Left Breadcrumb Navigation */}
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-            <span className="text-slate-400">Dashboard</span>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
-            <span className="text-[#0F4C9A] font-black">{getCurrentPageTitle()}</span>
+          {/* Left: Welcome Title & User Metadata */}
+          <div className="flex items-center gap-3">
+            <div className="hidden xl:flex items-center gap-1.5 text-xs text-slate-400 font-bold border-r pr-3.5 border-slate-200">
+              <span>Dashboard</span>
+              <ChevronRight className="h-3.5 w-3.5 text-slate-300" />
+              <span className="text-[#0F4C9A] font-black">{getCurrentPageTitle()}</span>
+            </div>
+
+            <div>
+              <h1 className="text-[#0F4C9A] font-black text-sm md:text-base leading-none">
+                Welcome, {user?.name || "User"}
+              </h1>
+              <div className="text-[11px] text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                <span>Role: <strong className="text-[#0F4C9A] capitalize">{user?.role.replace("_", " ")}</strong></span>
+                <span>·</span>
+                <span>ID: <strong className="text-slate-700">{user?.employee_id}</strong></span>
+              </div>
+            </div>
           </div>
 
           {/* Center Global Search Bar */}
-          <div className="hidden md:flex items-center relative max-w-md w-full">
+          <div className="hidden lg:flex items-center relative max-w-xs xl:max-w-sm w-full">
             <Search className="h-4 w-4 text-slate-400 absolute left-3.5 pointer-events-none" />
             <input
               type="text"
@@ -286,7 +299,7 @@ export default function Layout() {
             />
           </div>
 
-          {/* Right Action Toolbar & User Status */}
+          {/* Right Action Toolbar: Live Updates, Sync Button, Notifications, Profile */}
           <div className="flex items-center gap-3">
             {/* Live Updates Status Indicator */}
             <span className="hidden sm:flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/80 text-emerald-700 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider shadow-2xs">
@@ -297,6 +310,16 @@ export default function Layout() {
               <Activity className="h-3 w-3 text-emerald-600 animate-pulse" />
               <span>LIVE UPDATES</span>
             </span>
+
+            {/* Sync Data Button */}
+            <button
+              onClick={() => window.location.reload()}
+              className="h-9 px-3.5 bg-[#0F4C9A] hover:bg-blue-800 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-2xs active:scale-[0.98]"
+              title="Sync CRM Data"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sync Data</span>
+            </button>
 
             {/* Notifications Bell */}
             <div className="relative">
@@ -342,10 +365,6 @@ export default function Layout() {
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
               <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#0F4C9A] to-blue-600 text-white font-black text-xs flex items-center justify-center shadow-2xs">
                 {user?.name ? user.name[0].toUpperCase() : "U"}
-              </div>
-              <div className="hidden lg:block text-left">
-                <div className="text-xs font-black text-slate-900 leading-tight">{user?.name}</div>
-                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{user?.role.replace("_", " ")}</div>
               </div>
             </div>
           </div>

@@ -312,49 +312,6 @@ export default function Dashboard() {
   if (user?.role === "agent" && summary) {
     return (
       <div className="space-y-6 max-w-7xl mx-auto w-full">
-        {/* Agent Sticky Header */}
-        <div className="sticky top-0 z-20 bg-[#F5F7FB] -mx-4 md:-mx-6 px-4 md:px-6 pt-0 pb-1 mb-4">
-          <div className="bg-white/95 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-4 h-20">
-            <div>
-              <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight leading-none">Welcome back, {user.name}</h1>
-              <div className="flex flex-wrap items-center gap-x-2 text-xs text-slate-500 font-semibold mt-1">
-                <span>Role: <strong className="text-[#0F4C9A] capitalize">Agent</strong></span>
-                <span>·</span>
-                <span>Agent ID: <strong className="text-slate-700">{user.employee_id}</strong></span>
-                <span>·</span>
-                <span>Pool: <strong className="text-[#0F4C9A] capitalize">{user.pool_id?.replace("_", " ") || "General Queue"}</strong></span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status:</label>
-                <select
-                  value={agentStatus}
-                  onChange={e => setAgentStatus(e.target.value)}
-                  className="bg-transparent text-xs font-extrabold text-slate-800 focus:outline-none cursor-pointer"
-                >
-                  <option value="online">Online (Available)</option>
-                  <option value="busy">Busy (In call)</option>
-                  <option value="break">Shift Break</option>
-                  <option value="offline">Offline</option>
-                </select>
-              </div>
-              
-              <button
-                onClick={fetchDashboardData}
-                className="h-10 px-4 bg-[#0F4C9A] hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 shadow-sm"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                <span>Sync Data</span>
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Top Agent KPI Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -552,47 +509,6 @@ export default function Dashboard() {
   // --- ADMIN & SUPERVISOR WORKSPACE (4-ROW ENTERPRISE DASHBOARD) ---
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full">
-
-      {/* Sticky Compact Welcome Header */}
-      <div className="sticky top-0 z-20 bg-[#F5F7FB] -mx-4 md:-mx-6 px-4 md:px-6 pt-0 pb-1 mb-4">
-        <div className="bg-white/95 backdrop-blur-md px-6 md:px-8 py-3 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-4 min-h-[80px]">
-          <div>
-            <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight leading-none">
-              Welcome, {user?.name || "User"}
-            </h1>
-            <p className="text-xs text-slate-500 font-semibold capitalize mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>Role: <span className="text-[#0F4C9A] font-extrabold">{user?.role.replace("_", " ")}</span></span>
-              <span>·</span>
-              <span>Employee ID: <span className="font-extrabold text-slate-700">{user?.employee_id}</span></span>
-              {user?.role === "team_leader" && (
-                <>
-                  <span>·</span>
-                  <span>Team: <span className="font-extrabold text-slate-700">{user?.pool_id?.replace("_", " ").toUpperCase() || "General"}</span></span>
-                </>
-              )}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <Activity className="h-3 w-3 text-emerald-600 animate-pulse" />
-              <span>LIVE UPDATES</span>
-            </span>
-
-            <button
-              onClick={fetchDashboardData}
-              className="h-10 px-4 bg-[#0F4C9A] hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Sync Data</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {summary ? (
         <>
