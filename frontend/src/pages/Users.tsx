@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import PortalHeader from "../components/PortalHeader";
+import RegisterUserModal from "../components/RegisterUserModal";
 import {
   User,
   Folder,
@@ -61,6 +62,8 @@ export default function Users() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<"accounts" | "pools" | "assignments">("accounts");
+  const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
+  const [newlyCreatedUserId, setNewlyCreatedUserId] = useState<string | null>(null);
   
   // State lists
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -509,176 +512,39 @@ export default function Users() {
         ]}
         activeTab={activeTab}
         onTabChange={(tabId) => setActiveTab(tabId as any)}
+        primaryButton={
+          activeTab === "accounts"
+            ? {
+                label: "Add User",
+                icon: <UserPlus className="h-4 w-4" />,
+                onClick: () => setIsCreateUserModalOpen(true),
+              }
+            : undefined
+        }
       />
 
       {/* Tab Contents: User Accounts */}
       {activeTab === "accounts" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Create User Card */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-fit lg:col-span-1">
-            <h2 className="text-lg font-black text-gray-800 mb-4">Register User Account</h2>
-            <form onSubmit={handleCreateUser} className="space-y-4">
-              <input
-                placeholder="Full Name"
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                required
-              />
-              <input
-                placeholder="Email Address"
-                type="email"
-                value={form.email}
-                onChange={e => setForm({ ...form, email: e.target.value })}
-                className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                required
-              />
-              <input
-                placeholder="Secure Password"
-                type="password"
-                value={form.password}
-                onChange={e => setForm({ ...form, password: e.target.value })}
-                className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                required
-              />
-              <input
-                placeholder="Phone Number"
-                value={form.phone}
-                onChange={e => setForm({ ...form, phone: e.target.value })}
-                className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-              />
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Role</label>
-                  <select
-                    value={form.role}
-                    onChange={e => setForm({ ...form, role: e.target.value })}
-                    className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                  >
-                    <option value="agent">Agent</option>
-                    <option value="team_leader">Supervisor</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Pool Mapping</label>
-                  <select
-                    value={form.pool_id}
-                    onChange={e => setForm({ ...form, pool_id: e.target.value })}
-                    className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                  >
-                    <option value="">No Pool</option>
-                    {pools.map(p => (
-                      <option key={p.id} value={p.id}>{p.name.replace("_", " ")}</option>
-                    ))}
-                  </select>
-                </div>
+        <div className="space-y-6">
+          {/* User List Table (Full Width) */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-lg font-black text-slate-900 tracking-tight">Registered Personnel</h2>
+                <p className="text-xs text-slate-500 font-semibold">Active team members, roles, pools, and security status</p>
               </div>
-
-              {form.role === "team_leader" ? (
-                <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Department</label>
-                  <input
-                    placeholder="e.g. Sales, Service"
-                    value={form.department}
-                    onChange={e => setForm({ ...form, department: e.target.value })}
-                    className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Supervisor</label>
-                      <select
-                        value={form.supervisor_id}
-                        onChange={e => setForm({ ...form, supervisor_id: e.target.value })}
-                        className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                      >
-                        <option value="">None</option>
-                        {supervisorsList.map(tl => (
-                          <option key={tl.id} value={tl.id}>{tl.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Shift</label>
-                      <select
-                        value={form.shift}
-                        onChange={e => setForm({ ...form, shift: e.target.value })}
-                        className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                      >
-                        <option value="Day">Day Shift</option>
-                        <option value="Night">Night Shift</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Language</label>
-                      <select
-                        value={form.language}
-                        onChange={e => setForm({ ...form, language: e.target.value })}
-                        className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50"
-                      >
-                        <option value="English">English</option>
-                        <option value="Hindi">Hindi</option>
-                        <option value="Tamil">Tamil</option>
-                        <option value="Telugu">Telugu</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Agent skills (CSV)</label>
-                      <input
-                        placeholder="e.g. negotiation, outbound"
-                        value={form.skillsString}
-                        onChange={e => setForm({ ...form, skillsString: e.target.value })}
-                        className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">AI voice model</label>
-                    <input
-                      placeholder="e.g. Neural-Male-US"
-                      value={form.voice_model}
-                      onChange={e => setForm({ ...form, voice_model: e.target.value })}
-                      className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">AI Prompt config</label>
-                    <textarea
-                      placeholder="Define system prompt..."
-                      value={form.ai_config_prompt}
-                      onChange={e => setForm({ ...form, ai_config_prompt: e.target.value })}
-                      className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 h-20"
-                    />
-                  </div>
-                </>
-              )}
-
               <button
-                type="submit"
-                className="w-full bg-forgeBlue text-white text-sm py-2.5 rounded-xl font-bold hover:bg-blue-800 transition"
+                onClick={() => setIsCreateUserModalOpen(true)}
+                className="px-4 py-2 bg-[#0F4C9A] hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
-                Create Account
+                <UserPlus className="h-4 w-4" />
+                <span>+ Add User</span>
               </button>
-            </form>
-          </div>
+            </div>
 
-          {/* User List Table */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-2">
-            <h2 className="text-lg font-black text-gray-800 mb-4">Registered Personnel</h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3">Employee ID</th>
                     <th className="px-4 py-3">Name</th>
@@ -688,46 +554,58 @@ export default function Users() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map(u => (
-                    <tr key={u.id} className="border-t hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-semibold text-gray-500">{u.employee_id}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-gray-800">{u.name}</div>
-                        <div className="text-xs text-gray-400">{u.email}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="block text-xs font-semibold text-gray-700 capitalize">
-                          {u.role.replace("_", " ")}
-                        </span>
-                        <span className="block text-[11px] text-forgeBlue font-medium">
-                          {pools.find(p => p.id === u.pool_id)?.name.replace("_", " ") || "No Pool"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                            u.is_active ? "bg-green-50 border border-green-200 text-green-700" : "bg-gray-100 border text-gray-500"
-                          }`}
-                        >
-                          {u.is_active ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {u.is_active && (
-                          <button
-                            onClick={() => handleDeactivateUser(u.id)}
-                            className="bg-red-50 text-red-700 border border-red-200 text-xs px-2.5 py-1 rounded-lg font-bold hover:bg-red-100 transition"
+                  {users.map(u => {
+                    const isNewlyCreated = newlyCreatedUserId === u.id || newlyCreatedUserId === (u as any)._id;
+                    return (
+                      <tr
+                        key={u.id}
+                        className={`border-t border-slate-100 transition-all duration-500 ${
+                          isNewlyCreated
+                            ? "bg-emerald-50/90 border-l-4 border-l-emerald-500 font-semibold shadow-2xs"
+                            : "hover:bg-slate-50/50"
+                        }`}
+                      >
+                        <td className="px-4 py-3 font-mono font-bold text-slate-600">{u.employee_id}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-extrabold text-slate-900">{u.name}</div>
+                          <div className="text-xs text-slate-400 font-medium">{u.email}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="block text-xs font-bold text-slate-800 capitalize">
+                            {u.role.replace("_", " ")}
+                          </span>
+                          <span className="block text-[11px] text-[#0F4C9A] font-semibold">
+                            {pools.find(p => p.id === u.pool_id)?.name.replace("_", " ").toUpperCase() || "No Pool"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                              u.is_active
+                                ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                                : "bg-slate-100 border text-slate-500"
+                            }`}
                           >
-                            Deactivate
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            {u.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {u.is_active && (
+                            <button
+                              onClick={() => handleDeactivateUser(u.id)}
+                              className="bg-rose-50 text-rose-700 border border-rose-200 text-xs px-2.5 py-1 rounded-xl font-bold hover:bg-rose-100 transition cursor-pointer"
+                            >
+                              Deactivate
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-gray-400 font-medium">
-                        No team accounts found.
+                      <td colSpan={5} className="px-4 py-8 text-center text-slate-400 font-medium">
+                        No team accounts found. Click "+ Add User" to register personnel.
                       </td>
                     </tr>
                   )}
@@ -957,6 +835,21 @@ export default function Users() {
           )}
         </div>
       )}
+
+      {/* Register User Modal */}
+      <RegisterUserModal
+        isOpen={isCreateUserModalOpen}
+        onClose={() => setIsCreateUserModalOpen(false)}
+        onSuccess={(newUser) => {
+          setNewlyCreatedUserId(newUser?.id || newUser?._id || null);
+          loadData();
+          setTimeout(() => setNewlyCreatedUserId(null), 4000);
+        }}
+        pools={pools}
+        supervisors={supervisorsList}
+      />
     </div>
   );
 }
+
+
