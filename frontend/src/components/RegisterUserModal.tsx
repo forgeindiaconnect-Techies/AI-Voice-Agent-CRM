@@ -424,29 +424,7 @@ export default function RegisterUserModal({
                 </div>
               </div>
 
-              {/* AI Skills (Multi-Select Chips) */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">AI Skills & Qualifications</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {SKILL_OPTIONS.map(skill => {
-                    const isSelected = selectedSkills.includes(skill);
-                    return (
-                      <button
-                        type="button"
-                        key={skill}
-                        onClick={() => toggleSkill(skill)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
-                          isSelected
-                            ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-2xs"
-                            : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200"
-                        }`}
-                      >
-                        {skill} {isSelected && "✓"}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+
 
               {/* Status Toggle */}
               <div className="pt-1">
