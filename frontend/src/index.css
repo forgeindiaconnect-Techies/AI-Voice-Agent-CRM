@@ -1,10 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: "Inter", system-ui, sans-serif;
-  background-color: #f4f6fb;
+@layer base {
+  * {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f6fb;
+    color: #0f172a;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Enterprise SaaS Typography System Scale */
+@layer utilities {
+  /* Dashboard / Page Title: Inter Bold (700), 36px */
+  .font-page-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    line-height: 44px;
+    letter-spacing: -0.025em;
+  }
+
+  /* Portal Title: Inter Bold (700), 32px */
+  .font-portal-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 40px;
+    letter-spacing: -0.02em;
+  }
+
+  /* Card Title: Inter SemiBold (600), 22px */
+  .font-card-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 28px;
+    letter-spacing: -0.015em;
+  }
+
+  /* Section Heading: Inter SemiBold (600), 18px */
+  .font-section-heading {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 24px;
+    letter-spacing: -0.01em;
+  }
+
+  /* Table Header: Inter Medium (500), 14px, uppercase with letter spacing */
+  .font-table-header {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* Body Text: Inter Regular (400), 15-16px */
+  .font-body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  /* Secondary Text: Inter Regular (400), 14px, gray (#64748B) */
+  .font-secondary {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 20px;
+    color: #64748B;
+  }
+
+  /* KPI Numbers: Inter ExtraBold (800), 40-48px */
+  .font-kpi {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 44px;
+    line-height: 52px;
+    letter-spacing: -0.03em;
+  }
+
+  /* Button Text: Inter SemiBold (600), 15px */
+  .font-button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    line-height: 20px;
+  }
+
+  /* Badge Text: Inter Medium (500), 13px */
+  .font-badge {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  /* Sidebar Menu: Inter Medium (500), 16px */
+  .font-sidebar-menu {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  /* Sidebar Section Labels: Inter SemiBold (600), 12px, uppercase */
+  .font-sidebar-label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Form Labels: Inter Medium (500), 14px */
+  .font-form-label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  /* Input Text: Inter Regular (400), 15px */
+  .font-input {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 22px;
+  }
 }
 
 @keyframes equalizer {

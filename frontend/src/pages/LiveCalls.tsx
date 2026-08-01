@@ -133,7 +133,7 @@ export default function LiveCalls() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAction = async (callId: string, action: "listen" | "whisper" | "barge" | "transfer" | "end") => {
+  const handleControlAction = async (callId: string, action: "listen" | "whisper" | "barge" | "transfer" | "end") => {
     try {
       await api.post(`/api/calls/${callId}/monitor`, { action });
       showToast(`Action [${action.toUpperCase()}] triggered for live call #${callId}`, "success");

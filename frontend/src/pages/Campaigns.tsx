@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api, BASE_URL } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
@@ -7,12 +8,10 @@ import PortalHeader from "../components/PortalHeader";
 import {
   Play,
   Pause,
-  Copy,
-  Archive,
+  X,
   Rocket,
   Users,
   Settings,
-  X,
   Megaphone,
   Plus,
   Search,
@@ -20,26 +19,20 @@ import {
   RotateCcw,
   Headphones,
   BarChart2,
-  ShieldAlert,
-  BadgeInfo,
   CheckCircle,
-  ChevronDown,
-  ChevronUp,
-  UserCheck,
   TrendingUp,
   Volume2,
-  Mic,
-  ArrowRight,
   Activity,
   Award,
   Phone,
-  PhoneOff,
-  VolumeX,
-  MicOff,
   Clock,
   Sparkles,
   Shield,
-  Share2
+  Share2,
+  Layers,
+  SlidersHorizontal,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 
 type Pool = { id: string; name: string };
@@ -94,13 +87,15 @@ export default function Campaigns() {
   const { user } = useAuth();
   const { showToast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"outbound" | "inbound">(user?.role === "agent" ? "inbound" : "outbound");
-  
+  const [activeTab, setActiveTab] = useState<"outbound" | "inbound">(
+    user?.role === "agent" ? "inbound" : "outbound"
+  );
+
   // Lists
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [pools, setPools] = useState<Pool[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
-  
+
   // Campaign specific stats lookup
   const [campaignStats, setCampaignStats] = useState<Record<string, CampaignStats>>({});
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
@@ -173,6 +168,13 @@ export default function Campaigns() {
   const [transferTargetId, setTransferTargetId] = useState("");
   const [isTransferModalOpenLocal, setIsTransferModalOpenLocal] = useState(false);
 
+  // Softphone state variables
+  const [isSoftphoneOpen, setIsSoftphoneOpen] = useState(false);
+  const [isLiveKeypadOpen, setIsLiveKeypadOpen] = useState(false);
+  const [isConferenceModalOpen, setIsConferenceModalOpen] = useState(false);
+  const [isSpeakerActive, setIsSpeakerActive] = useState(false);
+  const [conferenceInviteeId, setConferenceInviteeId] = useState("");
+
   // Call Timer Effect
   useEffect(() => {
     let timer: any;
@@ -205,14 +207,12 @@ export default function Campaigns() {
 
       const token = localStorage.getItem("access_token") || "";
       const wsUrl = `${BASE_URL.replace("http://", "ws://").replace("https://", "wss://")}/ws/pool/global?token=${token}`;
-      console.log(`Manual Call WS listener connecting to ${wsUrl}...`);
 
       try {
         ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
           if (isUnmounted) return;
-          console.log("Manual Call WS listener connected");
           reconnectAttempts = 0;
         };
 
@@ -220,7 +220,6 @@ export default function Campaigns() {
           if (isUnmounted) return;
           try {
             const data = JSON.parse(event.data);
-            
             if (data.call_id !== activeCall.id) return;
 
             if (data.event === "manual_call_update") {
@@ -228,11 +227,9 @@ export default function Campaigns() {
               if (data.ai_suggestions) setActiveCallSuggestions(data.ai_suggestions);
               if (data.sentiment) setActiveCallSentiment(data.sentiment);
             } else if (data.event === "manual_call_action") {
-              if (data.action === "mute") {
-                setActiveCallMuted(true);
-              } else if (data.action === "hold") {
-                setActiveCallHold(true);
-              } else if (data.action === "resume") {
+              if (data.action === "mute") setActiveCallMuted(true);
+              else if (data.action === "hold") setActiveCallHold(true);
+              else if (data.action === "resume") {
                 setActiveCallMuted(false);
                 setActiveCallHold(false);
               }
@@ -259,15 +256,10 @@ export default function Campaigns() {
 
         ws.onclose = () => {
           if (isUnmounted) return;
-          console.log("Manual Call WS listener disconnected.");
-          
           if (reconnectAttempts < maxReconnectAttempts) {
             reconnectAttempts++;
             const delay = Math.min(5000 * reconnectAttempts, 30000);
-            console.log(`Retrying Manual Call WS connection in ${delay / 1000}s (Attempt ${reconnectAttempts}/${maxReconnectAttempts})...`);
             reconnectTimeout = setTimeout(connect, delay);
-          } else {
-            console.warn("Max Manual Call WS reconnect attempts reached.");
           }
         };
 
@@ -294,13 +286,6 @@ export default function Campaigns() {
       }
     };
   }, [activeCall, showToast, user]);
-
-  // Softphone state variables
-  const [isSoftphoneOpen, setIsSoftphoneOpen] = useState(false);
-  const [isLiveKeypadOpen, setIsLiveKeypadOpen] = useState(false);
-  const [isConferenceModalOpen, setIsConferenceModalOpen] = useState(false);
-  const [isSpeakerActive, setIsSpeakerActive] = useState(false);
-  const [conferenceInviteeId, setConferenceInviteeId] = useState("");
 
   // Web Audio API DTMF Tone Synthesizer
   const playDTMFTone = (digit: string) => {
@@ -368,7 +353,6 @@ export default function Campaigns() {
     setActiveCallRecordingStatus(nextStatus);
     showToast(`Recording ${nextStatus.toUpperCase()}`, "info");
     
-    // Add SIP log
     const sipMsg = `[${new Date().toISOString()}] [SIP] Call recording ${nextStatus}`;
     setActiveCallSIPLogs(prev => [...prev, sipMsg]);
     
@@ -419,7 +403,6 @@ export default function Campaigns() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isSoftphoneOpen, activeCall, isLiveKeypadOpen, manualPhone]);
-
 
   async function handleInitiateManualDial() {
     if (!manualPhone) {
@@ -623,7 +606,6 @@ export default function Campaigns() {
       const res = await api.post(`/api/campaigns/${campaignId}/retry`);
       showToast(`Reset ${res.reset_count} lead(s) back to active retry queue.`, "success");
       
-      // refresh stats
       const stats = await api.get(`/api/campaigns/${campaignId}/stats`);
       setCampaignStats(prev => ({ ...prev, [campaignId]: stats }));
       loadData();
@@ -670,7 +652,6 @@ export default function Campaigns() {
   };
 
   const supervisorsList = users.filter(u => u.role === "team_leader");
-  // Filter agents by campaign's pool if needed, or show all
   const agentsList = users.filter(u => u.role === "agent");
 
   // Filtered campaigns (Client side)
@@ -684,19 +665,19 @@ export default function Campaigns() {
   const isSupervisor = user?.role === "team_leader";
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto font-sans pb-16">
       <PortalHeader
-        icon={<Megaphone className="h-5 w-5" />}
-        title="Voice Campaigns Portal"
-        subtitle="Control outbound auto-dialers and inbound IVR queue allocations"
-        badgeText={`${campaigns.length} Active`}
+        icon={<Megaphone className="h-5 w-5 text-[#0F4C9A]" />}
+        title="Campaign Management"
+        subtitle="Enterprise auto-dialer orchestration & real-time IVR department routing"
+        badgeText={`${campaigns.length} Total Campaigns`}
         tabs={
           user?.role !== "agent"
             ? [
-                { id: "outbound", label: "Outbound Campaigns" },
-                { id: "inbound", label: "Inbound IVR queues" },
+                { id: "outbound", label: "Outbound Dialers" },
+                { id: "inbound", label: "Inbound IVR Queues" },
               ]
-            : [{ id: "inbound", label: "Inbound IVR queues" }]
+            : [{ id: "inbound", label: "Inbound IVR Queues" }]
         }
         activeTab={activeTab}
         onTabChange={(tabId) => {
@@ -716,61 +697,120 @@ export default function Campaigns() {
       {/* --- TAB 1: OUTBOUND CAMPAIGNS --- */}
       {activeTab === "outbound" && (
         <div className="space-y-6">
-          {/* Stats Summary Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border border-slate-200/60 p-5 rounded-[20px] flex justify-between items-center shadow-xs">
-              <div>
-                <span className="text-2xl font-black text-slate-900">{campaigns.filter(c => c.status === "active").length}</span>
-                <span className="block text-xs font-bold text-slate-400 mt-1">Active Dialers</span>
+          {/* Top Metric Overview Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.05 }}
+              className="bg-white border border-slate-200/80 p-6 rounded-[20px] shadow-xs flex justify-between items-center relative overflow-hidden group hover:shadow-md transition-all duration-200"
+            >
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500" />
+              <div className="pl-1">
+                <span className="text-3xl font-black text-slate-900 tracking-tight">
+                  {campaigns.filter(c => c.status === "active").length}
+                </span>
+                <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mt-1 flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Active Dialers
+                </span>
               </div>
-              <span className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100"><Play className="h-5 w-5 text-emerald-600" /></span>
-            </div>
-            <div className="bg-white border border-slate-200/60 p-5 rounded-[20px] flex justify-between items-center shadow-xs">
-              <div>
-                <span className="text-2xl font-black text-slate-900">{campaigns.filter(c => c.status === "paused").length}</span>
-                <span className="block text-xs font-bold text-slate-400 mt-1">Paused Campaigns</span>
+              <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-100/80 text-emerald-600 group-hover:scale-110 transition-transform">
+                <Play className="h-6 w-6 fill-emerald-600" />
               </div>
-              <span className="p-3 bg-amber-50 rounded-2xl border border-amber-100"><Pause className="h-5 w-5 text-amber-600" /></span>
-            </div>
-            <div className="bg-white border border-slate-200/60 p-5 rounded-[20px] flex justify-between items-center shadow-xs">
-              <div>
-                <span className="text-2xl font-black text-slate-900">{campaigns.filter(c => c.status === "stopped").length}</span>
-                <span className="block text-xs font-bold text-slate-400 mt-1">Stopped Campaigns</span>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.1 }}
+              className="bg-white border border-slate-200/80 p-6 rounded-[20px] shadow-xs flex justify-between items-center relative overflow-hidden group hover:shadow-md transition-all duration-200"
+            >
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
+              <div className="pl-1">
+                <span className="text-3xl font-black text-slate-900 tracking-tight">
+                  {campaigns.filter(c => c.status === "paused").length}
+                </span>
+                <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                  Paused Campaigns
+                </span>
               </div>
-              <span className="p-3 bg-rose-50 rounded-2xl border border-rose-100"><X className="h-5 w-5 text-rose-600" /></span>
-            </div>
-            <div className="bg-white border border-slate-200/60 p-5 rounded-[20px] flex justify-between items-center shadow-xs">
-              <div>
-                <span className="text-2xl font-black text-slate-900">
+              <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-100/80 text-amber-600 group-hover:scale-110 transition-transform">
+                <Pause className="h-6 w-6 fill-amber-600" />
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.15 }}
+              className="bg-white border border-slate-200/80 p-6 rounded-[20px] shadow-xs flex justify-between items-center relative overflow-hidden group hover:shadow-md transition-all duration-200"
+            >
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-500" />
+              <div className="pl-1">
+                <span className="text-3xl font-black text-slate-900 tracking-tight">
+                  {campaigns.filter(c => c.status === "stopped").length}
+                </span>
+                <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                  Stopped Campaigns
+                </span>
+              </div>
+              <div className="p-3.5 bg-rose-50 rounded-2xl border border-rose-100/80 text-rose-600 group-hover:scale-110 transition-transform">
+                <X className="h-6 w-6 text-rose-600 stroke-[2.5]" />
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: 0.2 }}
+              className="bg-white border border-slate-200/80 p-6 rounded-[20px] shadow-xs flex justify-between items-center relative overflow-hidden group hover:shadow-md transition-all duration-200"
+            >
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-[#0F4C9A]" />
+              <div className="pl-1">
+                <span className="text-3xl font-black text-slate-900 tracking-tight">
                   {campaigns.length > 0 ? "85.4%" : "0.0%"}
                 </span>
-                <span className="block text-xs font-bold text-slate-400 mt-1">Avg Success Rate</span>
+                <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                  Avg Success Rate
+                </span>
               </div>
-              <span className="p-3 bg-blue-50 rounded-2xl border border-blue-100"><CheckCircle className="h-5 w-5 text-[#0F4C9A]" /></span>
-            </div>
+              <div className="p-3.5 bg-blue-50 rounded-2xl border border-blue-100/80 text-[#0F4C9A] group-hover:scale-110 transition-transform">
+                <TrendingUp className="h-6 w-6 text-[#0F4C9A]" />
+              </div>
+            </motion.div>
           </div>
 
-          {/* Search, Filter & Refresh Grid */}
-          <div className="bg-white rounded-[22px] p-4 shadow-xs border border-slate-200/60 flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="relative w-full md:w-80">
-              <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-3" />
+          {/* Search, Filter & Controls Toolbar */}
+          <div className="bg-white rounded-[20px] p-5 shadow-xs border border-slate-200/80 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full md:w-96">
+              <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
               <input
-                placeholder="Search campaigns by name, ID..."
+                type="text"
+                placeholder="Search campaigns by name, ID, voice model..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-slate-200/80 rounded-xl text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700 transition"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-            
+
             <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="flex items-center gap-1.5 w-full md:w-auto">
-                <Filter className="h-4 w-4 text-slate-400" />
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <SlidersHorizontal className="h-4 w-4 text-slate-400" />
                 <select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value)}
-                  className="border border-slate-200/80 rounded-xl px-3 py-2 text-xs bg-slate-50 font-bold text-slate-700 focus:outline-none w-full md:w-44 cursor-pointer"
+                  className="border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] w-full md:w-48 cursor-pointer transition"
                 >
-                  <option value="">All Active / Paused</option>
+                  <option value="">All Statuses (Active/Paused)</option>
                   <option value="active">Active Only</option>
                   <option value="paused">Paused Only</option>
                   <option value="stopped">Stopped Only</option>
@@ -779,194 +819,313 @@ export default function Campaigns() {
 
               <button
                 onClick={loadData}
-                className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition"
-                title="Refresh Data"
+                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition flex items-center justify-center shadow-2xs"
+                title="Refresh Campaigns Data"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
             </div>
           </div>
 
-          {/* 2-Column Responsive Desktop Grid */}
+          {/* 2-COLUMN RESPONSIVE GRID (Wider Cards: 600-700px, 24px Gaps, Equal Height) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredCampaigns.map(c => {
-              const isExpanded = expandedCampaignId === c.id;
-              const stats = campaignStats[c.id];
-              
-              // Calculate progress
-              const total = stats?.total_leads || 100;
-              const completed = stats?.completed_leads || 0;
-              const progressPct = Math.min(Math.round((completed / total) * 100), 100);
+            <AnimatePresence>
+              {filteredCampaigns.map((c, idx) => {
+                const isExpanded = expandedCampaignId === c.id;
+                const stats = campaignStats[c.id];
 
-              return (
-                <div key={c.id} className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between space-y-4">
-                  
-                  {/* Card Top Header */}
-                  <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-extrabold text-slate-900 text-base leading-tight">{c.name}</h3>
-                        <span className="text-[10px] text-slate-400 font-mono bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded font-bold uppercase">
-                          {c.campaign_id}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-400 font-medium">
-                        Pool: <strong className="text-[#0F4C9A] capitalize">{pools.find(p => p.id === c.pool_id)?.name.replace("_", " ") || "No Pool"}</strong> · Voice: <strong>{c.ai_voice || "N/A"}</strong>
-                      </div>
-                    </div>
+                // Calculate progress percentage
+                const total = stats?.total_leads || 100;
+                const completed = stats?.completed_leads || 0;
+                const progressPct = Math.min(Math.round((completed / total) * 100), 100);
 
-                    <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${
-                      c.status === "active"
-                        ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                        : c.status === "paused"
-                        ? "bg-amber-50 border-amber-200 text-amber-700"
-                        : "bg-rose-50 border-rose-200 text-rose-700"
-                    }`}>
-                      {c.status}
-                    </span>
-                  </div>
+                return (
+                  <motion.div
+                    key={c.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    whileHover={{ y: -4 }}
+                    transition={{ duration: 0.3, delay: idx * 0.04 }}
+                    className="bg-white rounded-[20px] border border-slate-200/80 shadow-xs hover:shadow-xl hover:border-blue-300/80 transition-all duration-300 flex flex-col justify-between overflow-hidden group min-h-[400px] h-full"
+                  >
+                    {/* Top Status Border Accent */}
+                    <div className={`h-1.5 w-full ${
+                      c.status === "active" ? "bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400" :
+                      c.status === "paused" ? "bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500" :
+                      "bg-gradient-to-r from-rose-500 via-red-500 to-rose-400"
+                    }`} />
 
-                  {/* KPI Chips */}
-                  <div className="flex items-center gap-2 flex-wrap text-xs">
-                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>Live 2</span>
-                    </span>
-                    <span className="bg-blue-50 text-blue-700 border border-blue-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 text-blue-500" />
-                      <span>AI Enabled</span>
-                    </span>
-                    <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold flex items-center gap-1">
-                      <Award className="h-3 w-3 text-purple-500" />
-                      <span>High Priority</span>
-                    </span>
-                  </div>
-
-                  {/* Animated Progress Bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between items-center text-xs font-bold">
-                      <span className="text-slate-500">Campaign Progress</span>
-                      <span className="text-[#0F4C9A] font-mono">{progressPct}% Complete</span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200/60">
-                      <div className="bg-gradient-to-r from-[#0F4C9A] to-blue-500 h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Action Toolbar */}
-                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 flex-wrap gap-2">
-                    <div className="flex items-center gap-1.5">
-                      {c.status !== "active" && (
-                        <button
-                          onClick={() => handleUpdateStatus(c.id, "active")}
-                          className="h-9 px-3 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs active:scale-95"
-                          title="Start/Resume Campaign"
-                        >
-                          <Play className="h-3.5 w-3.5 fill-emerald-700" />
-                          <span>Start</span>
-                        </button>
-                      )}
-                      {c.status === "active" && (
-                        <button
-                          onClick={() => handleUpdateStatus(c.id, "paused")}
-                          className="h-9 px-3 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs active:scale-95"
-                          title="Pause Campaign"
-                        >
-                          <Pause className="h-3.5 w-3.5 fill-amber-700" />
-                          <span>Pause</span>
-                        </button>
-                      )}
-                      {c.status !== "stopped" && (
-                        <button
-                          onClick={() => handleUpdateStatus(c.id, "stopped")}
-                          className="h-9 px-3 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs active:scale-95"
-                          title="Stop Campaign"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          <span>Stop</span>
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedCampaign(c);
-                          setTempAgentIds(c.agent_ids || []);
-                          setIsAssignModalOpen(true);
-                        }}
-                        className="h-9 px-3 bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs"
-                      >
-                        <Users className="h-3.5 w-3.5 text-slate-500" />
-                        <span>Assign ({c.agent_ids?.length || 0})</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleExpandCampaign(c.id)}
-                        className="h-9 px-3 bg-blue-50 border border-blue-200 text-[#0F4C9A] hover:bg-blue-100 rounded-xl text-xs font-extrabold transition flex items-center gap-1 shadow-2xs"
-                      >
-                        <BarChart2 className="h-3.5 w-3.5" />
-                        <span>Analytics</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Expandable Details Pane */}
-                  {isExpanded && (
-                    <div className="border-t border-slate-100 pt-4 space-y-4 animate-slide-in">
-                      {stats ? (
-                        <>
-                          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
-                            <div className="bg-slate-50 border border-slate-200/60 p-2.5 rounded-xl">
-                              <div className="font-extrabold text-slate-900">{stats.total_leads}</div>
-                              <div className="text-[9px] text-slate-400 font-bold uppercase">Total Leads</div>
+                    <div className="p-6 flex-1 flex flex-col justify-between space-y-5">
+                      {/* 1. Header: Campaign Name, ID, Status */}
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <h3 
+                                className="font-card-title text-slate-900 leading-snug group-hover:text-[#0F4C9A] transition-colors truncate" 
+                                title={c.name}
+                              >
+                                {c.name}
+                              </h3>
                             </div>
-                            <div className="bg-blue-50 border border-blue-100 p-2.5 rounded-xl">
-                              <div className="font-extrabold text-[#0F4C9A]">{stats.pending_leads}</div>
-                              <div className="text-[9px] text-blue-600 font-bold uppercase">Pending</div>
-                            </div>
-                            <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl">
-                              <div className="font-extrabold text-emerald-700">{stats.interested}</div>
-                              <div className="text-[9px] text-emerald-600 font-bold uppercase">Qualified</div>
-                            </div>
-                            <div className="bg-rose-50 border border-rose-100 p-2.5 rounded-xl">
-                              <div className="font-extrabold text-rose-700">{stats.not_interested}</div>
-                              <div className="text-[9px] text-rose-600 font-bold uppercase">Rejected</div>
-                            </div>
-                            <div className="bg-amber-50 border border-amber-100 p-2.5 rounded-xl">
-                              <div className="font-extrabold text-amber-700">{stats.callback_scheduled}</div>
-                              <div className="text-[9px] text-amber-600 font-bold uppercase">Callbacks</div>
-                            </div>
-                            <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
-                              <div className="font-extrabold text-emerald-700">{stats.success_rate}%</div>
-                              <div className="text-[9px] text-emerald-600 font-bold uppercase">Success</div>
+                            <div className="flex items-center gap-2.5 pt-0.5">
+                              <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100/90 border border-slate-200 px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                                {c.campaign_id}
+                              </span>
+                              <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                                <span className="h-1 w-1 rounded-full bg-slate-400" />
+                                <span>Outbound Dialer</span>
+                              </span>
                             </div>
                           </div>
 
-                          {stats.not_interested > 0 && (
-                            <button
-                              onClick={() => handleRetryFailed(c.id)}
-                              className="w-full bg-[#F4B400] hover:bg-amber-400 text-[#0F4C9A] font-extrabold text-xs py-2 rounded-xl transition flex items-center justify-center gap-1 shadow-xs"
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                              <span>Retry Failed Calls ({stats.not_interested})</span>
-                            </button>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-center py-4">
-                          <div className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-[#0F4C9A] border-t-transparent mb-1"></div>
-                          <p className="text-xs text-slate-400 font-bold">Fetching leads breakdown statistics...</p>
+                          {/* Status Badge */}
+                          <span className={`text-xs font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full border flex items-center gap-2 shrink-0 shadow-2xs ${
+                            c.status === "active"
+                              ? "bg-emerald-50/90 border-emerald-200 text-emerald-700"
+                              : c.status === "paused"
+                              ? "bg-amber-50/90 border-amber-200 text-amber-700"
+                              : "bg-rose-50/90 border-rose-200 text-rose-700"
+                          }`}>
+                            <span className={`h-2 w-2 rounded-full ${
+                              c.status === "active" ? "bg-emerald-500 animate-pulse" :
+                              c.status === "paused" ? "bg-amber-500" : "bg-rose-500"
+                            }`} />
+                            <span>{c.status}</span>
+                          </span>
                         </div>
-                      )}
+
+                        {/* 2. Information Grid: 2 columns with generous horizontal space */}
+                        <div className="grid grid-cols-2 gap-4 mt-4 p-4 rounded-2xl bg-slate-50/80 border border-slate-100 text-xs">
+                          <div className="space-y-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Target Pool</span>
+                            <span className="font-extrabold text-slate-800 capitalize flex items-center gap-2 text-xs truncate">
+                              <Layers className="h-4 w-4 text-[#0F4C9A] shrink-0" />
+                              <span className="truncate">{pools.find(p => p.id === c.pool_id)?.name.replace(/_/g, " ") || "No Pool"}</span>
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Voice Model</span>
+                            <span className="font-extrabold text-slate-800 flex items-center gap-2 text-xs truncate">
+                              <Volume2 className="h-4 w-4 text-amber-500 shrink-0" />
+                              <span className="truncate">{c.ai_voice || "Neural-Female-IN"}</span>
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Assigned Agents</span>
+                            <span className="font-extrabold text-slate-800 flex items-center gap-2 text-xs truncate">
+                              <Users className="h-4 w-4 text-indigo-500 shrink-0" />
+                              <span>{c.agent_ids?.length || 0} Agents Assigned</span>
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Calling Hours</span>
+                            <span className="font-extrabold text-slate-800 flex items-center gap-2 text-xs truncate">
+                              <Clock className="h-4 w-4 text-emerald-500 shrink-0" />
+                              <span className="truncate">{c.calling_hours || "9 AM - 6 PM"}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Glassmorphism Status Badges Row */}
+                      <div className="flex items-center gap-2.5 flex-wrap pt-1">
+                        <span className="bg-emerald-50/80 text-emerald-700 border border-emerald-200/80 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs backdrop-blur-xs">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span>Live 2 Calls</span>
+                        </span>
+                        <span className="bg-blue-50/80 text-[#0F4C9A] border border-blue-200/80 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs backdrop-blur-xs">
+                          <Sparkles className="h-4 w-4 text-[#0F4C9A]" />
+                          <span>AI Enabled</span>
+                        </span>
+                        <span className="bg-purple-50/80 text-purple-700 border border-purple-200/80 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs backdrop-blur-xs">
+                          <Award className="h-4 w-4 text-purple-500" />
+                          <span>High Priority</span>
+                        </span>
+                      </div>
+
+                      {/* 4. Animated Progress Bar */}
+                      <div className="space-y-2 pt-1">
+                        <div className="flex justify-between items-center text-xs font-bold">
+                          <span className="text-slate-500 flex items-center gap-1.5">
+                            <Activity className="h-4 w-4 text-[#0F4C9A]" />
+                            <span>Campaign Progress</span>
+                          </span>
+                          <span className="text-[#0F4C9A] font-mono font-black">{progressPct}% Complete</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200/70 p-0.5">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progressPct}%` }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            className="bg-gradient-to-r from-[#0F4C9A] via-blue-600 to-[#F4B400] h-full rounded-full"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 5. Equal-Width 3-Column KPI Cards */}
+                      <div className="grid grid-cols-3 gap-3 pt-1 text-center">
+                        <div className="p-3 rounded-xl bg-slate-50 border border-slate-100/90 shadow-2xs">
+                          <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">TOTAL LEADS</span>
+                          <span className="text-sm font-black text-slate-900">{stats?.total_leads || 100}</span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-100/90 shadow-2xs">
+                          <span className="block text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-0.5">SUCCESS RATE</span>
+                          <span className="text-sm font-black text-emerald-700">{stats?.success_rate || 85.4}%</span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-blue-50/60 border border-blue-100/90 shadow-2xs">
+                          <span className="block text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-0.5">PENDING</span>
+                          <span className="text-sm font-black text-[#0F4C9A]">{stats?.pending_leads || 42}</span>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+
+                    {/* 6. Fixed Bottom Action Toolbar with 4 Equal-Width Buttons */}
+                    <div className="p-4 bg-slate-50/90 border-t border-slate-100 mt-auto">
+                      <div className="grid grid-cols-4 gap-2.5">
+                        {c.status !== "active" ? (
+                          <button
+                            onClick={() => handleUpdateStatus(c.id, "active")}
+                            className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer w-full"
+                            title="Start Campaign"
+                          >
+                            <Play className="h-4 w-4 fill-white shrink-0" />
+                            <span>Start</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleUpdateStatus(c.id, "paused")}
+                            className="h-10 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer w-full"
+                            title="Pause Campaign"
+                          >
+                            <Pause className="h-4 w-4 fill-white shrink-0" />
+                            <span>Pause</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleUpdateStatus(c.id, "stopped")}
+                          disabled={c.status === "stopped"}
+                          className="h-10 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 disabled:opacity-40 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer w-full"
+                          title="Stop Campaign"
+                        >
+                          <X className="h-4 w-4 shrink-0" />
+                          <span>Stop</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setSelectedCampaign(c);
+                            setTempAgentIds(c.agent_ids || []);
+                            setIsAssignModalOpen(true);
+                          }}
+                          className="h-10 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer w-full"
+                        >
+                          <Users className="h-4 w-4 text-slate-500 shrink-0" />
+                          <span>Assign ({c.agent_ids?.length || 0})</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleExpandCampaign(c.id)}
+                          className="h-10 bg-[#0F4C9A] hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs active:scale-95 cursor-pointer w-full"
+                        >
+                          <BarChart2 className="h-4 w-4 shrink-0" />
+                          <span>Analytics</span>
+                          {isExpanded ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expandable Details Pane */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="border-t border-slate-200/80 bg-gradient-to-b from-blue-50/50 to-white p-5 space-y-4"
+                        >
+                          {stats ? (
+                            <>
+                              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs">
+                                <div className="bg-white border border-slate-200/80 p-2.5 rounded-xl shadow-2xs">
+                                  <div className="font-black text-slate-900 text-sm">{stats.total_leads}</div>
+                                  <div className="text-[9px] text-slate-400 font-extrabold uppercase">Total Leads</div>
+                                </div>
+                                <div className="bg-blue-50/80 border border-blue-100 p-2.5 rounded-xl">
+                                  <div className="font-black text-[#0F4C9A] text-sm">{stats.pending_leads}</div>
+                                  <div className="text-[9px] text-blue-600 font-extrabold uppercase">Pending</div>
+                                </div>
+                                <div className="bg-emerald-50/80 border border-emerald-100 p-2.5 rounded-xl">
+                                  <div className="font-black text-emerald-700 text-sm">{stats.interested}</div>
+                                  <div className="text-[9px] text-emerald-600 font-extrabold uppercase">Qualified</div>
+                                </div>
+                                <div className="bg-rose-50/80 border border-rose-100 p-2.5 rounded-xl">
+                                  <div className="font-black text-rose-700 text-sm">{stats.not_interested}</div>
+                                  <div className="text-[9px] text-rose-600 font-extrabold uppercase">Rejected</div>
+                                </div>
+                                <div className="bg-amber-50/80 border border-amber-100 p-2.5 rounded-xl">
+                                  <div className="font-black text-amber-700 text-sm">{stats.callback_scheduled}</div>
+                                  <div className="text-[9px] text-amber-600 font-extrabold uppercase">Callbacks</div>
+                                </div>
+                                <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl">
+                                  <div className="font-black text-emerald-700 text-sm">{stats.success_rate}%</div>
+                                  <div className="text-[9px] text-emerald-600 font-extrabold uppercase">Success</div>
+                                </div>
+                              </div>
+
+                              {stats.not_interested > 0 && (
+                                <button
+                                  onClick={() => handleRetryFailed(c.id)}
+                                  className="w-full bg-[#F4B400] hover:bg-amber-400 text-[#0F4C9A] font-extrabold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-xs active:scale-98 cursor-pointer"
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                  <span>Retry Failed Calls ({stats.not_interested} leads)</span>
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-center py-4">
+                              <div className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-[#0F4C9A] border-t-transparent mb-2"></div>
+                              <p className="text-xs text-slate-500 font-bold">Fetching leads breakdown statistics...</p>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
+
           {filteredCampaigns.length === 0 && (
-            <p className="text-slate-400 text-center py-12 font-medium">No campaigns found matching criteria.</p>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-white rounded-[20px] p-12 text-center border border-slate-200/80 shadow-xs space-y-3"
+            >
+              <Megaphone className="h-12 w-12 text-slate-300 mx-auto" />
+              <h3 className="text-base font-extrabold text-slate-700">No campaigns found</h3>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                No outbound campaigns match your search query or status filter. Try clearing the filter or launch a new campaign.
+              </p>
+              {!isSupervisor && (
+                <button
+                  onClick={() => setShowLaunchModal(true)}
+                  className="mt-2 px-4 py-2 bg-[#0F4C9A] text-white text-xs font-extrabold rounded-xl hover:bg-blue-800 transition inline-flex items-center gap-1.5"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create Campaign</span>
+                </button>
+              )}
+            </motion.div>
           )}
         </div>
       )}
@@ -974,98 +1133,101 @@ export default function Campaigns() {
       {/* --- TAB 2: INBOUND CAMPAIGNS & IVR QUEUES --- */}
       {activeTab === "inbound" && (
         <div className="space-y-6">
-          {/* IVR configuration status indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="bg-white border p-5 rounded-2xl text-center shadow-xs md:col-span-1">
-              <div className="text-2xl font-black text-gray-800">
+          {/* IVR Configuration Status Indicators */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white border border-slate-200/80 p-5 rounded-[20px] text-center shadow-xs">
+              <div className="text-2xl font-black text-slate-900">
                 {Object.values(inboundSummary).reduce((acc, curr) => acc + curr.active_calls, 0)}
               </div>
-              <div className="text-[10px] text-gray-400 font-bold uppercase mt-1">Live Inbound Calls</div>
+              <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-1">Live Inbound Calls</div>
             </div>
-            <div className="bg-white border p-5 rounded-2xl text-center shadow-xs md:col-span-1">
-              <div className="text-2xl font-black text-gray-800">
+            <div className="bg-white border border-slate-200/80 p-5 rounded-[20px] text-center shadow-xs">
+              <div className="text-2xl font-black text-[#0F4C9A]">
                 {Object.values(inboundSummary).reduce((acc, curr) => acc + curr.waiting_queue, 0)}
               </div>
-              <div className="text-[10px] text-gray-400 font-bold uppercase mt-1">Active Queue List</div>
+              <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-1">Waiting in Queue</div>
             </div>
-            <div className="bg-white border p-5 rounded-2xl text-center shadow-xs md:col-span-1">
-              <div className="text-2xl font-black text-green-700">96.5%</div>
-              <div className="text-[10px] text-green-600 font-bold uppercase mt-1">SLA Compliance</div>
+            <div className="bg-white border border-slate-200/80 p-5 rounded-[20px] text-center shadow-xs">
+              <div className="text-2xl font-black text-emerald-600">96.5%</div>
+              <div className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider mt-1">SLA Compliance</div>
             </div>
-            <div className="bg-white border p-5 rounded-2xl text-center shadow-xs md:col-span-1">
-              <div className="text-2xl font-black text-gray-800">11s</div>
-              <div className="text-[10px] text-gray-400 font-bold uppercase mt-1">Avg Answer Speed</div>
+            <div className="bg-white border border-slate-200/80 p-5 rounded-[20px] text-center shadow-xs">
+              <div className="text-2xl font-black text-amber-600">11s</div>
+              <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-1">Avg Answer Speed</div>
             </div>
-            <div className="bg-white border p-5 rounded-2xl text-center shadow-xs md:col-span-1">
-              <div className="text-2xl font-black text-forgeBlue">
+            <div className="bg-white border border-slate-200/80 p-5 rounded-[20px] text-center shadow-xs">
+              <div className="text-2xl font-black text-slate-900">
                 {Object.values(inboundSummary).reduce((acc, curr) => acc + curr.available_agents, 0)}
               </div>
-              <div className="text-[10px] text-gray-400 font-bold uppercase mt-1">Available Agents</div>
+              <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mt-1">Available Agents</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* IVR department queues list */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-2">
-              <h2 className="text-base font-black text-gray-800 mb-4 flex items-center gap-2 border-b pb-3">
-                <Headphones className="h-5 w-5 text-forgeBlue animate-pulse" />
-                <span>IVR Department Routing queues</span>
+            {/* IVR Department Queues List */}
+            <div className="bg-white rounded-[20px] p-6 shadow-xs border border-slate-200/80 lg:col-span-2 space-y-4">
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+                <Headphones className="h-5 w-5 text-[#0F4C9A] animate-pulse" />
+                <span>IVR Department Routing Queues</span>
               </h2>
 
               <div className="space-y-4">
                 {Object.values(inboundSummary).map(dept => (
-                  <div key={dept.department} className="border p-4 rounded-xl bg-gray-50/50 hover:bg-white transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-extrabold text-gray-800 text-sm capitalize">{dept.department.replace(/_/g, " ")} Queue</h4>
-                        <span className="text-[9px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded uppercase">
+                  <div
+                    key={dept.department}
+                    className="border border-slate-200/80 p-5 rounded-2xl bg-slate-50/50 hover:bg-white hover:border-blue-200 hover:shadow-md transition duration-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                  >
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2.5">
+                        <h4 className="font-extrabold text-slate-900 text-sm capitalize">{dept.department.replace(/_/g, " ")} Queue</h4>
+                        <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                           {dept.status}
                         </span>
                       </div>
                       
-                      <div className="grid grid-cols-3 gap-4 pt-2 text-[11px] text-gray-500 font-semibold">
-                        <div>Active Calls: <strong className="text-gray-800">{dept.active_calls}</strong></div>
-                        <div>Waiting in IVR: <strong className="text-forgeBlue">{dept.waiting_queue}</strong></div>
-                        <div>Agents Available: <strong className="text-gray-800">{dept.available_agents}</strong></div>
+                      <div className="grid grid-cols-3 gap-4 pt-1 text-xs text-slate-500 font-semibold">
+                        <div>Active Calls: <strong className="text-slate-900 font-extrabold">{dept.active_calls}</strong></div>
+                        <div>Waiting: <strong className="text-[#0F4C9A] font-extrabold">{dept.waiting_queue}</strong></div>
+                        <div>Available: <strong className="text-slate-900 font-extrabold">{dept.available_agents}</strong></div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-4 text-[10px] text-gray-400 font-semibold pt-1">
-                        <div>Resolved: <strong className="text-emerald-700">{dept.resolved_calls}</strong></div>
-                        <div>Transferred: <strong className="text-forgeBlue">{dept.transferred_calls}</strong></div>
-                        <div>Missed: <strong className="text-red-700">{dept.missed_calls}</strong></div>
+                      <div className="grid grid-cols-3 gap-4 text-[11px] text-slate-400 font-semibold pt-0.5">
+                        <div>Resolved: <strong className="text-emerald-700 font-extrabold">{dept.resolved_calls}</strong></div>
+                        <div>Transferred: <strong className="text-[#0F4C9A] font-extrabold">{dept.transferred_calls}</strong></div>
+                        <div>Missed: <strong className="text-rose-700 font-extrabold">{dept.missed_calls}</strong></div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 text-right sm:border-l pl-0 sm:pl-4">
+                    <div className="flex items-center gap-4 text-right sm:border-l sm:border-slate-200 pl-0 sm:pl-5">
                       <div>
-                        <span className="block text-xs text-gray-400 font-bold">AVG WAIT TIME</span>
-                        <span className="text-sm font-black text-gray-700">{dept.average_wait_seconds} seconds</span>
+                        <span className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">AVG WAIT TIME</span>
+                        <span className="text-sm font-black text-slate-900">{dept.average_wait_seconds} seconds</span>
                       </div>
                     </div>
                   </div>
                 ))}
                 {Object.keys(inboundSummary).length === 0 && (
-                  <p className="text-gray-400 text-center py-8">Inbound summary metrics offline.</p>
+                  <p className="text-slate-400 text-center py-8 font-medium">Inbound summary metrics offline.</p>
                 )}
               </div>
             </div>
 
-            {/* Right column stacking both simulation and manual dial */}
+            {/* Right Column: Simulation & Manual Dial */}
             <div className="space-y-6 lg:col-span-1">
               {/* IVR Call Simulation Widget */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-fit">
-                <h2 className="text-base font-black text-gray-800 mb-3 flex items-center gap-2 border-b pb-3">
-                  <Settings className="h-5 w-5 text-forgeBlue" />
+              <div className="bg-white rounded-[20px] p-6 shadow-xs border border-slate-200/80">
+                <h2 className="text-base font-extrabold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <Settings className="h-5 w-5 text-[#0F4C9A]" />
                   <span>IVR Call Simulation Widget</span>
                 </h2>
                 
-                <div className="space-y-4 pt-2">
+                <div className="space-y-4 pt-1">
                   <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Select IVR Department</label>
+                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Select IVR Department</label>
                     <select
                       value={simDept}
                       onChange={e => setSimDept(e.target.value)}
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 font-bold text-gray-700 focus:outline-none"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
                     >
                       <option value="recruitment">Recruitment (Press 1)</option>
                       <option value="credit_card_sales">Credit Card Sales (Press 2)</option>
@@ -1074,42 +1236,42 @@ export default function Campaigns() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Customer Name</label>
+                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Customer Name</label>
                     <input
                       type="text"
                       value={simName}
                       onChange={e => setSimName(e.target.value)}
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 focus:outline-none font-semibold text-gray-700"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
                       placeholder="e.g. John Doe"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Customer Phone</label>
+                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Customer Phone</label>
                     <input
                       type="text"
                       value={simPhone}
                       onChange={e => setSimPhone(e.target.value)}
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 focus:outline-none font-semibold text-gray-700"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
                     />
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 pt-1">
                     <input
                       type="checkbox"
                       checked={simRequireAgent}
                       onChange={e => setSimRequireAgent(e.target.checked)}
                       id="require_agent_check"
-                      className="h-4 w-4 text-forgeBlue border-gray-300 rounded focus:ring-forgeBlue"
+                      className="h-4 w-4 text-[#0F4C9A] border-slate-300 rounded focus:ring-[#0F4C9A] cursor-pointer"
                     />
-                    <label htmlFor="require_agent_check" className="text-xs font-bold text-gray-600 cursor-pointer">
+                    <label htmlFor="require_agent_check" className="text-xs font-bold text-slate-700 cursor-pointer">
                       Require agent transfer (escalation)
                     </label>
                   </div>
 
                   <button
                     onClick={handleSimulateInboundCall}
-                    className="w-full bg-forgeBlue hover:bg-blue-800 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5"
+                    className="w-full bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
                   >
                     <Rocket className="h-4 w-4" />
                     <span>Trigger Inbound Call</span>
@@ -1118,41 +1280,41 @@ export default function Campaigns() {
               </div>
 
               {/* Inbound Manual Dial Panel */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-fit">
-                <h2 className="text-base font-black text-gray-800 mb-3 flex items-center gap-2 border-b pb-3">
-                  <Phone className="h-5 w-5 text-forgeBlue" />
+              <div className="bg-white rounded-[20px] p-6 shadow-xs border border-slate-200/80">
+                <h2 className="text-base font-extrabold text-slate-900 mb-3 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <Phone className="h-5 w-5 text-[#0F4C9A]" />
                   <span>Manual Dial Panel</span>
                 </h2>
                 
-                <div className="space-y-4 pt-2">
+                <div className="space-y-4 pt-1">
                   <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Phone Number</label>
+                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Phone Number</label>
                     <input
                       type="text"
                       value={manualPhone}
                       onChange={e => setManualPhone(e.target.value)}
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 focus:outline-none font-semibold text-gray-700"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
                       placeholder="e.g. +919988776655"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Customer Name (Optional)</label>
+                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Customer Name (Optional)</label>
                     <input
                       type="text"
                       value={manualName}
                       onChange={e => setManualName(e.target.value)}
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 focus:outline-none font-semibold text-gray-700"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
                       placeholder="e.g. Rahul Kumar"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Department</label>
+                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Department</label>
                     <select
                       value={manualDept}
                       onChange={e => setManualDept(e.target.value)}
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 font-bold text-gray-700 focus:outline-none"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
                     >
                       <option value="recruitment">Recruitment</option>
                       <option value="credit_card_sales">Credit Card Sales</option>
@@ -1162,22 +1324,22 @@ export default function Campaigns() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Language</label>
+                      <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Language</label>
                       <select
                         value={manualLang}
                         onChange={e => setManualLang(e.target.value)}
-                        className="w-full border rounded-xl px-3 py-1.5 text-xs bg-gray-50 font-bold text-gray-700 focus:outline-none"
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
                       >
                         <option value="English">English</option>
                         <option value="Tamil">Tamil</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Priority</label>
+                      <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Priority</label>
                       <select
                         value={manualPriority}
                         onChange={e => setManualPriority(e.target.value)}
-                        className="w-full border rounded-xl px-3 py-1.5 text-xs bg-gray-50 font-bold text-gray-700 focus:outline-none"
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>
@@ -1187,13 +1349,13 @@ export default function Campaigns() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-3">
                     <div>
-                      <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Agent Assignment</label>
+                      <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Agent Assignment</label>
                       <select
                         value={manualAgentMode}
                         onChange={e => setManualAgentMode(e.target.value as any)}
-                        className="w-full border rounded-xl px-3 py-1.5 text-xs bg-gray-50 font-bold text-gray-700 focus:outline-none"
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
                       >
                         <option value="auto">Auto-assign</option>
                         <option value="manual">Manual Select</option>
@@ -1202,11 +1364,11 @@ export default function Campaigns() {
 
                     {manualAgentMode === "manual" && (
                       <div>
-                        <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Select Agent</label>
+                        <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Select Agent</label>
                         <select
                           value={manualAgentId}
                           onChange={e => setManualAgentId(e.target.value)}
-                          className="w-full border rounded-xl px-3 py-1.5 text-xs bg-gray-50 font-bold text-gray-700 focus:outline-none"
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
                         >
                           <option value="">-- Choose Agent --</option>
                           {users.filter(u => u.role === "agent").map(u => (
@@ -1218,19 +1380,19 @@ export default function Campaigns() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Initial Call Notes</label>
+                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Initial Call Notes</label>
                     <textarea
                       value={manualNotes}
                       onChange={e => setManualNotes(e.target.value)}
                       placeholder="Context/reason for manual inbound dial..."
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 h-16 focus:outline-none font-semibold text-gray-700"
+                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 h-16 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
                     />
                   </div>
 
                   <button
                     onClick={handleInitiateManualDial}
                     disabled={isDialing}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 active:scale-98 cursor-pointer"
                   >
                     <Phone className="h-4 w-4" />
                     <span>{isDialing ? "Dialing..." : "Dial Now"}</span>
@@ -1279,8 +1441,8 @@ export default function Campaigns() {
 
       {/* --- LOCAL CALL TRANSFER MODAL --- */}
       {isTransferModalOpenLocal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-scale-in space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-[20px] p-6 max-w-sm w-full shadow-2xl space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-extrabold text-white text-base">Select Transfer Target</h3>
               <button onClick={() => setIsTransferModalOpenLocal(false)} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400">
@@ -1290,7 +1452,7 @@ export default function Campaigns() {
             
             <div className="space-y-3">
               <div>
-                <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-1.5">Available Supervisors & Agents</label>
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1.5">Available Supervisors & Agents</label>
                 <select
                   value={transferTargetId}
                   onChange={e => setTransferTargetId(e.target.value)}
@@ -1313,7 +1475,7 @@ export default function Campaigns() {
               <button
                 onClick={handleTransferCall}
                 disabled={!transferTargetId}
-                className="w-full bg-forgeBlue text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="w-full bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-xs py-3 rounded-xl transition shadow-xs flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 <Share2 className="h-4 w-4" />
                 <span>Perform Cold Transfer</span>
@@ -1325,38 +1487,35 @@ export default function Campaigns() {
 
       {/* --- LIVE CALL SUMMARY / CRM DISPOSITION MODAL --- */}
       {showSummaryModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white text-gray-800 rounded-3xl w-full max-w-xl shadow-2xl p-6 border animate-scale-in space-y-4">
-            <h3 className="font-black text-gray-900 text-lg flex items-center gap-2 border-b pb-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white text-slate-800 rounded-[24px] w-full max-w-xl shadow-2xl p-6 border border-slate-200/80 space-y-4">
+            <h3 className="font-black text-slate-900 text-lg flex items-center gap-2 border-b border-slate-100 pb-3">
               <Shield className="h-5 w-5 text-emerald-600" />
               <span>CRM Lead Disposition & Analytics</span>
             </h3>
 
             <div className="space-y-4">
-              {/* Call duration summary */}
-              <div className="bg-gray-50 border p-3 rounded-2xl flex justify-between items-center text-xs text-gray-500 font-semibold">
-                <div>Duration: <strong className="text-gray-800">{Math.floor(activeCallTimer / 60)}m {activeCallTimer % 60}s</strong></div>
-                <div>Recording: <span className="text-emerald-700 font-bold">Saved in Local MongoDB</span></div>
+              <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl flex justify-between items-center text-xs text-slate-500 font-bold">
+                <div>Duration: <strong className="text-slate-900">{Math.floor(activeCallTimer / 60)}m {activeCallTimer % 60}s</strong></div>
+                <div>Recording: <span className="text-emerald-700 font-extrabold">Saved in Local MongoDB</span></div>
               </div>
 
-              {/* Textarea AI Summary */}
               <div>
-                <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1.5 tracking-wider">AI Generated Summary</label>
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1.5 tracking-wider">AI Generated Summary</label>
                 <textarea
                   value={aiSummaryResult}
                   onChange={e => setAiSummaryResult(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 h-16 focus:outline-none font-semibold text-gray-700"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 h-16 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
                 />
               </div>
 
-              {/* Disposition dropdown */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1.5 tracking-wider">Call Outcome</label>
+                  <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1.5 tracking-wider">Call Outcome</label>
                   <select
                     value={callOutcome}
                     onChange={e => setCallOutcome(e.target.value)}
-                    className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 font-bold text-gray-700 focus:outline-none"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-extrabold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
                   >
                     <option value="answered">Answered / Resolved</option>
                     <option value="qualified">Qualified Lead</option>
@@ -1367,34 +1526,31 @@ export default function Campaigns() {
                   </select>
                 </div>
 
-                {/* Follow up date schedule picker */}
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1.5 tracking-wider">Schedule Next Task</label>
+                  <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1.5 tracking-wider">Schedule Next Task</label>
                   <input
                     type="datetime-local"
                     value={followUpDate}
                     onChange={e => setFollowUpDate(e.target.value)}
-                    className="w-full border rounded-xl px-3 py-1.5 text-xs bg-gray-50 text-gray-700 font-semibold focus:outline-none"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
                   />
                 </div>
               </div>
 
-              {/* Disposition Notes */}
               <div>
-                <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1.5 tracking-wider">Final Disposition Notes</label>
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1.5 tracking-wider">Final Disposition Notes</label>
                 <textarea
                   value={dispositionNotes}
                   onChange={e => setDispositionNotes(e.target.value)}
                   placeholder="Enter important conversation details..."
-                  className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 h-20 focus:outline-none font-semibold text-gray-700"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 h-20 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
                 />
               </div>
 
-              {/* Action buttons */}
-              <div className="flex gap-3 justify-end pt-2 border-t">
+              <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
                 <button
                   onClick={handleSaveCRMDetails}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition text-xs font-black shadow-sm flex items-center gap-1.5"
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition text-xs font-black shadow-xs flex items-center gap-2 cursor-pointer"
                 >
                   <CheckCircle className="h-4 w-4" />
                   <span>Save Analytics & Close</span>
@@ -1407,52 +1563,61 @@ export default function Campaigns() {
 
       {/* --- LAUNCH NEW CAMPAIGN MODAL (Admin only) --- */}
       {showLaunchModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scale-in space-y-4 border border-gray-100">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black text-gray-800 text-lg">Launch New Dialer Campaign</h3>
-              <button onClick={() => setShowLaunchModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg">
-                <X className="h-5 w-5 text-gray-400" />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200/80">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
+                <Megaphone className="h-5 w-5 text-[#0F4C9A]" />
+                <span>Launch New Dialer Campaign</span>
+              </h3>
+              <button onClick={() => setShowLaunchModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400">
+                <X className="h-5 w-5" />
               </button>
             </div>
             <form onSubmit={handleCreateCampaign} className="space-y-4">
-              <input
-                placeholder="Campaign Name"
-                value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
-                className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                required
-              />
+              <div>
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Campaign Name</label>
+                <input
+                  placeholder="e.g. Q3 Sales Outreach Campaign"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
+                  required
+                />
+              </div>
               
-              <textarea
-                placeholder="Short Description..."
-                value={form.description}
-                onChange={e => setForm({ ...form, description: e.target.value })}
-                className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 h-16 focus:ring-2 focus:ring-forgeBlue"
-              />
+              <div>
+                <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Short Description</label>
+                <textarea
+                  placeholder="Campaign targets, goals..."
+                  value={form.description}
+                  onChange={e => setForm({ ...form, description: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 h-16 focus:ring-2 focus:ring-[#0F4C9A] font-semibold text-slate-700"
+                />
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Target Pool</label>
+                  <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Target Pool</label>
                   <select
                     value={form.pool_id}
                     onChange={e => setForm({ ...form, pool_id: e.target.value })}
-                    className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 focus:ring-2 focus:ring-forgeBlue font-semibold text-gray-700"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:ring-2 focus:ring-[#0F4C9A] font-extrabold text-slate-700"
                     required
                   >
                     <option value="">-- Choose --</option>
                     {pools.map(p => (
-                      <option key={p.id} value={p.id}>{p.name.replace("_", " ")}</option>
+                      <option key={p.id} value={p.id}>{p.name.replace(/_/g, " ")}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Supervisor</label>
+                  <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Supervisor</label>
                   <select
                     value={form.supervisor_id}
                     onChange={e => setForm({ ...form, supervisor_id: e.target.value })}
-                    className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 focus:ring-2 focus:ring-forgeBlue font-semibold text-gray-700"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:ring-2 focus:ring-[#0F4C9A] font-extrabold text-slate-700"
                   >
                     <option value="">-- Optional --</option>
                     {supervisorsList.map(tl => (
@@ -1464,11 +1629,11 @@ export default function Campaigns() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Type</label>
+                  <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Type</label>
                   <select
                     value={form.campaign_type}
                     onChange={e => setForm({ ...form, campaign_type: e.target.value })}
-                    className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:ring-2 focus:ring-[#0F4C9A] font-extrabold text-slate-700"
                   >
                     <option value="outbound">Outbound Dial</option>
                     <option value="inbound">Inbound Queue</option>
@@ -1476,11 +1641,11 @@ export default function Campaigns() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">AI Voice Model</label>
+                  <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">AI Voice Model</label>
                   <select
                     value={form.ai_voice}
                     onChange={e => setForm({ ...form, ai_voice: e.target.value })}
-                    className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:ring-2 focus:ring-[#0F4C9A] font-extrabold text-slate-700"
                   >
                     <option value="Neural-Female-IN">Neural-Female (IN)</option>
                     <option value="Neural-Male-US">Neural-Male (US)</option>
@@ -1491,22 +1656,22 @@ export default function Campaigns() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Max Retry</label>
+                  <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Max Retry</label>
                   <input
                     type="number"
                     value={form.max_retry}
                     onChange={e => setForm({ ...form, max_retry: Number(e.target.value) })}
-                    className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-bold text-slate-700"
                     min={1}
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1">Retry Int. (mins)</label>
+                  <label className="block text-[10px] text-slate-400 font-extrabold uppercase tracking-wider mb-1">Retry Int. (mins)</label>
                   <input
                     type="number"
                     value={form.retry_interval}
                     onChange={e => setForm({ ...form, retry_interval: Number(e.target.value) })}
-                    className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 font-bold text-slate-700"
                     min={5}
                   />
                 </div>
@@ -1514,7 +1679,7 @@ export default function Campaigns() {
 
               <button
                 type="submit"
-                className="w-full bg-forgeBlue text-white text-xs py-2.5 rounded-xl font-bold hover:bg-blue-800 transition flex items-center justify-center gap-1.5 shadow-sm"
+                className="w-full bg-[#0F4C9A] hover:bg-blue-800 text-white text-xs py-3 rounded-xl font-extrabold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
               >
                 <Rocket className="h-4 w-4" />
                 <span>Launch Campaign</span>
@@ -1526,57 +1691,60 @@ export default function Campaigns() {
 
       {/* --- ASSIGN AGENTS MODAL --- */}
       {isAssignModalOpen && selectedCampaign && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scale-in space-y-4 border border-gray-100">
-            <div className="flex justify-between items-center">
-              <h3 className="font-black text-gray-800 text-lg">Assign Agents to Campaign</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200/80">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
+                <Users className="h-5 w-5 text-[#0F4C9A]" />
+                <span>Assign Agents</span>
+              </h3>
               <button onClick={() => {
                 setIsAssignModalOpen(false);
                 setSelectedCampaign(null);
-              }} className="p-1.5 hover:bg-slate-100 rounded-lg">
-                <X className="h-5 w-5 text-gray-400" />
+              }} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400">
+                <X className="h-5 w-5" />
               </button>
             </div>
             
-            <div className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-              Selected Campaign: <span className="text-forgeBlue font-bold">{selectedCampaign.name}</span>
+            <div className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+              Selected Campaign: <span className="text-[#0F4C9A] font-black">{selectedCampaign.name}</span>
             </div>
 
-            <div className="space-y-3 overflow-y-auto max-h-[300px] pr-1">
+            <div className="space-y-2.5 overflow-y-auto max-h-[300px] pr-1">
               {agentsList.map(agent => (
-                <div key={agent.id} className="flex items-center justify-between p-2.5 border rounded-xl hover:bg-gray-50/50 bg-white">
-                  <div className="flex items-center gap-2">
+                <div key={agent.id} className="flex items-center justify-between p-3 border border-slate-200/80 rounded-xl hover:bg-slate-50/80 bg-white transition">
+                  <div className="flex items-center gap-2.5">
                     <input
                       type="checkbox"
                       checked={tempAgentIds.includes(agent.id)}
                       onChange={() => toggleSelectAgent(agent.id)}
-                      className="h-4 w-4 text-forgeBlue focus:ring-forgeBlue border-gray-300 rounded"
+                      className="h-4 w-4 text-[#0F4C9A] focus:ring-[#0F4C9A] border-slate-300 rounded cursor-pointer"
                     />
-                    <span className="font-bold text-gray-700 text-sm">{agent.name}</span>
+                    <span className="font-extrabold text-slate-800 text-xs">{agent.name}</span>
                   </div>
-                  <span className="text-[10px] text-gray-400 font-bold">{agent.employee_id}</span>
+                  <span className="text-[10px] text-slate-400 font-mono font-bold">{agent.employee_id}</span>
                 </div>
               ))}
               {agentsList.length === 0 && (
-                <p className="text-xs text-gray-400 text-center py-6">No agents available for selection.</p>
+                <p className="text-xs text-slate-400 text-center py-6 font-semibold">No agents available for selection.</p>
               )}
             </div>
 
-            <div className="flex gap-3 justify-end pt-2">
+            <div className="flex gap-3 justify-end pt-3 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => {
                   setIsAssignModalOpen(false);
                   setSelectedCampaign(null);
                 }}
-                className="px-4 py-2 border rounded-xl text-gray-600 hover:bg-slate-50 transition text-sm font-bold"
+                className="px-4 py-2.5 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition text-xs font-extrabold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleSaveCampaignAgents}
-                className="px-4 py-2 bg-forgeBlue hover:bg-blue-800 text-white rounded-xl transition text-sm font-bold"
+                className="px-4 py-2.5 bg-[#0F4C9A] hover:bg-blue-800 text-white rounded-xl transition text-xs font-extrabold shadow-xs cursor-pointer"
               >
                 Save Allocations
               </button>
@@ -1592,7 +1760,7 @@ export default function Campaigns() {
             setManualPhone("");
             setIsSoftphoneOpen(true);
           }}
-          className="fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition flex items-center justify-center border-2 border-white/20 hover:rotate-12"
+          className="fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-full shadow-2xl hover:scale-105 active:scale-95 transition flex items-center justify-center border-2 border-white/30 cursor-pointer"
           title="Open Softphone Dialer"
         >
           <Phone className="h-6 w-6 fill-white" />
@@ -1601,8 +1769,8 @@ export default function Campaigns() {
 
       {/* Floating Softphone Dialer Pad Modal */}
       {isSoftphoneOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-3xl w-full max-w-xs overflow-hidden shadow-2xl animate-scale-in flex flex-col p-5 space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-[28px] w-full max-w-xs overflow-hidden shadow-2xl flex flex-col p-5 space-y-4">
             
             {/* Header */}
             <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
@@ -1652,7 +1820,7 @@ export default function Campaigns() {
                     playDTMFTone(item.k);
                     setManualPhone(prev => prev + item.k);
                   }}
-                  className="bg-slate-800 hover:bg-slate-750 active:bg-slate-700 border border-slate-700/60 h-13 rounded-2xl flex flex-col items-center justify-center transition"
+                  className="bg-slate-800 hover:bg-slate-750 active:bg-slate-700 border border-slate-700/60 h-13 rounded-2xl flex flex-col items-center justify-center transition cursor-pointer"
                 >
                   <span className="text-base font-black text-white">{item.k}</span>
                   <span className="text-[7px] text-slate-500 font-bold uppercase tracking-wider -mt-0.5">{item.l}</span>
@@ -1688,7 +1856,6 @@ export default function Campaigns() {
                 </div>
               </div>
 
-              {/* Customer optional name */}
               <div>
                 <label className="block text-[8px] text-slate-400 font-black uppercase mb-1">Customer Name (Optional)</label>
                 <input
@@ -1700,11 +1867,10 @@ export default function Campaigns() {
                 />
               </div>
 
-              {/* Action row */}
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setManualPhone("")}
-                  className="px-3 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-350 rounded-xl text-xs font-bold transition"
+                  className="px-3 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-350 rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Clear
                 </button>
@@ -1714,7 +1880,7 @@ export default function Campaigns() {
                     handleInitiateManualDial();
                   }}
                   disabled={!manualPhone}
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20"
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-600/20 cursor-pointer"
                 >
                   <Phone className="h-4 w-4 fill-white" />
                   <span>Call Now</span>
@@ -1727,8 +1893,8 @@ export default function Campaigns() {
 
       {/* --- CONFERENCE INVITEE SELECTION MODAL --- */}
       {isConferenceModalOpen && (
-        <div className="fixed inset-0 z-55 bg-black/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-scale-in space-y-4">
+        <div className="fixed inset-0 z-55 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 text-slate-100 rounded-[20px] p-6 max-w-sm w-full shadow-2xl space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="font-extrabold text-white text-base">Bridging Conference invitee</h3>
               <button onClick={() => setIsConferenceModalOpen(false)} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400">
@@ -1761,7 +1927,7 @@ export default function Campaigns() {
               <button
                 onClick={handleCreateConference}
                 disabled={!conferenceInviteeId}
-                className="w-full bg-forgeBlue hover:bg-blue-800 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="w-full bg-[#0F4C9A] hover:bg-blue-800 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
               >
                 <Users className="h-4 w-4" />
                 <span>Establish Conference Bridge</span>
