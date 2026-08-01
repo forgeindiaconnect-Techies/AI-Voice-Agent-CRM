@@ -21,30 +21,28 @@ app = FastAPI(
 )
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
-# IMPORTANT: allow_origins=["*"] + allow_credentials=True is spec-invalid.
-# Browsers silently drop the Access-Control-Allow-Origin header.
-# We must list explicit origins when credentials are enabled.
+# Allowed explicit origins
 allowed_origins = [
     settings.FRONTEND_ORIGIN,          # http://localhost:5173
     "http://localhost:5173",            # explicit fallback
     "http://127.0.0.1:5173",           # alt localhost
     "http://192.168.1.54:5173",         # LAN origin
     "http://localhost:3000",            # alternate dev port
+    "http://127.0.0.1:3000",
     "app://.",                          # Electron origin
     "file://*",                         # Electron origin
 ]
-# De-duplicate while preserving order
 allowed_origins = list(dict.fromkeys(allowed_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https?://.*",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition"],
-    max_age=600,  # Cache preflight for 10 minutes
+    expose_headers=["*"],
+    max_age=600,
 )
 
 
@@ -59,7 +57,6 @@ async def log_requests(request: Request, call_next):
     try:
         response = await call_next(request)
     except Exception:
-        # Log and re-raise so the global handler catches it
         logger.error(f"[{method}] {path} — unhandled exception during request processing")
         raise
 
@@ -109,7 +106,7 @@ async def on_startup():
     logger.info(f"CORS allowed origins: {allowed_origins}")
 
 
-# ── Health & Root ────────────────────────────────────────────────────────────
+# ── Health & Root Endpoints ──────────────────────────────────────────────────
 @app.get("/")
 async def root():
     db_status = "connected" if await check_db_connection() else "disconnected"
@@ -122,6 +119,7 @@ async def root():
 
 
 @app.get("/health")
+@app.get("/api/health")
 async def health():
     db_ok = await check_db_connection()
     if not db_ok:
@@ -134,5 +132,4 @@ async def health():
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    """Return 204 No Content for favicon requests to prevent browser 404 noise."""
     return Response(status_code=204)

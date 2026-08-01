@@ -1,14 +1,30 @@
-const getBaseUrl = () => {
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-    // When accessed via LAN IP (e.g. 192.168.x.x), target the backend on the same LAN IP
-    if (hostname !== "localhost" && hostname !== "127.0.0.1") {
-      return `${window.location.protocol}//${hostname}:8000`;
+/**
+ * Dynamic API Base URL Resolver.
+ * Automatically adapts to current browser location (localhost, 127.0.0.1, or LAN IP e.g. 192.168.x.x).
+ */
+const getBaseUrl = (): string => {
+  // If explicitly configured in environment and not default placeholder, use it
+  if (
+    import.meta.env.VITE_API_URL &&
+    import.meta.env.VITE_API_URL.trim() !== "" &&
+    !import.meta.env.VITE_API_URL.includes("localhost")
+  ) {
+    let url = import.meta.env.VITE_API_URL.trim().replace(/\/+$/, "");
+    if (url.startsWith(":")) {
+      const protocol = typeof window !== "undefined" ? window.location.protocol : "http:";
+      const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
+      url = `${protocol}//${hostname}${url}`;
     }
+    return url;
   }
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+
+  // Dynamic Resolution based on current browser URL
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    return `${protocol}//${hostname}:8000`;
   }
+
   return "http://localhost:8000";
 };
 
@@ -18,53 +34,89 @@ function getToken(): string | null {
   return localStorage.getItem("access_token");
 }
 
+export type ApiFetchOptions = RequestInit & {
+  timeoutMs?: number;
+  retries?: number;
+};
+
 /**
- * Core fetch wrapper with auth, error handling, and optional abort support.
- * Gracefully handles CORS failures, network errors, and structured API errors.
+ * Robust fetch wrapper with authentication, timeout (default 10s), retry logic, and centralized error parsing.
  */
 export async function apiFetch(
   path: string,
-  options: RequestInit = {},
+  options: ApiFetchOptions = {},
   signal?: AbortSignal
-) {
+): Promise<any> {
+  const { timeoutMs = 10000, retries = 1, ...fetchOptions } = options;
   const token = getToken();
+
   const headers: Record<string, string> = {
-    ...(options.body && !(options.body instanceof FormData)
+    ...(fetchOptions.body && !(fetchOptions.body instanceof FormData)
       ? { "Content-Type": "application/json" }
       : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers as Record<string, string>),
+    ...(fetchOptions.headers as Record<string, string>),
   };
 
-  let res: Response;
-  try {
-    res = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      headers,
-      ...(signal ? { signal } : {}),
-    });
-  } catch (err: any) {
-    // AbortError is expected when we cancel stale requests — rethrow silently
-    if (err.name === "AbortError") {
-      throw err;
+  let attempt = 0;
+  let lastError: Error | null = null;
+
+  while (attempt <= retries) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    // Merge external signal with timeout signal
+    const combinedSignal = signal || controller.signal;
+
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, {
+        ...fetchOptions,
+        headers,
+        signal: combinedSignal,
+      });
+
+      clearTimeout(timeoutId);
+
+      // Handle token expiration
+      if (res.status === 401 && path !== "/api/auth/login") {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
+        throw new Error("Session expired. Please sign in again.");
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(errorData.detail || `Server returned error (${res.status})`);
+      }
+
+      return await res.json();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+
+      // Don't retry if aborted explicitly by user
+      if (err.name === "AbortError" && signal?.aborted) {
+        throw err;
+      }
+
+      lastError = err;
+      attempt++;
+
+      if (attempt <= retries && err.name !== "AbortError") {
+        // Exponential backoff before retry
+        await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+      }
     }
-    // Network / CORS failures produce TypeError: Failed to fetch
-    throw new Error(
-      "Unable to connect to the server. Please check that the backend is running and try again."
-    );
   }
 
-  if (res.status === 401 && path !== "/api/auth/login") {
-    localStorage.removeItem("access_token");
-    window.location.href = "/login";
-    throw new Error("Session expired");
-  }
+  const errorMessage =
+    lastError?.name === "AbortError"
+      ? "Request timed out. Backend server taking too long to respond."
+      : lastError?.message || "Unable to connect to the backend server. Please check your connection.";
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `Request failed (${res.status})`);
-  }
-  return res.json();
+  throw new Error(errorMessage);
 }
 
 export const api = {
@@ -77,6 +129,13 @@ export const api = {
     apiFetch(path, { method: "DELETE" }),
   upload: (path: string, formData: FormData) =>
     apiFetch(path, { method: "POST", body: formData }),
+  checkHealth: async (): Promise<{ status: string; database?: string }> => {
+    try {
+      return await apiFetch("/api/health", { timeoutMs: 4000, retries: 0 });
+    } catch {
+      return await apiFetch("/health", { timeoutMs: 4000, retries: 0 });
+    }
+  },
 };
 
 export { BASE_URL };
