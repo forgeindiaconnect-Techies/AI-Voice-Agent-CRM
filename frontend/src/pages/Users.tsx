@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
+import PortalHeader from "../components/PortalHeader";
 import {
   User,
   Folder,
@@ -285,20 +286,13 @@ export default function Users() {
 
     return (
       <div className="space-y-6 max-w-7xl mx-auto">
-        {/* Sticky Header Panel */}
-        <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-            <div>
-              <h1 className="text-2xl font-black text-gray-800 tracking-tight">Team Agent Directory</h1>
-              <p className="text-sm text-gray-500 font-medium">Monitor active workloads, agent status, and submit transfer requests</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="bg-blue-50 text-forgeBlue font-bold text-xs px-3 py-1.5 rounded-full border border-blue-200">
-                {myAgents.length} Mapped Agents
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* Portal Header */}
+        <PortalHeader
+          icon={<User className="h-5 w-5 text-[#0F4C9A]" />}
+          title="Team Agent Directory"
+          subtitle="Monitor active workloads, agent status, and submit transfer requests"
+          badgeText={`${myAgents.length} MAPPED AGENTS`}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* My Team Members Table (2 columns) */}
@@ -502,44 +496,20 @@ export default function Users() {
   // --- ADMIN VIEW (Standard Organization Workspace) ---
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Header Wrapper */}
-      <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div>
-            <h1 className="text-2xl font-black text-gray-800 tracking-tight">Organization Workspace</h1>
-            <p className="text-sm text-gray-500 font-medium">Manage Pools, Supervisors, and Agents</p>
-          </div>
-          <div className="flex bg-gray-100 p-1.5 rounded-xl border">
-            <button
-              onClick={() => setActiveTab("accounts")}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === "accounts" ? "bg-forgeBlue text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <User className="h-3.5 w-3.5" />
-              <span>User Accounts</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("pools")}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === "pools" ? "bg-forgeBlue text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Folder className="h-3.5 w-3.5" />
-              <span>Pools (Max 3)</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("assignments")}
-              className={`px-4 py-2 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === "assignments" ? "bg-forgeBlue text-white shadow-sm" : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Link2 className="h-3.5 w-3.5" />
-              <span>Supervisor Mapping</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Portal Header */}
+      <PortalHeader
+        icon={<User className="h-5 w-5 text-[#0F4C9A]" />}
+        title="Organization Workspace"
+        subtitle="Manage Pools, Supervisors, and Agents"
+        badgeText={`${users.length} PERSONNEL`}
+        tabs={[
+          { id: "accounts", label: "User Accounts" },
+          { id: "pools", label: "Pools (Max 3)" },
+          { id: "assignments", label: "Supervisor Mapping" },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(tabId) => setActiveTab(tabId as any)}
+      />
 
       {/* Tab Contents: User Accounts */}
       {activeTab === "accounts" && (
