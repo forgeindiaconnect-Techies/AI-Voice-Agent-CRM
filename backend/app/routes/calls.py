@@ -24,6 +24,62 @@ from app.services.ws_manager import ws_manager
 router = APIRouter(prefix="/api/calls", tags=["calls"])
 
 
+from fastapi import Form
+from fastapi.responses import PlainTextResponse
+from twilio.jwt.access_token import AccessToken
+from twilio.jwt.access_token.grants import VoiceGrant
+from twilio.twiml.voice_response import VoiceResponse, Dial
+import re
+from app.core.config import settings
+
+@router.get("/token")
+async def get_twilio_token(user: dict = Depends(get_current_user)):
+    """Generate a Twilio Voice Access Token for WebRTC browser calling"""
+    if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_API_KEY:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Twilio credentials missing")
+        
+    token = AccessToken(
+        settings.TWILIO_ACCOUNT_SID,
+        settings.TWILIO_API_KEY,
+        settings.TWILIO_API_SECRET,
+        identity=_uid(user)
+    )
+    
+    # Needs TWILIO_TWIML_APP_SID in .env
+    app_sid = getattr(settings, 'TWILIO_TWIML_APP_SID', '')
+    if not app_sid:
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "TWILIO_TWIML_APP_SID missing in .env")
+        
+    voice_grant = VoiceGrant(
+        outgoing_application_sid=app_sid,
+        incoming_allow=True
+    )
+    token.add_grant(voice_grant)
+    
+    return {"token": token.to_jwt()}
+
+
+@router.post("/twiml")
+async def get_twiml(To: str = Form(""), From: str = Form("")):
+    """Twilio webhook to generate TwiML for routing the call"""
+    response = VoiceResponse()
+    
+    if To:
+        To = To.replace(" ", "+")
+        dial = Dial(caller_id=getattr(settings, 'TWILIO_PHONE_NUMBER', '+12345678900'))
+        
+        if re.match(r"^[\d\+\-\(\) ]+$", To):
+            dial.number(To)
+        else:
+            dial.client(To)
+            
+        response.append(dial)
+    else:
+        response.say("Thanks for calling. Please provide a destination.")
+        
+    return PlainTextResponse(str(response), media_type="text/xml")
+
+
 def _uid(user: dict) -> str:
     return user.get("id") or str(user["_id"])
 

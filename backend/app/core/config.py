@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     TWILIO_PHONE_NUMBER: str = ""
     TWILIO_API_KEY: str = ""
     TWILIO_API_SECRET: str = ""
+    TWILIO_TWIML_APP_SID: str = ""
 
     class Config:
         env_file = ".env"
