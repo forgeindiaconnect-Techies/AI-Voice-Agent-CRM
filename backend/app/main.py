@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from app.core.config import settings
 from app.core.database import init_indexes, check_db_connection
-from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws
+from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws, ai_agents
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logger = logging.getLogger("uvicorn.error")
@@ -21,30 +21,28 @@ app = FastAPI(
 )
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
-# IMPORTANT: allow_origins=["*"] + allow_credentials=True is spec-invalid.
-# Browsers silently drop the Access-Control-Allow-Origin header.
-# We must list explicit origins when credentials are enabled.
+# Allowed explicit origins
 allowed_origins = [
     settings.FRONTEND_ORIGIN,          # http://localhost:5173
     "http://localhost:5173",            # explicit fallback
     "http://127.0.0.1:5173",           # alt localhost
     "http://192.168.1.54:5173",         # LAN origin
     "http://localhost:3000",            # alternate dev port
+    "http://127.0.0.1:3000",
     "app://.",                          # Electron origin
     "file://*",                         # Electron origin
 ]
-# De-duplicate while preserving order
 allowed_origins = list(dict.fromkeys(allowed_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https?://.*",
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition"],
-    max_age=600,  # Cache preflight for 10 minutes
+    expose_headers=["*"],
+    max_age=600,
 )
 
 
@@ -59,7 +57,6 @@ async def log_requests(request: Request, call_next):
     try:
         response = await call_next(request)
     except Exception:
-        # Log and re-raise so the global handler catches it
         logger.error(f"[{method}] {path} — unhandled exception during request processing")
         raise
 
@@ -88,11 +85,11 @@ app.include_router(users.router)
 app.include_router(pools.router)
 app.include_router(campaigns.router)
 app.include_router(leads.router)
-# Duplication removed
 app.include_router(calls.router)
 app.include_router(leave.router)
 app.include_router(reports.router)
 app.include_router(ws.router)
+app.include_router(ai_agents.router)
 
 
 # ── Startup ──────────────────────────────────────────────────────────────────
@@ -107,32 +104,10 @@ async def on_startup():
             "Local MongoDB is not accessible during startup. "
             "Make sure local MongoDB is running on mongodb://127.0.0.1:27017"
         )
-        
-    # Seed mock users if using mongomock
-    from app.core.database import users_col, pools_col
-    from app.core.security import hash_password
-    from app.core.utils import utcnow, gen_employee_id
-    
-    try:
-        count = await users_col.count_documents({})
-        if count == 0:
-            default_users = [
-                {"name": "System Admin", "email": "admin@forgeindia.com", "password": hash_password("Admin@123"), "role": "admin", "employee_id": gen_employee_id("admin"), "is_active": True, "created_at": utcnow()},
-                {"name": "Team Leader", "email": "tl@forgeindia.com", "password": hash_password("Leader@123"), "role": "supervisor", "employee_id": gen_employee_id("supervisor"), "is_active": True, "created_at": utcnow()},
-                {"name": "Sales Agent", "email": "agent@forgeindia.com", "password": hash_password("Agent@123"), "role": "agent", "employee_id": gen_employee_id("agent"), "agent_phone": "+919444667411", "is_active": True, "created_at": utcnow()}
-            ]
-            await users_col.insert_many(default_users)
-            logger.info("Seeded in-memory mock database with default users.")
-            
-        pool_count = await pools_col.count_documents({})
-        if pool_count == 0:
-            await pools_col.insert_one({"name": "Customer Support", "description": "Default pool", "created_at": utcnow()})
-            logger.info("Seeded default pool.")
-    except Exception as e:
-        logger.warning(f"Could not seed users due to DB error: {e}")
+    logger.info(f"CORS allowed origins: {allowed_origins}")
 
 
-# ── Health & Root ────────────────────────────────────────────────────────────
+# ── Health & Root Endpoints ──────────────────────────────────────────────────
 @app.get("/")
 async def root():
     db_status = "connected" if await check_db_connection() else "disconnected"
@@ -145,6 +120,7 @@ async def root():
 
 
 @app.get("/health")
+@app.get("/api/health")
 async def health():
     db_ok = await check_db_connection()
     if not db_ok:
@@ -157,5 +133,4 @@ async def health():
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    """Return 204 No Content for favicon requests to prevent browser 404 noise."""
     return Response(status_code=204)

@@ -19,7 +19,7 @@ class LeadImportProcessPayload(BaseModel):
     campaign_id: Optional[str] = None
     supervisor_id: Optional[str] = None
     agent_id: Optional[str] = None
-    mapping: dict  # {"name": "header1", "phone": "header2", "email": "header3", ...}
+    mapping: dict
     rows: list[dict]
 
 
@@ -28,7 +28,6 @@ def _uid(user: dict) -> str:
 
 
 def normalize_phone(phone_str: str) -> str:
-    """Normalize phone numbers: trim whitespace and remove all non-numeric characters except leading +."""
     if not phone_str:
         return ""
     cleaned = str(phone_str).strip()
@@ -38,7 +37,6 @@ def normalize_phone(phone_str: str) -> str:
 
 
 def is_valid_email(email_str: str) -> bool:
-    """Validate email using basic regex."""
     if not email_str:
         return False
     email_str = str(email_str).strip()
@@ -78,7 +76,6 @@ async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user
     result = await leads_col.insert_one(doc)
     doc["_id"] = result.inserted_id
 
-    # Audit log
     await audit_logs_col.insert_one({
         "action": "create_lead",
         "user_id": _uid(user),
@@ -87,15 +84,12 @@ async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user
         "timestamp": utcnow()
     })
 
-    # Broadcast update
     await ws_manager.broadcast("global", {"event": "leads_updated"})
-
     return oid_str(doc)
 
 
 @router.post("/upload-preview", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def upload_preview(file: UploadFile = File(...)):
-    """Parse CSV or Excel file and return column headers, first 10 rows, and suggested mappings."""
     content = await file.read()
     if file.filename.endswith(".csv"):
         df = pd.read_csv(io.BytesIO(content))
@@ -104,10 +98,7 @@ async def upload_preview(file: UploadFile = File(...)):
     else:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only .csv, .xlsx, .xls files are supported")
 
-    # Clean headers (strip spaces)
     headers = [str(col).strip() for col in df.columns]
-    
-    # Generate suggested mappings based on lowercase matches
     suggested = {}
     for h in headers:
         hl = h.lower()
@@ -122,7 +113,6 @@ async def upload_preview(file: UploadFile = File(...)):
         elif "lang" in hl:
             suggested["language"] = h
 
-    # Replace nan with None for JSON encoding
     df_clean = df.where(pd.notnull(df), None)
     rows = df_clean.head(10).to_dict(orient="records")
     all_rows = df_clean.to_dict(orient="records")
@@ -138,7 +128,6 @@ async def upload_preview(file: UploadFile = File(...)):
 
 @router.post("/import-process", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def import_process(payload: LeadImportProcessPayload, user: dict = Depends(get_current_user)):
-    """Process the mapped rows, perform validation and duplicate check, store in local MongoDB, and save an Import Report."""
     mapping = payload.mapping
     rows = payload.rows
     pool_id = payload.pool_id
@@ -152,7 +141,6 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
     skipped_invalid = 0
     total_processed = 0
 
-    # Retrieve headers mapped keys
     name_col = mapping.get("name")
     phone_col = mapping.get("phone")
     email_col = mapping.get("email")
@@ -163,20 +151,17 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mapping configuration must contain name and phone columns")
 
     for row in rows:
-        # Trim space and normalize strings
         name_val = str(row.get(name_col) or "").strip()
         phone_val = str(row.get(phone_col) or "").strip()
         email_val = str(row.get(email_col) or "").strip() if email_col else ""
         location_val = str(row.get(location_col) or "").strip() if location_col else ""
         language_val = str(row.get(language_val) or "").strip() if language_col else "English"
 
-        # Ignore empty rows (both name and phone are empty)
         if not name_val and not phone_val:
             continue
 
         total_processed += 1
 
-        # Validation Checks
         normalized_phone = normalize_phone(phone_val)
         if not name_val or not normalized_phone:
             skipped_invalid += 1
@@ -187,7 +172,6 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
             skipped_invalid += 1
             continue
 
-        # Duplicate Checks in MongoDB for this pool
         duplicate = await leads_col.find_one({
             "$or": [
                 {"phone": normalized_phone},
@@ -199,7 +183,6 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
             skipped_duplicates += 1
             continue
 
-        # Build Lead Document
         lead_doc = {
             "name": name_val,
             "phone": normalized_phone,
@@ -220,13 +203,11 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
         
         inserted_leads.append(lead_doc)
 
-    # Bulk Insert Leads if any
     inserted_count = 0
     if inserted_leads:
         result = await leads_col.insert_many(inserted_leads)
         inserted_count = len(result.inserted_ids)
 
-    # Save Import Report
     report_doc = {
         "import_id": import_id,
         "filename": "Imported Web Upload",
@@ -243,7 +224,6 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
     }
     await imports_col.insert_one(report_doc)
 
-    # Log audit logs
     await audit_logs_col.insert_one({
         "action": "import_leads",
         "user_id": _uid(user),
@@ -252,18 +232,15 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
         "timestamp": utcnow()
     })
 
-    # Broadcast update
     await ws_manager.broadcast("global", {"event": "leads_updated"})
-
     return oid_str(report_doc)
 
 
 @router.post("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_user)):
-    lead_object_ids = [ObjectId(i) for i in payload.lead_ids]
+    lead_object_ids = [ObjectId(i) for i in payload.lead_ids if ObjectId.is_valid(i)]
     
-    # Load agent information to assign pool and supervisor if not matching
-    agent = await users_col.find_one({"_id": ObjectId(payload.agent_id)})
+    agent = await users_col.find_one({"_id": ObjectId(payload.agent_id)}) if ObjectId.is_valid(payload.agent_id) else None
     supervisor_id = agent.get("supervisor_id") if agent else None
 
     result = await leads_col.update_many(
@@ -277,7 +254,6 @@ async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_use
         },
     )
 
-    # Audit log
     await audit_logs_col.insert_one({
         "action": "assign_leads",
         "user_id": _uid(user),
@@ -286,9 +262,7 @@ async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_use
         "timestamp": utcnow()
     })
 
-    # Broadcast update
     await ws_manager.broadcast("global", {"event": "leads_updated"})
-
     return {"assigned_count": result.modified_count}
 
 
@@ -301,7 +275,6 @@ async def list_leads(user: dict = Depends(get_current_user), pool_id: str | None
     if user["role"] == Role.AGENT:
         query["assigned_agent_id"] = uid
     elif user["role"] == Role.TEAM_LEADER:
-        # Team leader sees leads in pools they operate or leads assigned to their agents
         query["$or"] = [
             {"supervisor_id": uid},
             {"pool_id": user.get("pool_id")}
@@ -336,9 +309,9 @@ async def update_disposition(lead_id: str, payload: DispositionUpdate, user: dic
     if payload.follow_up_at:
         update["follow_up_at"] = payload.follow_up_at
         
-    await leads_col.update_one({"_id": ObjectId(lead_id)}, {"$set": update})
+    query = {"_id": ObjectId(lead_id)} if ObjectId.is_valid(lead_id) else {"lead_id": lead_id}
+    await leads_col.update_one(query, {"$set": update})
 
-    # Audit log
     await audit_logs_col.insert_one({
         "action": "update_disposition",
         "user_id": _uid(user),
@@ -347,16 +320,89 @@ async def update_disposition(lead_id: str, payload: DispositionUpdate, user: dic
         "timestamp": utcnow()
     })
 
-    # Broadcast update
     await ws_manager.broadcast("global", {"event": "leads_updated"})
-
     return {"status": "updated"}
 
 
 @router.get("/{lead_id}")
 async def get_lead(lead_id: str, user: dict = Depends(get_current_user)):
-    lead = await leads_col.find_one({"_id": ObjectId(lead_id)})
+    query = {"_id": ObjectId(lead_id)} if ObjectId.is_valid(lead_id) else {"lead_id": lead_id}
+    lead = await leads_col.find_one(query)
     if not lead:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Lead '{lead_id}' not found")
     return oid_str(lead)
+
+
+@router.delete("/{lead_id}", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+async def delete_lead(lead_id: str, user: dict = Depends(get_current_user)):
+    """Permanently delete a lead document from MongoDB by ObjectId or lead_id string."""
+    if not lead_id or not lead_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lead ID parameter is required."
+        )
+
+    clean_id = lead_id.strip()
+
+    # Validate ObjectId or lead_id pattern
+    query = {}
+    if ObjectId.is_valid(clean_id):
+        query = {"$or": [{"_id": ObjectId(clean_id)}, {"lead_id": clean_id}]}
+    else:
+        query = {"lead_id": clean_id}
+
+    try:
+        lead = await leads_col.find_one(query)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid lead identifier: {str(e)}"
+        )
+
+    if not lead:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Lead with ID '{clean_id}' not found in database."
+        )
+
+    try:
+        result = await leads_col.delete_one({"_id": lead["_id"]})
+        if result.deleted_count == 0:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete lead document from MongoDB."
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database server error while deleting lead: {str(e)}"
+        )
+
+    # Audit Log
+    try:
+        await audit_logs_col.insert_one({
+            "action": "delete_lead",
+            "user_id": _uid(user),
+            "lead_id": str(lead.get("_id")),
+            "lead_code": lead.get("lead_id"),
+            "lead_name": lead.get("name"),
+            "timestamp": utcnow()
+        })
+    except Exception as e:
+        print(f"Warning: Audit log insertion failed: {e}")
+
+    # Broadcast WebSocket event
+    try:
+        await ws_manager.broadcast("global", {"event": "leads_updated"})
+    except Exception as e:
+        print(f"Warning: WebSocket broadcast failed: {e}")
+
+    return {
+        "status": "success",
+        "detail": "Lead deleted successfully.",
+        "deleted_id": str(lead.get("_id")),
+        "lead_code": lead.get("lead_id")
+    }
 

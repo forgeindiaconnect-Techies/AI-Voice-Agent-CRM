@@ -1,28 +1,19 @@
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
-from mongomock_motor import AsyncMongoMockClient
 from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
 
-# Try to connect to real Mongo first, fallback to mock if it fails
-try:
-    import pymongo
-    temp_client = pymongo.MongoClient(settings.MONGO_URI, serverSelectionTimeoutMS=1000)
-    temp_client.admin.command('ping')
-    client = AsyncIOMotorClient(
-        settings.MONGO_URI,
-        maxPoolSize=100,
-        minPoolSize=10,
-        serverSelectionTimeoutMS=5000,
-        connectTimeoutMS=5000,
-        socketTimeoutMS=10000,
-        retryWrites=True,
-    )
-    logger.info("Using real MongoDB connection.")
-except Exception:
-    logger.warning("Local MongoDB not found. Falling back to in-memory mongomock-motor!")
-    client = AsyncMongoMockClient()
+# Configure AsyncIOMotorClient with connection pooling & local MongoDB options
+client = AsyncIOMotorClient(
+    settings.MONGO_URI,
+    maxPoolSize=100,
+    minPoolSize=10,
+    serverSelectionTimeoutMS=5000,
+    connectTimeoutMS=5000,
+    socketTimeoutMS=10000,
+    retryWrites=True,
+)
 
 db = client[settings.MONGO_DB_NAME]
 
@@ -41,6 +32,7 @@ queue_col = db["queue"]
 reports_col = db["reports"]
 notifications_col = db["notifications"]
 audit_logs_col = db["audit_logs"]
+ai_agents_col = db["ai_agents"]
 settings_col = db["settings"]
 notes_col = db["notes"]
 leave_requests_col = db["leave_requests"]
@@ -62,6 +54,7 @@ async def init_indexes():
         await supervisors_col.create_index("employee_id", unique=True, sparse=True)
         await imports_col.create_index("created_at")
         await pool_transfers_col.create_index("agent_id")
+        await ai_agents_col.create_index("agent_id", unique=True, sparse=True)
         logger.info("Local MongoDB indexes initialized successfully.")
     except Exception as e:
         logger.error(f"Error initializing local MongoDB indexes: {e}")

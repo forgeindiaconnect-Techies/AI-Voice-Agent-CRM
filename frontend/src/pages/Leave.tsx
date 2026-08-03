@@ -57,8 +57,8 @@ export default function Leave() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Header Wrapper */}
-      <div className="sticky top-0 z-20 bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
+      {/* Top Header Wrapper (Normal Flow) */}
+      <div className="bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
           <div>
             <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">

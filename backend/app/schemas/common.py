@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 
 
@@ -47,12 +47,17 @@ class MonitorAction(str, Enum):
     TRANSFER = "transfer"
 
 
+class MonitorActionPayload(BaseModel):
+    action: MonitorAction
+
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
-    phone: Optional[str] = None
     role: Role
+    phone: Optional[str] = None
+    employee_id: Optional[str] = None
     pool_id: Optional[str] = None
     supervisor_id: Optional[str] = None
     department: Optional[str] = None
@@ -62,6 +67,38 @@ class UserCreate(BaseModel):
     skills: Optional[list[str]] = Field(default_factory=list)
     voice_model: Optional[str] = None
     ai_configuration: Optional[dict] = Field(default_factory=dict)
+    is_active: Optional[bool] = True
+    send_credentials: Optional[bool] = False
+    require_password_change: Optional[bool] = False
+    permissions: Optional[dict] = Field(default_factory=dict)
+
+    @field_validator("phone", "employee_id", "pool_id", "supervisor_id", "department", "shift", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+    role: Optional[Role] = None
+    phone: Optional[str] = None
+    employee_id: Optional[str] = None
+    pool_id: Optional[str] = None
+    supervisor_id: Optional[str] = None
+    department: Optional[str] = None
+    shift: Optional[str] = None
+    language: Optional[str] = None
+    is_active: Optional[bool] = None
+
+    @field_validator("phone", "employee_id", "pool_id", "supervisor_id", "department", "shift", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
 
 
 class UserLogin(BaseModel):
@@ -85,6 +122,9 @@ class UserOut(BaseModel):
     skills: Optional[list[str]] = None
     voice_model: Optional[str] = None
     ai_configuration: Optional[dict] = None
+    send_credentials: Optional[bool] = False
+    require_password_change: Optional[bool] = False
+    permissions: Optional[dict] = None
 
 
 class PoolCreate(BaseModel):
@@ -209,6 +249,35 @@ class ManualDTMFPayload(BaseModel):
 
 class ManualConferencePayload(BaseModel):
     invitee_agent_id: str
+
+
+class AIAgentCreate(BaseModel):
+    name: str
+    voice_model: Optional[str] = "Neural-Female-IN"
+    language: Optional[str] = "English"
+    status: Optional[str] = "online"
+    is_active: Optional[bool] = True
+    system_prompt: Optional[str] = "You are a professional customer care AI assistant for Forge India Connect."
+    concurrency_limit: Optional[int] = 5
+    temperature: Optional[float] = 0.7
+    max_call_duration_seconds: Optional[int] = 300
+    description: Optional[str] = None
+    assigned_pool_id: Optional[str] = None
+
+
+class AIAgentUpdate(BaseModel):
+    name: Optional[str] = None
+    voice_model: Optional[str] = None
+    language: Optional[str] = None
+    status: Optional[str] = None
+    is_active: Optional[bool] = None
+    system_prompt: Optional[str] = None
+    concurrency_limit: Optional[int] = None
+    temperature: Optional[float] = None
+    max_call_duration_seconds: Optional[int] = None
+    description: Optional[str] = None
+    assigned_pool_id: Optional[str] = None
+
 
 
 

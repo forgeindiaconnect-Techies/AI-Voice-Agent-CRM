@@ -24,6 +24,12 @@ def gen_import_id() -> str:
     return f"IMP{suffix}"
 
 
+def gen_ai_agent_id() -> str:
+    suffix = "".join(random.choices(string.digits, k=5))
+    return f"AI-{suffix}"
+
+
+
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 

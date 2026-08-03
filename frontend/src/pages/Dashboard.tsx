@@ -1,63 +1,36 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import {
-  Folder,
   Users,
   Phone,
   Megaphone,
-  Target,
   Zap,
-  TrendingUp,
   Download,
   CheckCircle,
-  Star,
   RefreshCw,
-  Server,
-  Database,
   Activity,
   Headphones,
   Mic,
   Volume2,
-  Lock,
-  Heart,
-  UserCheck,
-  Calendar,
-  PhoneCall,
-  PhoneOff,
   Clock,
   Sparkles,
+  ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  X,
-  Pause,
-  Play,
+  PhoneCall,
+  PhoneOff,
   Radio,
   BarChart3,
   ShieldCheck,
-  PieChart,
   Layers,
   ArrowUpRight,
   TrendingDown,
   User,
-  Settings,
-  Cpu,
-  HardDrive,
-  Globe,
-  Bell,
-  Check,
-  Search,
-  Filter,
-  Flame,
-  Award,
-  Sliders,
-  PlayCircle,
   DollarSign,
-  PhoneIncoming,
-  PhoneMissed,
-  Percent,
-  CheckCheck
+  Search,
+  X
 } from "lucide-react";
 
 type Summary = {
@@ -137,18 +110,12 @@ type CallHistoryRow = {
   notes?: string;
   ai_summary?: string;
   transcript?: string;
-  quality_evaluation?: {
-    coaching_notes: string;
-    ai_quality_score: number;
-    compliance_score: number;
-    sentiment: string;
-  };
 };
 
-// Custom SVG Sparkline Component matching exact reference line shape
-function Sparkline({ color = "#0F4C9A" }: { color?: string }) {
+// Custom SVG Sparkline Component
+function Sparkline({ color = "#0F4FA8" }: { color?: string }) {
   return (
-    <svg className="w-16 h-6 overflow-visible" viewBox="0 0 70 20">
+    <svg className="w-14 h-5 overflow-visible" viewBox="0 0 70 20">
       <path
         d="M0,14 Q15,16 30,10 T50,12 T70,5"
         fill="none"
@@ -172,9 +139,42 @@ export default function Dashboard() {
   // Filters & Search for Live Calls
   const [liveSearchQuery, setLiveSearchQuery] = useState("");
   const [directionFilter, setDirectionFilter] = useState("all");
+  const [chipFilter, setChipFilter] = useState("all");
+
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [showScrollLeft, setShowScrollLeft] = useState(false);
+  const [showScrollRight, setShowScrollRight] = useState(false);
+
+  const checkScrollability = useCallback(() => {
+    if (tabsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+      setShowScrollLeft(scrollLeft > 5);
+      setShowScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  }, []);
+
+  const handleScrollTabs = (direction: "left" | "right") => {
+    if (tabsRef.current) {
+      const scrollAmount = direction === "left" ? -240 : 240;
+      tabsRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      setTimeout(checkScrollability, 300);
+    }
+  };
+
+  const handleWheelTabs = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY !== 0 && tabsRef.current) {
+      tabsRef.current.scrollBy({ left: e.deltaY > 0 ? 180 : -180, behavior: "smooth" });
+      checkScrollability();
+    }
+  };
+
+  useEffect(() => {
+    checkScrollability();
+    window.addEventListener("resize", checkScrollability);
+    return () => window.removeEventListener("resize", checkScrollability);
+  }, [checkScrollability, chipFilter]);
 
   // Agent states
-  const [agentStatus, setAgentStatus] = useState("online");
   const [agentLeads, setAgentLeads] = useState<Lead[]>([]);
   const [agentCallHistory, setAgentCallHistory] = useState<CallHistoryRow[]>([]);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
@@ -196,7 +196,6 @@ export default function Dashboard() {
         setActivities(logs);
 
         const live = await api.get("/api/calls/live");
-        // Enrich live call data for enterprise monitoring table
         const enrichedLive = (live || []).map((c: any, idx: number) => ({
           ...c,
           campaign: idx % 2 === 0 ? "Outbound Sales Pool" : "Inbound Support Queue",
@@ -278,22 +277,22 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[65vh] space-y-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#0F4C9A] border-t-transparent"></div>
-        <p className="text-xs font-extrabold text-slate-500 uppercase tracking-widest">Loading Enterprise CRM Workspace...</p>
+      <div className="flex flex-col justify-center items-center h-[65vh] space-y-3">
+        <div className="animate-spin rounded-full h-9 w-9 border-3 border-[#0F4FA8] border-t-transparent"></div>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Loading Enterprise CRM Workspace...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-md mx-auto mt-20 bg-rose-50 border border-rose-200 rounded-3xl p-6 text-center space-y-4 shadow-sm">
-        <AlertTriangle className="h-12 w-12 text-rose-600 mx-auto" />
-        <h2 className="text-lg font-black text-rose-800">Connection Interrupt</h2>
-        <p className="text-xs text-rose-700 font-semibold">{error}</p>
+      <div className="max-w-md mx-auto mt-20 bg-rose-50 border border-rose-200 rounded-[14px] p-6 text-center space-y-4 shadow-2xs">
+        <AlertTriangle className="h-10 w-10 text-rose-600 mx-auto" />
+        <h2 className="text-[16px] font-bold text-rose-800">Connection Interrupt</h2>
+        <p className="text-xs text-rose-700 font-medium">{error}</p>
         <button
           onClick={fetchDashboardData}
-          className="bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition shadow-sm"
+          className="bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs px-5 py-2 rounded-xl transition shadow-2xs"
         >
           Retry Connection
         </button>
@@ -301,77 +300,86 @@ export default function Dashboard() {
     );
   }
 
-  // Filtered live calls
-  const filteredLiveCalls = liveCallsList.filter(c => {
-    const matchesSearch = c.lead_id.toLowerCase().includes(liveSearchQuery.toLowerCase()) ||
-                          c.agent_id.toLowerCase().includes(liveSearchQuery.toLowerCase());
-    const matchesDirection = directionFilter === "all" || c.direction === directionFilter;
-    return matchesSearch && matchesDirection;
+  const filteredLiveCalls = liveCallsList.filter((call) => {
+    const query = liveSearchQuery.toLowerCase();
+    const matchesSearch =
+      liveSearchQuery === "" ||
+      (call.lead_id || "").toLowerCase().includes(query) ||
+      (call.agent_id || "").toLowerCase().includes(query) ||
+      (call.campaign || "").toLowerCase().includes(query);
+
+    let matchesChip = true;
+    if (chipFilter === "inbound") matchesChip = call.direction === "inbound";
+    if (chipFilter === "outbound") matchesChip = call.direction === "outbound";
+    if (chipFilter === "high") matchesChip = (call.queue || "").includes("High");
+    if (chipFilter === "urgent") matchesChip = (call.queue || "").includes("Priority");
+    if (chipFilter === "active") matchesChip = !!call.recording_status;
+
+    return matchesSearch && matchesChip;
   });
 
   // --- AGENT WORKSPACE ---
   if (user?.role === "agent" && summary) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto w-full">
-        {/* Softphone Dialer Console */}
+      <div className="space-y-6 max-w-7xl mx-auto w-full font-sans">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-[22px] p-6 shadow-xs border border-slate-200/80 lg:col-span-2 flex flex-col min-h-[480px]">
-            <h2 className="text-base font-black text-slate-900 mb-4 flex items-center gap-2">
-              <PhoneCall className="h-5 w-5 text-[#0F4C9A]" />
+          <div className="bg-white rounded-[14px] p-5 shadow-2xs border border-[#E7ECF5] lg:col-span-2 flex flex-col min-h-[460px]">
+            <h2 className="text-[16px] font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <PhoneCall className="h-4 w-4 text-[#0F4FA8]" />
               <span>Softphone Dialer Console</span>
             </h2>
 
             {activeLead ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
                 <div className="space-y-4">
-                  <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-2xl">
-                    <div className="text-base font-black text-slate-900">{activeLead.name}</div>
-                    <div className="text-xs text-slate-500 font-semibold mt-0.5">Phone: {activeLead.phone}</div>
-                    <div className="text-xs text-[#0F4C9A] font-extrabold mt-3 flex items-center gap-1.5">
+                  <div className="bg-slate-50 border border-[#E7ECF5] p-4 rounded-xl">
+                    <div className="text-[14px] font-bold text-slate-900">{activeLead.name}</div>
+                    <div className="text-xs text-slate-500 font-medium mt-0.5">Phone: {activeLead.phone}</div>
+                    <div className="text-xs text-[#0F4FA8] font-bold mt-3 flex items-center gap-1.5">
                       <Clock className="h-4 w-4 animate-spin" />
                       <span>Duration: {Math.floor(callDurationSeconds / 60)}:{String(callDurationSeconds % 60).padStart(2, "0")}</span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-slate-500 font-extrabold uppercase mb-1">Session Call Notes</label>
+                    <label className="block text-[10px] text-slate-500 font-bold uppercase mb-1">Session Call Notes</label>
                     <textarea
                       placeholder="Type details of conversation outcome..."
                       value={callNotes}
                       onChange={e => setCallNotes(e.target.value)}
-                      className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs h-24 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] font-medium text-slate-800"
+                      className="w-full border border-[#E7ECF5] rounded-xl px-3 py-2 text-xs h-24 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-normal text-slate-800"
                     />
                   </div>
 
                   <button
                     onClick={handleHangUp}
-                    className="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs py-2.5 rounded-xl font-extrabold transition flex items-center justify-center gap-2 shadow-sm"
+                    className="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-2xs"
                   >
                     <PhoneOff className="h-4 w-4" />
                     <span>End Call & Save Session</span>
                   </button>
                 </div>
 
-                <div className="bg-blue-50/40 border border-blue-100 rounded-2xl p-5 space-y-4 flex flex-col justify-between">
+                <div className="bg-blue-50/40 border border-blue-100 rounded-xl p-4 space-y-3 flex flex-col justify-between">
                   <div className="space-y-3">
-                    <h3 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-[#0F4C9A] animate-pulse" />
+                    <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-[#0F4FA8] animate-pulse" />
                       <span>AI Live Copilot Suggestions</span>
                     </h3>
                     
                     <div className="space-y-1">
-                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block">Detected Intent</span>
-                      <div className="text-xs bg-white border border-blue-200/60 px-3 py-1.5 rounded-xl font-bold text-slate-800">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Detected Intent</span>
+                      <div className="text-xs bg-white border border-blue-200/60 px-3 py-1.5 rounded-xl font-semibold text-slate-800">
                         {aiIntent}
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block">Recommended Responses</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">Recommended Responses</span>
                       <div className="space-y-2 max-h-44 overflow-y-auto">
                         {aiSuggestions.map((s, idx) => (
-                          <div key={idx} className="bg-white border border-blue-100 p-2.5 rounded-xl text-xs font-semibold text-slate-700 flex items-start gap-1.5 leading-relaxed shadow-2xs">
-                            <ChevronRight className="h-4 w-4 text-[#0F4C9A] flex-shrink-0 mt-0.5" />
+                          <div key={idx} className="bg-white border border-blue-100 p-2.5 rounded-xl text-xs font-medium text-slate-700 flex items-start gap-1.5 shadow-2xs">
+                            <ChevronRight className="h-4 w-4 text-[#0F4FA8] shrink-0 mt-0.5" />
                             <span>{s}</span>
                           </div>
                         ))}
@@ -382,18 +390,18 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-                <div className="border border-slate-200/80 rounded-2xl p-4 flex flex-col max-h-[360px]">
-                  <h3 className="font-extrabold text-slate-900 text-xs mb-3 uppercase tracking-wider">Leads Allocation List</h3>
+                <div className="border border-[#E7ECF5] rounded-xl p-4 flex flex-col max-h-[340px]">
+                  <h3 className="font-bold text-slate-900 text-xs mb-3 uppercase tracking-wider">Leads Allocation List</h3>
                   <div className="space-y-2 overflow-y-auto flex-1 pr-1">
                     {agentLeads.map(l => (
-                      <div key={l.id} className="p-3 border border-slate-100 bg-slate-50/60 rounded-xl flex justify-between items-center hover:bg-white transition">
+                      <div key={l.id} className="p-3 border border-[#E7ECF5] bg-slate-50/60 rounded-xl flex justify-between items-center hover:bg-white transition">
                         <div>
                           <div className="font-bold text-slate-900 text-xs">{l.name}</div>
                           <div className="text-[10px] text-slate-500 font-medium mt-0.5">{l.phone}</div>
                         </div>
                         <button
                           onClick={() => handleDialLead(l)}
-                          className="bg-[#0F4C9A] text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-blue-800 transition flex items-center gap-1"
+                          className="bg-[#0F4FA8] text-white text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-blue-900 transition flex items-center gap-1 cursor-pointer"
                         >
                           <Phone className="h-3 w-3" />
                           <span>Dial</span>
@@ -406,28 +414,28 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="border border-dashed border-slate-200 rounded-2xl p-6 flex flex-col justify-center items-center text-center text-slate-400 space-y-3 bg-slate-50/40">
-                  <PhoneCall className="h-10 w-10 text-slate-300" />
+                <div className="border border-dashed border-slate-200 rounded-xl p-6 flex flex-col justify-center items-center text-center text-slate-400 space-y-3 bg-slate-50/40">
+                  <PhoneCall className="h-9 w-9 text-slate-300" />
                   <div className="space-y-1">
                     <p className="text-sm font-bold text-slate-700">Ready to Accept Calls</p>
-                    <p className="text-xs max-w-xs font-semibold leading-relaxed">Select a lead from the queue list to trigger the SIP softphone outbound dialer.</p>
+                    <p className="text-xs max-w-xs font-medium leading-relaxed">Select a lead from the queue list to trigger the softphone outbound dialer.</p>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="bg-white rounded-[22px] p-6 shadow-xs border border-slate-200/80 lg:col-span-1 flex flex-col max-h-[480px]">
-            <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-[#0F4C9A]" />
+          <div className="bg-white rounded-[14px] p-5 shadow-2xs border border-[#E7ECF5] lg:col-span-1 flex flex-col max-h-[460px]">
+            <h2 className="text-[14px] font-bold text-slate-900 mb-3 flex items-center gap-1.5">
+              <Clock className="h-4 w-4 text-[#0F4FA8]" />
               <span>Shift Call History</span>
             </h2>
             
-            <div className="space-y-2.5 overflow-y-auto flex-1 pr-1">
+            <div className="space-y-2 overflow-y-auto flex-1 pr-1">
               {agentCallHistory.map(c => (
                 <div
                   key={c.id}
-                  className="p-3 border border-slate-100 rounded-xl bg-slate-50/50 hover:bg-blue-50/40 hover:border-blue-200 transition cursor-pointer flex justify-between items-center text-xs"
+                  className="p-2.5 border border-[#E7ECF5] rounded-xl bg-slate-50/50 hover:bg-blue-50/40 transition cursor-pointer flex justify-between items-center text-xs"
                 >
                   <div>
                     <div className="font-bold text-slate-900">Call #{c.id.slice(-6).toUpperCase()}</div>
@@ -435,8 +443,8 @@ export default function Dashboard() {
                       Duration: {Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s
                     </div>
                   </div>
-                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
-                    c.outcome === "qualified" ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                    c.outcome === "qualified" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-700"
                   }`}>
                     {c.outcome}
                   </span>
@@ -452,238 +460,417 @@ export default function Dashboard() {
     );
   }
 
-  // --- ADMIN & SUPERVISOR WORKSPACE (EXACT REFERENCE UI REPLICATION) ---
+  // --- ADMIN & SUPERVISOR WORKSPACE (EXACT MNC SPECIFICATIONS) ---
+  if (!summary) return null;
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto w-full">
+    <div className="space-y-6 max-w-7xl mx-auto w-full font-sans">
 
       {/* 1. TOP VOICE ENGINE STATUS BANNER */}
-      <div className="bg-white/95 backdrop-blur-md rounded-[22px] p-6 shadow-xs border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-white/95 backdrop-blur-md rounded-[14px] p-5 shadow-2xs border border-[#E7ECF5] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-blue-50 border border-blue-100 text-[#0F4C9A] flex items-center justify-center font-black text-sm flex-shrink-0 shadow-2xs">
-            <Activity className="h-5 w-5 text-[#0F4C9A]" />
+          <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 text-[#0F4FA8] flex items-center justify-center font-bold shrink-0 shadow-2xs">
+            <Activity className="h-5 w-5 text-[#0F4FA8]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">Forge Voice Engine Status</h2>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              <h2 className="text-[22px] font-bold text-slate-900 tracking-tight leading-[28px]">Forge Voice Engine Status</h2>
+              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[12px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                 HEALTHY
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">
+            <p className="text-[14px] text-slate-500 font-normal leading-[20px] mt-0.5">
               OpenAI Realtime WebSocket Streams & Telephony Bridge Active
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="bg-slate-100/90 text-slate-700 text-xs font-semibold px-4 py-2 rounded-full flex items-center gap-2 border border-slate-200/50 shadow-2xs">
-            <span className="relative flex h-2.5 w-2.5">
+          <div className="bg-slate-50 text-slate-700 text-[12px] font-medium px-3.5 py-1.5 rounded-full flex items-center gap-2 border border-[#E7ECF5] shadow-2xs">
+            <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
             <span>Realtime WebSocket Connected</span>
           </div>
 
-          <div className="bg-amber-50 text-amber-800 text-xs font-extrabold px-4 py-2 rounded-full border border-amber-200/60 flex items-center gap-1.5 shadow-2xs">
+          <div className="bg-amber-50 text-amber-800 text-[12px] font-bold px-3.5 py-1.5 rounded-full border border-amber-200/80 flex items-center gap-1.5 shadow-2xs">
             <DollarSign className="h-4 w-4 text-amber-600" />
             <span>AI Stream Cost Today: <strong className="text-amber-900">$0</strong></span>
           </div>
         </div>
       </div>
 
-      {summary ? (
-        <>
-          {/* 2. 3×2 REFERENCE KPI CARD GRID */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Card 1: TOTAL CRM LEADS */}
-            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+      {/* 2. 6 EQUAL HEIGHT (160px) KPI CARDS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* KPI Card 1: TOTAL CRM LEADS */}
+            <div className="bg-white p-5 rounded-[14px] border border-[#E7ECF5] shadow-2xs hover:shadow-md hover:-translate-y-[3px] transition-all duration-250 flex flex-col justify-between h-[160px]">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">TOTAL CRM LEADS</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.total_leads || 24}</div>
+                  <div className="text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-1">TOTAL CRM LEADS</div>
+                  <div className="text-[32px] font-extrabold text-slate-900 tracking-tight leading-[38px]">{summary.total_leads || 24}</div>
                 </div>
-                <div className="h-11 w-11 rounded-2xl bg-blue-50 text-[#0F4C9A] flex items-center justify-center shadow-2xs">
+                <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center shadow-2xs">
                   <Users className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <div className="flex items-center justify-between pt-3 border-t border-[#E7ECF5] text-[12px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
                     <span>+18.5%</span>
                   </span>
-                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                  <span className="text-slate-400 font-medium">vs last week</span>
                 </div>
-                <Sparkline color="#0F4C9A" />
+                <Sparkline color="#0F4FA8" />
               </div>
             </div>
 
-            {/* Card 2: TODAY'S VOICE CALLS */}
-            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+            {/* KPI Card 2: TODAY'S VOICE CALLS */}
+            <div className="bg-white p-5 rounded-[14px] border border-[#E7ECF5] shadow-2xs hover:shadow-md hover:-translate-y-[3px] transition-all duration-250 flex flex-col justify-between h-[160px]">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">TODAY'S VOICE CALLS</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.today_calls || 0}</div>
+                  <div className="text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-1">TODAY'S VOICE CALLS</div>
+                  <div className="text-[32px] font-extrabold text-slate-900 tracking-tight leading-[38px]">{summary.today_calls || 0}</div>
                 </div>
-                <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-2xs">
+                <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-2xs">
                   <PhoneCall className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <div className="flex items-center justify-between pt-3 border-t border-[#E7ECF5] text-[12px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
                     <span>+25.0%</span>
                   </span>
-                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                  <span className="text-slate-400 font-medium">vs last week</span>
                 </div>
-                <Sparkline color="#F4B400" />
+                <Sparkline color="#F59E0B" />
               </div>
             </div>
 
-            {/* Card 3: ACTIVE LIVE CALLS */}
-            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+            {/* KPI Card 3: ACTIVE LIVE CALLS */}
+            <div className="bg-white p-5 rounded-[14px] border border-[#E7ECF5] shadow-2xs hover:shadow-md hover:-translate-y-[3px] transition-all duration-250 flex flex-col justify-between h-[160px]">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">ACTIVE LIVE CALLS</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.active_calls || liveCallsList.length || 0}</div>
+                  <div className="text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-1">ACTIVE LIVE CALLS</div>
+                  <div className="text-[32px] font-extrabold text-slate-900 tracking-tight leading-[38px]">{summary.active_calls || liveCallsList.length || 0}</div>
                 </div>
-                <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-2xs">
+                <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-2xs">
                   <Radio className="h-5 w-5 animate-pulse" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <div className="flex items-center justify-between pt-3 border-t border-[#E7ECF5] text-[12px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
                     <span>2 Streaming</span>
                   </span>
-                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                  <span className="text-slate-400 font-medium">vs last week</span>
                 </div>
                 <Sparkline color="#10B981" />
               </div>
             </div>
 
-            {/* Card 4: MISSED CALLS */}
-            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+            {/* KPI Card 4: MISSED CALLS */}
+            <div className="bg-white p-5 rounded-[14px] border border-[#E7ECF5] shadow-2xs hover:shadow-md hover:-translate-y-[3px] transition-all duration-250 flex flex-col justify-between h-[160px]">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">MISSED CALLS</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.missed_calls || 0}</div>
+                  <div className="text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-1">MISSED CALLS</div>
+                  <div className="text-[32px] font-extrabold text-slate-900 tracking-tight leading-[38px]">{summary.missed_calls || 0}</div>
                 </div>
-                <div className="h-11 w-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-2xs">
+                <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shadow-2xs">
                   <PhoneOff className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="bg-rose-100 text-rose-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <div className="flex items-center justify-between pt-3 border-t border-[#E7ECF5] text-[12px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <TrendingDown className="h-3 w-3" />
                     <span>-15.0%</span>
                   </span>
-                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                  <span className="text-slate-400 font-medium">vs last week</span>
                 </div>
-                <Sparkline color="#F97316" />
+                <Sparkline color="#EF4444" />
               </div>
             </div>
 
-            {/* Card 5: QUALIFIED LEADS */}
-            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+            {/* KPI Card 5: QUALIFIED LEADS */}
+            <div className="bg-white p-5 rounded-[14px] border border-[#E7ECF5] shadow-2xs hover:shadow-md hover:-translate-y-[3px] transition-all duration-250 flex flex-col justify-between h-[160px]">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">QUALIFIED LEADS</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tight">{summary.qualified_leads || 4}</div>
+                  <div className="text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-1">QUALIFIED LEADS</div>
+                  <div className="text-[32px] font-extrabold text-slate-900 tracking-tight leading-[38px]">{summary.qualified_leads || 4}</div>
                 </div>
-                <div className="h-11 w-11 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-2xs">
+                <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-2xs">
                   <CheckCircle className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <div className="flex items-center justify-between pt-3 border-t border-[#E7ECF5] text-[12px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
                     <span>+12.0%</span>
                   </span>
-                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                  <span className="text-slate-400 font-medium">vs last week</span>
                 </div>
-                <Sparkline color="#8B5CF6" />
+                <Sparkline color="#7C3AED" />
               </div>
             </div>
 
-            {/* Card 6: AVG CALL DURATION */}
-            <div className="bg-white p-6 rounded-[22px] border border-slate-200/60 shadow-xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-4">
+            {/* KPI Card 6: AVG CALL DURATION */}
+            <div className="bg-white p-5 rounded-[14px] border border-[#E7ECF5] shadow-2xs hover:shadow-md hover:-translate-y-[3px] transition-all duration-250 flex flex-col justify-between h-[160px]">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-2">AVG CALL DURATION</div>
-                  <div className="text-3xl font-black text-slate-900 tracking-tight">0s</div>
+                  <div className="text-[12px] font-bold text-slate-400 uppercase tracking-wider mb-1">AVG CALL DURATION</div>
+                  <div className="text-[32px] font-extrabold text-slate-900 tracking-tight leading-[38px]">0s</div>
                 </div>
-                <div className="h-11 w-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-2xs">
+                <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center shadow-2xs">
                   <Clock className="h-5 w-5" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <div className="flex items-center justify-between pt-3 border-t border-[#E7ECF5] text-[12px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
                     <span>+8.4s</span>
                   </span>
-                  <span className="text-slate-400 font-medium text-[11px]">vs last week</span>
+                  <span className="text-slate-400 font-medium">vs last week</span>
                 </div>
-                <Sparkline color="#6366F1" />
+                <Sparkline color="#0F4FA8" />
               </div>
             </div>
           </div>
 
-          {/* ACTIVE LIVE CALL MONITORING 3-COLUMN GRID */}
-          <div className="bg-white rounded-[22px] p-6 shadow-xs border border-slate-200/60 flex flex-col space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
-                  <Radio className="h-5 w-5 animate-pulse" />
-                </div>
+          {/* 3. 12-COLUMN DASHBOARD GRID: LEFT 8 COLS CHARTS + RIGHT 4 COLS QUICK ACTIONS */}
+          <div className="grid grid-cols-12 gap-6">
+            {/* Left 8 Columns: Hourly Call Volume & Velocity Chart */}
+            <div className="col-span-12 lg:col-span-8 bg-white rounded-[14px] p-6 border border-[#E7ECF5] shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[#E7ECF5] pb-3">
                 <div>
-                  <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                    <span>Active Live Call Telemetry Monitoring</span>
-                    <span className="bg-rose-100 text-rose-800 text-[10px] font-black px-2 py-0.5 rounded-md uppercase">
-                      {liveCallsList.length} LIVE CHANNELS
-                    </span>
+                  <h3 className="font-bold text-slate-900 text-[16px] leading-[22px] flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-[#0F4FA8]" />
+                    <span>Hourly Call Volume & Velocity</span>
                   </h3>
-                  <p className="text-xs text-slate-400 font-medium">Real-time Asterisk SIP channels with whisper, barge, and transfer control.</p>
+                  <p className="text-[12px] text-slate-400 font-medium mt-0.5">Real-time dialer throughput across active AI voice channels</p>
                 </div>
+                <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                  Peak: 142 Calls/hr at 12:00 PM
+                </span>
               </div>
 
-              {/* Table Search & Filter Toolbar */}
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5" />
-                  <input
-                    type="text"
-                    placeholder="Search by Customer or Agent..."
-                    value={liveSearchQuery}
-                    onChange={(e) => setLiveSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]"
-                  />
-                </div>
-                
-                <select
-                  value={directionFilter}
-                  onChange={(e) => setDirectionFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="all">All Directions</option>
-                  <option value="inbound">Inbound</option>
-                  <option value="outbound">Outbound</option>
-                </select>
+              {/* SVG Line Chart */}
+              <div className="relative w-full overflow-hidden pt-2">
+                <svg viewBox="0 0 600 200" className="w-full h-56 overflow-visible">
+                  <defs>
+                    <linearGradient id="dashboardChartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0F4FA8" stopOpacity="0.2" />
+                      <stop offset="100%" stopColor="#0F4FA8" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  {[40, 80, 120, 160].map((val, idx) => {
+                    const y = 180 - (val / 160) * 140;
+                    return (
+                      <g key={idx}>
+                        <line x1="30" y1={y} x2="570" y2={y} stroke="#E7ECF5" strokeDasharray="3 3" strokeWidth="1" />
+                        <text x="22" y={y + 3} textAnchor="end" className="text-[9px] fill-slate-400 font-mono font-bold">{val}</text>
+                      </g>
+                    );
+                  })}
+                  <path d="M 30,152 C 60,152 90,120 120,88 C 150,56 180,36 210,24 C 240,12 270,75 300,106 C 330,137 360,76 390,47 C 420,18 450,52 480,78 C 510,104 540,130 570,148 L 570,180 L 30,180 Z" fill="url(#dashboardChartGrad)" />
+                  <path d="M 30,152 C 60,152 90,120 120,88 C 150,56 180,36 210,24 C 240,12 270,75 300,106 C 330,137 360,76 390,47 C 420,18 450,52 480,78 C 510,104 540,130 570,148" fill="none" stroke="#0F4FA8" strokeWidth="3" strokeLinecap="round" />
+                  {[
+                    { x: 30, y: 152, h: "8 AM", v: 32 },
+                    { x: 90, y: 120, h: "9 AM", v: 68 },
+                    { x: 150, y: 88, h: "10 AM", v: 105 },
+                    { x: 210, y: 24, h: "11 AM", v: 142 },
+                    { x: 270, y: 106, h: "12 PM", v: 84 },
+                    { x: 330, y: 47, h: "1 PM", v: 135 },
+                    { x: 390, y: 78, h: "2 PM", v: 96 },
+                    { x: 450, y: 110, h: "3 PM", v: 75 },
+                    { x: 510, y: 130, h: "4 PM", v: 52 },
+                    { x: 570, y: 148, h: "5 PM", v: 38 }
+                  ].map((pt, idx) => (
+                    <g key={idx} className="group/pt cursor-pointer">
+                      <circle cx={pt.x} cy={pt.y} r="4" className="fill-[#0F4FA8] stroke-white stroke-2 group-hover/pt:r-6 transition-all" />
+                      <text x={pt.x} y="196" textAnchor="middle" className="text-[9px] fill-slate-400 font-bold uppercase">{pt.h}</text>
+                    </g>
+                  ))}
+                </svg>
               </div>
             </div>
 
-            {/* Genesys / Five9 Contact Center 3-Column Grid */}
+            {/* Right 4 Columns: Equal Sized Quick Actions Cards Grid (2x3) */}
+            <div className="col-span-12 lg:col-span-4 bg-white rounded-[14px] p-5 border border-[#E7ECF5] shadow-2xs space-y-4">
+              <div className="flex justify-between items-center border-b border-[#E7ECF5] pb-3">
+                <h3 className="font-bold text-slate-900 text-[16px] leading-[22px] flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-[#FFC107]" />
+                  <span>Quick Actions Panel</span>
+                </h3>
+                <span className="text-[10px] font-bold text-slate-400">2x3 Enterprise Grid</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => window.location.href = "/campaigns"}
+                  className="h-[96px] bg-blue-50/70 hover:bg-[#0F4FA8] text-[#0F4FA8] hover:text-white border border-blue-100 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-all duration-250 hover:-translate-y-[3px] hover:shadow-md cursor-pointer group"
+                >
+                  <Zap className="h-5 w-5 text-[#0F4FA8] group-hover:text-white transition-colors" />
+                  <span className="text-[12px] font-bold text-center leading-tight">Launch Campaign</span>
+                </button>
+
+                <button
+                  onClick={() => showToast("Opening AI Voice Neural Configuration settings...", "info")}
+                  className="h-[96px] bg-purple-50/70 hover:bg-purple-600 text-purple-700 hover:text-white border border-purple-100 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-all duration-250 hover:-translate-y-[3px] hover:shadow-md cursor-pointer group"
+                >
+                  <Sparkles className="h-5 w-5 text-purple-600 group-hover:text-white transition-colors" />
+                  <span className="text-[12px] font-bold text-center leading-tight">AI Voice Config</span>
+                </button>
+
+                <button
+                  onClick={() => window.location.href = "/dialer"}
+                  className="h-[96px] bg-emerald-50/70 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-100 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-all duration-250 hover:-translate-y-[3px] hover:shadow-md cursor-pointer group"
+                >
+                  <Phone className="h-5 w-5 text-emerald-600 group-hover:text-white transition-colors" />
+                  <span className="text-[12px] font-bold text-center leading-tight">Softphone Dial</span>
+                </button>
+
+                <button
+                  onClick={() => showToast("Exporting performance CSV report...", "info")}
+                  className="h-[96px] bg-amber-50/70 hover:bg-amber-600 text-amber-700 hover:text-white border border-amber-100 rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-all duration-250 hover:-translate-y-[3px] hover:shadow-md cursor-pointer group"
+                >
+                  <Download className="h-5 w-5 text-amber-600 group-hover:text-white transition-colors" />
+                  <span className="text-[12px] font-bold text-center leading-tight">Export CSV</span>
+                </button>
+
+                <button
+                  onClick={fetchDashboardData}
+                  className="h-[96px] bg-slate-50 hover:bg-slate-800 text-slate-700 hover:text-white border border-[#E7ECF5] rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-all duration-250 hover:-translate-y-[3px] hover:shadow-md cursor-pointer group"
+                >
+                  <RefreshCw className="h-5 w-5 text-slate-600 group-hover:text-white transition-colors" />
+                  <span className="text-[12px] font-bold text-center leading-tight">Sync Metrics</span>
+                </button>
+
+                <button
+                  onClick={() => window.location.href = "/users"}
+                  className="h-[96px] bg-slate-50 hover:bg-slate-800 text-slate-700 hover:text-white border border-[#E7ECF5] rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-all duration-250 hover:-translate-y-[3px] hover:shadow-md cursor-pointer group"
+                >
+                  <Users className="h-5 w-5 text-slate-600 group-hover:text-white transition-colors" />
+                  <span className="text-[12px] font-bold text-center leading-tight">Manage Users</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. ACTIVE LIVE CALL MONITORING GRID */}
+          <div className="bg-white rounded-[14px] p-5 shadow-2xs border border-[#E7ECF5] flex flex-col space-y-4">
+            
+            {/* Header Title */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#E7ECF5] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+                  <Radio className="h-4 w-4 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-[16px] leading-[22px] flex items-center gap-2">
+                    <span>Active Live Call Telemetry Monitoring</span>
+                    <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">
+                      {liveCallsList.length} LIVE CHANNELS
+                    </span>
+                  </h3>
+                  <p className="text-[12px] text-slate-400 font-medium mt-0.5">Real-time Asterisk SIP channels with whisper, barge, and transfer control.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* FULL WIDTH FILTER TOOLBAR PANEL WITH SCROLLABLE CHIPS (NORMAL PAGE FLOW) */}
+            <div className="bg-slate-50/70 p-3 rounded-2xl border border-[#E7ECF5] flex flex-col sm:flex-row items-center justify-between gap-4">
+              
+              {/* LEFT: FIXED SEARCH INPUT */}
+              <div className="relative w-full sm:w-[280px] lg:w-[340px] max-w-[400px] shrink-0">
+                <Search className="h-4 w-4 text-[#0F4FA8] absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  placeholder="Search by Customer, Phone, Agent..."
+                  value={liveSearchQuery}
+                  onChange={(e) => setLiveSearchQuery(e.target.value)}
+                  className="w-full h-[40px] pl-10 pr-8 bg-white border border-[#E7ECF5] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] text-slate-800 transition"
+                />
+                {liveSearchQuery && (
+                  <button onClick={() => setLiveSearchQuery("")} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* RIGHT: HORIZONTALLY SCROLLABLE CHIPS */}
+              <div className="relative flex-1 min-w-0 flex items-center gap-2 w-full sm:w-auto">
+                {showScrollLeft && (
+                  <button
+                    onClick={() => handleScrollTabs("left")}
+                    className="h-8 w-8 rounded-lg bg-white hover:bg-[#0F4FA8] hover:text-white text-slate-600 transition flex items-center justify-center shrink-0 cursor-pointer border border-[#E7ECF5] shadow-2xs active:scale-95 z-10"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                )}
+
+                <div
+                  ref={tabsRef}
+                  onWheel={handleWheelTabs}
+                  onScroll={checkScrollability}
+                  className="flex items-center gap-2 overflow-x-auto scroll-smooth w-full py-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-nowrap"
+                >
+                  {[
+                    { id: "all", label: "All Calls" },
+                    { id: "inbound", label: "Inbound" },
+                    { id: "outbound", label: "Outbound" },
+                    { id: "high", label: "High Priority" },
+                    { id: "urgent", label: "Urgent" },
+                    { id: "active", label: "Active" }
+                  ].map(chip => (
+                    <button
+                      key={chip.id}
+                      data-active={chipFilter === chip.id}
+                      onClick={() => setChipFilter(chip.id)}
+                      className={`h-[40px] px-3.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 shadow-2xs active:scale-95 flex items-center justify-center ${
+                        chipFilter === chip.id
+                          ? "bg-[#0F4FA8] text-white shadow-xs"
+                          : "bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-[#E7ECF5]"
+                      }`}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+
+                {showScrollRight && (
+                  <button
+                    onClick={() => handleScrollTabs("right")}
+                    className="h-8 w-8 rounded-lg bg-white hover:bg-[#0F4FA8] hover:text-white text-slate-600 transition flex items-center justify-center shrink-0 cursor-pointer border border-[#E7ECF5] shadow-2xs active:scale-95 z-10"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
+
+                {(liveSearchQuery || chipFilter !== "all") && (
+                  <button
+                    onClick={() => { setLiveSearchQuery(""); setChipFilter("all"); }}
+                    className="h-[40px] px-3 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition hover:bg-rose-100 shrink-0 cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    <span>Clear</span>
+                  </button>
+                )}
+              </div>
+
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredLiveCalls.map((call, idx) => {
                 const names = ["Rajesh Kumar", "Ananya Sharma", "Vikram Patel", "Priya Nair", "Suresh Reddy"];
@@ -696,51 +883,47 @@ export default function Dashboard() {
                 return (
                   <div
                     key={call.id}
-                    className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs hover:border-[#0F4C9A]/40 hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between h-full space-y-4"
+                    className="bg-white p-4 rounded-[14px] border border-[#E7ECF5] shadow-2xs hover:border-[#0F4FA8]/40 hover:shadow-md hover:-translate-y-[3px] transition-all duration-250 flex flex-col justify-between h-full space-y-3"
                   >
-                    {/* 1. Customer Info */}
-                    <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-2xl bg-blue-50 border border-blue-100 text-[#0F4C9A] flex items-center justify-center font-black text-sm flex-shrink-0 shadow-2xs">
-                          <User className="h-5 w-5" />
+                    <div className="flex items-start justify-between border-b border-[#E7ECF5] pb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-9 w-9 rounded-xl bg-blue-50 border border-blue-100 text-[#0F4FA8] flex items-center justify-center font-bold shrink-0 shadow-2xs">
+                          <User className="h-4 w-4" />
                         </div>
                         <div>
-                          <div className="font-extrabold text-slate-900 text-sm leading-tight">{custName}</div>
-                          <div className="text-xs text-slate-500 font-semibold mt-0.5">{custPhone}</div>
+                          <div className="font-bold text-slate-900 text-[14px] leading-tight">{custName}</div>
+                          <div className="text-[12px] text-slate-500 font-medium mt-0.5">{custPhone}</div>
                         </div>
                       </div>
-                      <span className="text-[10px] font-black bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-2 py-0.5 rounded-md font-mono">
+                      <span className="text-[10px] font-bold bg-blue-50 text-[#0F4FA8] border border-blue-200/80 px-2 py-0.5 rounded-md font-mono">
                         {cleanLeadId}
                       </span>
                     </div>
 
-                    {/* 2. Agent Profile */}
-                    <div className="flex items-center gap-3 bg-slate-50/70 p-3 rounded-xl border border-slate-100">
-                      <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4C9A] to-blue-600 text-white font-black text-xs flex items-center justify-center shadow-2xs flex-shrink-0">
+                    <div className="flex items-center gap-2.5 bg-slate-50/70 p-2.5 rounded-xl border border-[#E7ECF5]">
+                      <div className="h-8 w-8 rounded-xl bg-[#0F4FA8] text-white font-bold text-xs flex items-center justify-center shadow-2xs shrink-0">
                         {cleanAgentName.split(" ")[1]?.[0] || "A"}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-extrabold text-slate-900 text-xs truncate">{cleanAgentName}</div>
-                        <div className="text-[10px] text-slate-400 font-semibold truncate">Shift Voice Agent</div>
+                        <div className="font-bold text-slate-900 text-xs truncate">{cleanAgentName}</div>
+                        <div className="text-[10px] text-slate-400 font-medium truncate">Shift Voice Agent</div>
                       </div>
                     </div>
 
-                    {/* 3. Campaign & Queue Badges */}
                     <div className="flex items-center gap-2 flex-wrap text-xs">
-                      <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                      <span className="bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1">
                         <Megaphone className="h-3 w-3 text-purple-500" />
                         <span>{call.campaign || "Outbound Sales Pool"}</span>
                       </span>
-                      <span className="bg-blue-50 text-[#0F4C9A] border border-blue-200/80 px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                      <span className="bg-blue-50 text-[#0F4FA8] border border-blue-200/80 px-2.5 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1">
                         <Layers className="h-3 w-3 text-blue-500" />
                         <span>{call.queue || "High Priority Sales"}</span>
                       </span>
                     </div>
 
-                    {/* 4. Call Telemetry Status */}
-                    <div className="flex items-center justify-between bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 text-xs">
+                    <div className="flex items-center justify-between bg-slate-50/50 p-2 rounded-xl border border-[#E7ECF5] text-xs">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase flex items-center gap-1 border ${
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase flex items-center gap-1 border ${
                           call.direction === "inbound"
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : "bg-blue-50 text-blue-700 border-blue-200"
@@ -749,25 +932,24 @@ export default function Dashboard() {
                         </span>
 
                         <div className="flex items-center gap-1">
-                          <span className="text-xs font-mono font-black text-slate-900">{call.timer || "02:15"}</span>
-                          <span className="bg-rose-50 border border-rose-200 text-rose-600 text-[8px] font-black px-1.5 py-0.2 rounded uppercase animate-pulse flex items-center gap-1">
+                          <span className="text-xs font-mono font-bold text-slate-900">{call.timer || "02:15"}</span>
+                          <span className="bg-rose-50 border border-rose-200 text-rose-600 text-[8px] font-bold px-1.5 py-0.2 rounded uppercase animate-pulse flex items-center gap-1">
                             <span className="h-1.5 w-1.5 rounded-full bg-rose-600" />
                             <span>REC</span>
                           </span>
                         </div>
                       </div>
 
-                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                         <Sparkles className="h-3 w-3" />
                         <span>Positive (94%)</span>
                       </span>
                     </div>
 
-                    {/* 5. Action Buttons */}
-                    <div className="pt-2 grid grid-cols-3 gap-1.5">
+                    <div className="pt-1 grid grid-cols-3 gap-1.5">
                       <button
                         onClick={() => handleMonitor(call.id, "listen")}
-                        className="h-9 px-2 bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
+                        className="h-8 px-2 bg-[#0F4FA8] hover:bg-blue-900 text-white font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
                       >
                         <Headphones className="h-3.5 w-3.5" />
                         <span>Listen</span>
@@ -775,7 +957,7 @@ export default function Dashboard() {
 
                       <button
                         onClick={() => handleMonitor(call.id, "whisper")}
-                        className="h-9 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
+                        className="h-8 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
                       >
                         <Volume2 className="h-3.5 w-3.5" />
                         <span>Whisper</span>
@@ -783,7 +965,7 @@ export default function Dashboard() {
 
                       <button
                         onClick={() => handleMonitor(call.id, "barge")}
-                        className="h-9 px-2 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95"
+                        className="h-8 px-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-xl transition flex items-center justify-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
                       >
                         <Mic className="h-3.5 w-3.5" />
                         <span>Barge</span>
@@ -801,8 +983,6 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        </>
-      ) : null}
 
     </div>
   );
