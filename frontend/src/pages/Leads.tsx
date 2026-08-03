@@ -221,28 +221,42 @@ export default function Leads() {
       const queryString = queryParams.length ? `?${queryParams.join("&")}` : "";
 
       const leadsData = await api.get(`/api/leads${queryString}`);
+      const validLeads = Array.isArray(leadsData) ? leadsData : [];
       // Attach mock AI scores & dates for demo if missing
-      const enhancedLeads = leadsData.map((l: Lead, idx: number) => ({
+      const enhancedLeads = validLeads.map((l: Lead, idx: number) => ({
         ...l,
         ai_score: l.ai_score || Math.floor(75 + (idx * 7) % 24),
         last_contact_at: l.last_contact_at || "Today, 11:45 AM"
       }));
       setLeads(enhancedLeads);
 
-      const poolsData = await api.get("/api/pools");
-      setPools(poolsData);
+      try {
+        const poolsData = await api.get("/api/pools");
+        setPools(Array.isArray(poolsData) ? poolsData : []);
+      } catch {
+        setPools([]);
+      }
 
-      const campaignsData = await api.get("/api/campaigns");
-      setCampaigns(campaignsData);
+      try {
+        const campaignsData = await api.get("/api/campaigns");
+        setCampaigns(Array.isArray(campaignsData) ? campaignsData : []);
+      } catch {
+        setCampaigns([]);
+      }
 
-      const usersData = await api.get("/api/users");
-      setUsers(usersData);
+      try {
+        const usersData = await api.get("/api/users");
+        setUsers(Array.isArray(usersData) ? usersData : []);
+      } catch {
+        setUsers([]);
+      }
     } catch (err: any) {
-      showToast(err.message || "Failed to load CRM leads.", "error");
+      console.error("[Leads] Failed to load data:", err);
+      setLeads([]);
     } finally {
       setLoading(false);
     }
-  }, [showToast, poolFilter, statusFilter]);
+  }, [poolFilter, statusFilter]);
 
   useEffect(() => {
     loadData();
