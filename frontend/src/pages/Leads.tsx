@@ -47,7 +47,8 @@ import {
   Target,
   Bell,
   PieChart,
-  Bot
+  Bot,
+  Loader2
 } from "lucide-react";
 
 type Lead = {
@@ -192,11 +193,9 @@ export default function Leads() {
     skipped_invalid: number;
   } | null>(null);
 
-  // Single Manual Form
   const [manualForm, setManualForm] = useState({
     name: "",
     phone: "",
-    email: "",
     pool_id: "",
     campaign_id: "",
     location: "",
@@ -204,6 +203,7 @@ export default function Leads() {
     priority: "medium",
     source: "Manual"
   });
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
   // Bulk Actions
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -322,15 +322,17 @@ export default function Leads() {
       showToast("Name, Phone, and Target Pool are required.", "error");
       return;
     }
+    
+    if (isSubmittingManual) return;
+    setIsSubmittingManual(true);
 
     try {
-      await api.post("/api/leads/manual", manualForm);
+      await api.post("/api/leads", manualForm);
       showToast("New customer lead added successfully!", "success");
       setShowManualModal(false);
       setManualForm({
         name: "",
         phone: "",
-        email: "",
         pool_id: "",
         campaign_id: "",
         location: "",
@@ -341,6 +343,8 @@ export default function Leads() {
       loadData();
     } catch (err: any) {
       showToast(err.message || "Failed to create lead.", "error");
+    } finally {
+      setIsSubmittingManual(false);
     }
   }
 
@@ -1192,6 +1196,8 @@ export default function Leads() {
                 </div>
               </div>
 
+
+
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Target Pool</label>
                 <select
@@ -1209,9 +1215,13 @@ export default function Leads() {
 
               <button
                 type="submit"
-                className="w-full bg-[#0F4FA8] hover:bg-blue-900 text-white font-extrabold py-3 rounded-xl transition mt-2 cursor-pointer shadow-md"
+                disabled={isSubmittingManual}
+                className={`w-full text-white font-extrabold py-3 rounded-xl transition mt-2 cursor-pointer shadow-md flex items-center justify-center gap-2 ${
+                  isSubmittingManual ? "bg-slate-400 cursor-not-allowed" : "bg-[#0F4FA8] hover:bg-blue-900"
+                }`}
               >
-                Add Customer Lead
+                {isSubmittingManual && <Loader2 className="h-5 w-5 animate-spin" />}
+                {isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}
               </button>
             </form>
           </div>

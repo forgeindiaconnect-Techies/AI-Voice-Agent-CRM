@@ -158,6 +158,13 @@ class LeadCreate(BaseModel):
     source: Optional[str] = "manual"
     extra: Optional[dict] = Field(default_factory=dict)
 
+    @field_validator("email", "campaign_id", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
+
 
 class LeadAssign(BaseModel):
     lead_ids: list[str]

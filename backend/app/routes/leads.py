@@ -44,7 +44,7 @@ def is_valid_email(email_str: str) -> bool:
     return bool(re.match(pattern, email_str))
 
 
-@router.post("", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user)):
     normalized = normalize_phone(payload.phone)
     if not normalized:
