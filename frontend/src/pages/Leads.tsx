@@ -345,9 +345,15 @@ export default function Leads() {
     setIsSubmittingManual(true);
 
     try {
-      await api.post("/api/leads", manualForm);
+      const createdLead = await api.post("/api/leads", manualForm);
       showToast("New customer lead added successfully!", "success");
       setShowManualModal(false);
+      
+      // Reset search/chip filters so new lead is visible immediately
+      setSearchQuery("");
+      setQuickChipFilter("all");
+      setStatusFilter("");
+
       setManualForm({
         name: "",
         phone: "",
@@ -358,6 +364,10 @@ export default function Leads() {
         priority: "medium",
         source: "Manual"
       });
+
+      if (createdLead && typeof createdLead === "object") {
+        setLeads(prev => [createdLead, ...prev]);
+      }
       loadData();
     } catch (err: any) {
       showToast(err.message || "Failed to create lead.", "error");
@@ -474,18 +484,27 @@ export default function Leads() {
 
       let matchesQuickChip = true;
       if (quickChipFilter !== "all") {
-        matchesQuickChip = l.status === quickChipFilter;
+        if (quickChipFilter === "follow_up") {
+          matchesQuickChip = l.status === "follow_up" || l.status === "in_progress" || l.status === "follow_up_required";
+        } else {
+          matchesQuickChip = l.status === quickChipFilter;
+        }
       }
 
       const matchesStatus = statusFilter ? l.status === statusFilter : true;
-      const matchesPool = poolFilter ? l.pool_id === poolFilter : true;
+      
+      const poolObj = pools.find(p => p.id === l.pool_id || p.name === l.pool_id);
+      const matchesPool = poolFilter
+        ? (l.pool_id === poolFilter || (poolObj && (poolObj.id === poolFilter || poolObj.name === poolFilter)))
+        : true;
+
       const matchesCampaign = campaignFilter ? l.campaign_id === campaignFilter : true;
       const matchesAgent = agentFilter ? l.assigned_agent_id === agentFilter : true;
-      const matchesPriority = priorityFilter ? (l.priority || "medium") === priorityFilter : true;
+      const matchesPriority = priorityFilter ? (l.priority || "medium").toLowerCase() === priorityFilter.toLowerCase() : true;
 
       return matchesSearch && matchesQuickChip && matchesStatus && matchesPool && matchesCampaign && matchesAgent && matchesPriority;
     });
-  }, [leads, searchQuery, quickChipFilter, statusFilter, poolFilter, campaignFilter, agentFilter, priorityFilter]);
+  }, [leads, pools, searchQuery, quickChipFilter, statusFilter, poolFilter, campaignFilter, agentFilter, priorityFilter]);
 
   // Paginated Leads
   const totalPages = Math.ceil(filteredLeads.length / pageSize) || 1;
