@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { api, BASE_URL } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -113,6 +114,7 @@ function Sparkline({ color = "#0F4FA8" }: { color?: string }) {
 export default function Leads() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   
   const tabsRef = useRef<HTMLDivElement>(null);
   const [showScrollLeft, setShowScrollLeft] = useState(false);
@@ -364,6 +366,30 @@ export default function Leads() {
       showToast(err.message || "Failed to delete lead.", "error");
     } finally {
       setIsDeletingLead(false);
+    }
+  }
+
+  async function handleCallCustomer(lead: Lead) {
+    try {
+      showToast(`Initiating manual call to ${lead.phone}...`, "info");
+      await api.post("/api/calls/manual-dial", {
+        phone: lead.phone,
+        name: lead.name,
+        pool_id: lead.pool_id,
+        language: lead.language || "English",
+        agent_assign_mode: "auto",
+        priority: lead.priority || "medium",
+        notes: lead.last_note || ""
+      });
+      showToast(`Call started with ${lead.name}`, "success");
+      
+      if (user?.role === "agent") {
+        navigate("/dialer");
+      } else {
+        navigate("/live-calls");
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to start call", "error");
     }
   }
 
@@ -1015,7 +1041,7 @@ export default function Leads() {
                           </button>
 
                           <button
-                            onClick={() => showToast(`Initiating manual SIP call to ${l.phone}...`, "info")}
+                            onClick={() => handleCallCustomer(l)}
                             className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
                             title="Call Customer"
                           >
@@ -1114,7 +1140,7 @@ export default function Leads() {
 
                   <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
                     <button
-                      onClick={() => showToast(`Dialing ${drawerLead.phone}...`, "info")}
+                      onClick={() => handleCallCustomer(drawerLead)}
                       className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-extrabold flex flex-col items-center justify-center gap-1 cursor-pointer"
                     >
                       <Phone className="h-4 w-4" />

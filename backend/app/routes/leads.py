@@ -70,6 +70,7 @@ async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user
     doc["lead_id"] = gen_lead_id()
     doc["status"] = LeadStatus.NEW
     doc["assigned_agent_id"] = None
+    doc["supervisor_id"] = _uid(user) if user.get("role") == Role.TEAM_LEADER else None
     doc["created_by"] = _uid(user)
     doc["created_at"] = utcnow()
     

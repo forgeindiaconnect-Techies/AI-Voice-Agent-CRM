@@ -45,6 +45,7 @@ class MonitorAction(str, Enum):
     WHISPER = "whisper"
     BARGE = "barge"
     TRANSFER = "transfer"
+    END = "end"
 
 
 class MonitorActionPayload(BaseModel):

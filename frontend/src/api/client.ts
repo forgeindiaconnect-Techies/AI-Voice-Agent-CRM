@@ -28,7 +28,7 @@ const getBaseUrl = (): string => {
     const hostname = window.location.hostname;
     // If accessing via localhost or 127.0.0.1, use direct port 8000
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return `${protocol}//${hostname}:8000`;
+      return `${protocol}//127.0.0.1:8000`;
     }
     // On LAN IP or custom domain, try direct port 8000 first (will fallback to relative proxy if port 8000 blocked/offline)
     return `${protocol}//${hostname}:8000`;
