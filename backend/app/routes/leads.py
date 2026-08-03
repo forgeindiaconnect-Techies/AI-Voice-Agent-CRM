@@ -274,12 +274,21 @@ async def list_leads(user: dict = Depends(get_current_user), pool_id: str | None
     uid = _uid(user)
     
     if user["role"] == Role.AGENT:
-        query["assigned_agent_id"] = uid
-    elif user["role"] == Role.TEAM_LEADER:
         query["$or"] = [
-            {"supervisor_id": uid},
-            {"pool_id": user.get("pool_id")}
+            {"assigned_agent_id": uid},
+            {"created_by": uid}
         ]
+    elif user["role"] == Role.TEAM_LEADER:
+        # Team leaders can view leads in their pool, leads assigned to them/their team, or all unassigned leads
+        team_or = [
+            {"supervisor_id": uid},
+            {"created_by": uid},
+            {"assigned_agent_id": uid},
+            {"assigned_agent_id": None}
+        ]
+        if user.get("pool_id"):
+            team_or.append({"pool_id": user.get("pool_id")})
+        query["$or"] = team_or
         
     if pool_id:
         query["pool_id"] = pool_id
