@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api, getWsUrl } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
+import { Device } from "@twilio/voice-sdk";
 import {
   Phone,
   PhoneCall,
@@ -82,6 +83,11 @@ export default function Dialer() {
   const [notes, setNotes] = useState("");
   const [isSavingOutcome, setIsSavingOutcome] = useState(false);
 
+  // TWILIO DEVICE STATE
+  const [deviceReady, setDeviceReady] = useState(false);
+  const deviceRef = useRef<Device | null>(null);
+  const callRef = useRef<any>(null);
+
   // SUPERVISOR STATE
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
   const isSupervisor = user?.role === "admin" || user?.role === "team_leader";
@@ -133,6 +139,31 @@ export default function Dialer() {
   }, []);
 
   useEffect(() => {
+    // Initialize Twilio Device
+    const setupDevice = async () => {
+      try {
+        const { token } = await api.get("/api/calls/token");
+        const device = new Device(token);
+
+        device.on("registered", () => setDeviceReady(true));
+        device.on("error", (error) => showToast(`Twilio Error: ${error.message}`, "error"));
+        
+        await device.register();
+        deviceRef.current = device;
+      } catch (err: any) {
+        showToast("Failed to initialize softphone. Check microphone permissions.", "error");
+      }
+    };
+    setupDevice();
+
+    return () => {
+      if (deviceRef.current) {
+        deviceRef.current.destroy();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (callStatus === "connected") {
       const interval = setInterval(() => setCallDuration(d => d + 1), 1000);
       return () => clearInterval(interval);
@@ -163,24 +194,37 @@ export default function Dialer() {
 
   const handleDial = async () => {
     if (!outboundPhone) return;
+    if (!deviceRef.current || !deviceReady) {
+      showToast("Softphone is not ready yet.", "error");
+      return;
+    }
+
     setCallStatus("ringing");
     setCallDuration(0);
     try {
-      const res = await api.post("/api/calls/manual-dial", {
-        phone: outboundPhone,
-        pool_id: user?.pool_id || "general",
-        language: "english",
-        agent_assign_mode: "manual",
-        assigned_agent_id: user?.id,
-        priority: "high",
-        notes: ""
+      // 1. Connect via Twilio WebRTC
+      const twilioCall = await deviceRef.current.connect({
+        params: { To: outboundPhone }
+      });
+      callRef.current = twilioCall;
+
+      // 2. Register call in CRM backend (this shouldn't dial out, just register the session)
+      const res = await api.post("/api/calls/start", {
+        lead_id: leads.find(l => l.phone === outboundPhone)?._id || "",
+        direction: "outbound"
       });
       setCurrentCallId(res.id || res._id || res);
       
-      // Simulate ring time then connect
-      setTimeout(() => {
+      twilioCall.on("accept", () => {
         setCallStatus("connected");
-      }, 2500);
+        showToast("Call connected!", "success");
+      });
+      
+      twilioCall.on("disconnect", () => {
+        setCallStatus("ended");
+        handleHangup();
+      });
+
     } catch (err: any) {
       setCallStatus("idle");
       showToast(err.message || "Dialing failed", "error");
@@ -189,6 +233,12 @@ export default function Dialer() {
 
   const handleHangup = async () => {
     if (callStatus === "idle") return;
+    
+    if (callRef.current) {
+      callRef.current.disconnect();
+      callRef.current = null;
+    }
+    
     setCallStatus("ended");
     try {
       if (currentCallId) {
