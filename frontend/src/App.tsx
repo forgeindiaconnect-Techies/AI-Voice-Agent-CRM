@@ -11,6 +11,7 @@ import Reports from "./pages/Reports";
 import Leave from "./pages/Leave";
 import Dialer from "./pages/Dialer";
 import Quality from "./pages/Quality";
+import AIAgents from "./pages/AIAgents";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 function ProtectedRoute({ children, roles }: { children: JSX.Element; roles?: string[] }) {
@@ -39,7 +40,23 @@ export default function App() {
         <Route index element={<Dashboard />} />
         <Route path="leads" element={<Leads />} />
         <Route
+          path="ai-agents"
+          element={
+            <ProtectedRoute roles={["admin", "team_leader", "agent"]}>
+              <AIAgents />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="campaigns"
+          element={
+            <ProtectedRoute roles={["admin", "team_leader", "agent"]}>
+              <Campaigns />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="campaigns-list"
           element={
             <ProtectedRoute roles={["admin", "team_leader", "agent"]}>
               <Campaigns />

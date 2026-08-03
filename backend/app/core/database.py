@@ -32,6 +32,7 @@ queue_col = db["queue"]
 reports_col = db["reports"]
 notifications_col = db["notifications"]
 audit_logs_col = db["audit_logs"]
+ai_agents_col = db["ai_agents"]
 settings_col = db["settings"]
 notes_col = db["notes"]
 leave_requests_col = db["leave_requests"]
@@ -53,6 +54,7 @@ async def init_indexes():
         await supervisors_col.create_index("employee_id", unique=True, sparse=True)
         await imports_col.create_index("created_at")
         await pool_transfers_col.create_index("agent_id")
+        await ai_agents_col.create_index("agent_id", unique=True, sparse=True)
         logger.info("Local MongoDB indexes initialized successfully.")
     except Exception as e:
         logger.error(f"Error initializing local MongoDB indexes: {e}")

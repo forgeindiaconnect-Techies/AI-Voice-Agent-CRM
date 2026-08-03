@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   User,
@@ -23,14 +24,19 @@ import {
   Hash,
   ChevronDown,
   ChevronUp,
-  Camera,
   Upload,
   UserPlus,
   SlidersHorizontal,
-  Headphones,
-  Database,
-  Radio,
-  FileCheck
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Building2,
+  ShieldCheck,
+  BadgeCheck,
+  FileCheck,
+  Info,
+  HelpCircle,
+  CheckCircle
 } from "lucide-react";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
@@ -45,15 +51,6 @@ type RegisterUserModalProps = {
   pools: PoolRow[];
   supervisors: UserRow[];
 };
-
-const SKILL_OPTIONS = [
-  "Outbound Calling",
-  "Negotiation",
-  "Sales Conversion",
-  "Customer Support",
-  "Lead Qualification",
-  "Objection Handling"
-];
 
 export default function RegisterUserModal({
   isOpen,
@@ -70,8 +67,7 @@ export default function RegisterUserModal({
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     personal: true,
     role: true,
-    security: true,
-    permissions: true
+    security: true
   });
 
   // Personal Info
@@ -79,7 +75,6 @@ export default function RegisterUserModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [employeeId, setEmployeeId] = useState("");
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   // Role & Assignment
   const [role, setRole] = useState("agent");
@@ -96,7 +91,7 @@ export default function RegisterUserModal({
   const [sendCredentials, setSendCredentials] = useState(true);
   const [requirePasswordChange, setRequirePasswordChange] = useState(true);
 
-  // Permissions & Access
+  // Default Access Controls
   const [isActive, setIsActive] = useState(true);
   const [selectedSkills, setSelectedSkills] = useState<string[]>(["Outbound Calling", "Sales Conversion"]);
   const [recordingPermission, setRecordingPermission] = useState(true);
@@ -107,7 +102,7 @@ export default function RegisterUserModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   const toggleSection = (sectionKey: string) => {
     setOpenSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
@@ -120,7 +115,6 @@ export default function RegisterUserModal({
     setEmployeeId("");
     setPassword("");
     setConfirmPassword("");
-    setAvatarPreview(null);
     setRole("agent");
     setDepartment("Sales");
     setPoolId("");
@@ -174,26 +168,6 @@ export default function RegisterUserModal({
   };
 
   const strength = getPasswordStrength();
-
-  // Multi-select Skill Toggle
-  const toggleSkill = (skill: string) => {
-    setSelectedSkills(prev =>
-      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
-    );
-  };
-
-  // Profile Photo Upload Handler
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-        showToast("Profile photo uploaded.", "info");
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   // Submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -249,299 +223,452 @@ export default function RegisterUserModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-900/65 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto font-sans">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-slate-900/65 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-sans">
       
-      {/* 1050px Wide Glassmorphic Card Container */}
-      <div className="bg-white/95 backdrop-blur-md rounded-[20px] shadow-2xl border border-white/50 w-full max-w-5xl my-4 overflow-hidden flex flex-col max-h-[85vh] transition-all duration-300">
+      {/* Enterprise SaaS CRM Dialog (Width 1150px / max-w-6xl) */}
+      <div className="bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 w-full max-w-6xl flex flex-col max-h-[88vh] overflow-hidden transition-all duration-300 animate-in fade-in zoom-in-95">
         
-        {/* Sticky Header with Step Indicator */}
-        <div className="px-6 py-4 border-b border-slate-200/80 bg-slate-50/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold shadow-2xs border border-blue-100/80">
-              <Mic className="h-5 w-5 animate-pulse text-[#0F4C9A]" />
+        {/* Sticky Header with Title, Subtitle, Stepper & Close Action */}
+        <div className="px-8 py-5 border-b border-slate-100 bg-white flex flex-col lg:flex-row lg:items-center justify-between gap-5 shrink-0">
+          
+          {/* Title & Subtitle */}
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold border border-blue-100 shadow-2xs">
+              <UserPlus className="h-6 w-6 text-[#0F4C9A]" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">Register New User</h2>
-                <span className="text-[10px] font-extrabold bg-blue-50 text-[#0F4C9A] border border-blue-200 px-2.5 py-0.5 rounded-full uppercase">
-                  Enterprise HR / CRM
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Register New User</h2>
+                <span className="text-[11px] font-extrabold bg-[#0F4C9A]/10 text-[#0F4C9A] border border-[#0F4C9A]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                  Enterprise SaaS
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                Create Admin, Team Leader, or Agent account with RBAC controls & AI permissions
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Configure user profile credentials, system roles, department pools, and security policies
               </p>
             </div>
           </div>
 
-          {/* Right: Step Switcher & Close */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-            <div className="flex bg-slate-200/80 p-1 rounded-xl border border-slate-300/60 text-xs font-extrabold">
+          {/* Stepper Navigation & Close Button */}
+          <div className="flex items-center gap-4 justify-between lg:justify-end shrink-0">
+            
+            {/* Enhanced Stepper Badges */}
+            <div className="flex bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 gap-1.5 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setCurrentStep(1)}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
                   currentStep === 1
-                    ? "bg-[#0F4C9A] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-[#0F4C9A] text-white shadow-xs font-bold"
+                    : currentStep > 1
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold"
+                    : "text-slate-600 hover:bg-slate-200/60"
                 }`}
               >
-                Step 1: Basic & Operational
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  currentStep === 1
+                    ? "bg-white/20 text-white"
+                    : currentStep > 1
+                    ? "bg-emerald-600 text-white"
+                    : "bg-slate-200 text-slate-700"
+                }`}>
+                  {currentStep > 1 ? "✓" : "1"}
+                </span>
+                <span>1. Profile & Roles</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+                className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
                   currentStep === 2
-                    ? "bg-[#0F4C9A] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-[#0F4C9A] text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:bg-slate-200/60"
                 }`}
               >
-                Step 2: Security & Permissions
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  currentStep === 2
+                    ? "bg-white/20 text-white"
+                    : "bg-slate-200 text-slate-700"
+                }`}>
+                  2
+                </span>
+                <span>2. Security & Policies</span>
               </button>
             </div>
 
+            {/* Close Button */}
             <button
               onClick={handleClose}
-              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 rounded-xl transition cursor-pointer"
+              className="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+              title="Close dialog"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Scrollable Modal Content Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Scrollable Modal Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-7 space-y-6">
           
-          {/* STEP 1: BASIC & OPERATIONAL ASSIGNMENT */}
+          {/* STEP 1: PROFILE & OPERATIONAL ROLES */}
           {currentStep === 1 && (
             <div className="space-y-6">
               
-              {/* SECTION 1: Personal Information Accordion */}
-              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs">
+              {/* SECTION 1: Personal Information Card */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs transition">
                 <button
                   type="button"
                   onClick={() => toggleSection("personal")}
-                  className="w-full px-5 py-3.5 flex items-center justify-between bg-white border-b border-slate-100 text-left font-black text-slate-900 text-sm cursor-pointer"
+                  className="w-full px-6 py-4 flex items-center justify-between bg-slate-50/70 border-b border-slate-100 text-left cursor-pointer hover:bg-slate-100/60 transition"
                 >
-                  <span className="flex items-center gap-2 text-[#0F4C9A]">
-                    <User className="h-4 w-4 text-[#0F4C9A]" />
-                    <span>1. Personal Information & Profile Avatar</span>
-                  </span>
-                  {openSections.personal ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold">
+                      <User className="h-4 w-4 text-[#0F4C9A]" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        1. Personal Information
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                        Basic user credentials and identification numbers
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200">
+                      Required Fields
+                    </span>
+                    {openSections.personal ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  </div>
                 </button>
 
                 {openSections.personal && (
-                  <div className="p-5 space-y-4">
-                    
-                    {/* Avatar Upload Dropzone */}
-                    <div className="flex items-center gap-4 p-3 bg-white rounded-xl border border-slate-200/80">
-                      <div className="relative h-14 w-14 rounded-2xl bg-gradient-to-tr from-[#0F4C9A] to-blue-600 flex items-center justify-center text-white font-black text-xl shadow-xs overflow-hidden shrink-0 border-2 border-white">
-                        {avatarPreview ? (
-                          <img src={avatarPreview} alt="Avatar" className="h-full w-full object-cover" />
-                        ) : (
-                          fullName ? fullName[0].toUpperCase() : <User className="h-6 w-6 text-white" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <span className="block text-xs font-extrabold text-slate-800">Profile Avatar Photo</span>
-                        <span className="block text-[11px] text-slate-400 font-semibold">JPG, PNG or GIF up to 5MB</span>
-                      </div>
-                      <label className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300/80 transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
-                        <Upload className="h-3.5 w-3.5 text-[#0F4C9A]" />
-                        <span>Upload Photo</span>
-                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-                      </label>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-6 bg-white space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      
                       {/* Full Name */}
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                           Full Name <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <User className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
+                          <User className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                           <input
                             type="text"
                             required
                             value={fullName}
                             onChange={e => setFullName(e.target.value)}
                             placeholder="e.g. Rahul Sharma"
-                            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] transition"
+                            className="w-full h-11 pl-10 pr-4 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                         </div>
+                        <p className="text-[11px] text-slate-400 font-normal mt-1.5">User's full legal name as per system logs</p>
                       </div>
 
                       {/* Email Address */}
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                           Email Address <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
+                          <Mail className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                           <input
                             type="email"
                             required
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             placeholder="rahul@forgeindia.com"
-                            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] transition"
+                            className="w-full h-11 pl-10 pr-4 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                         </div>
+                        <p className="text-[11px] text-slate-400 font-normal mt-1.5">Used for system login & email notifications</p>
                       </div>
 
                       {/* Phone Number */}
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number</label>
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">Phone Number</label>
                         <div className="relative">
-                          <Phone className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
+                          <Phone className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                           <input
                             type="text"
                             value={phone}
                             onChange={e => setPhone(e.target.value)}
                             placeholder="+91 98765 43210"
-                            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] transition"
+                            className="w-full h-11 pl-10 pr-4 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                         </div>
+                        <p className="text-[11px] text-slate-400 font-normal mt-1.5">Contact phone number for telephony integration</p>
                       </div>
 
                       {/* Employee ID */}
                       <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="text-xs font-bold text-slate-700">Employee ID</label>
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-xs font-semibold text-slate-700">Employee ID</label>
                           <button
                             type="button"
                             onClick={handleAutoGenerateEmpId}
-                            className="text-[10px] font-extrabold text-[#0F4C9A] hover:underline cursor-pointer"
+                            className="text-[11px] font-bold text-[#0F4C9A] hover:underline cursor-pointer"
                           >
                             Auto Generate
                           </button>
                         </div>
                         <div className="relative">
-                          <Hash className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
+                          <Hash className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                           <input
                             type="text"
                             value={employeeId}
                             onChange={e => setEmployeeId(e.target.value)}
                             placeholder="e.g. AGT84920"
-                            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] transition uppercase font-mono"
+                            className="w-full h-11 pl-10 pr-4 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs uppercase font-mono"
                           />
                         </div>
+                        <p className="text-[11px] text-slate-400 font-normal mt-1.5">Unique system code (e.g. AGT84920)</p>
                       </div>
+
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* SECTION 2: Role & Operational Assignment Accordion */}
-              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs">
+              {/* SECTION 2: Role & Operational Assignment Card */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs transition">
                 <button
                   type="button"
                   onClick={() => toggleSection("role")}
-                  className="w-full px-5 py-3.5 flex items-center justify-between bg-white border-b border-slate-100 text-left font-black text-slate-900 text-sm cursor-pointer"
+                  className="w-full px-6 py-4 flex items-center justify-between bg-slate-50/70 border-b border-slate-100 text-left cursor-pointer hover:bg-slate-100/60 transition"
                 >
-                  <span className="flex items-center gap-2 text-[#0F4C9A]">
-                    <Shield className="h-4 w-4 text-[#0F4C9A]" />
-                    <span>2. Role & Operational Assignment</span>
-                  </span>
-                  {openSections.role ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold">
+                      <Shield className="h-4 w-4 text-[#0F4C9A]" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        2. Role & Operational Assignment
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                        Define RBAC roles, pool mappings, and shifts
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-[#0F4C9A] bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200/80">
+                      Role & Mapping
+                    </span>
+                    {openSections.role ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  </div>
                 </button>
 
                 {openSections.role && (
-                  <div className="p-5 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-6 bg-white space-y-5">
+                    <div className="space-y-6">
                       
-                      {/* System Role */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">System Role</label>
-                        <select
-                          value={role}
-                          onChange={e => setRole(e.target.value)}
-                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-extrabold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] cursor-pointer"
-                        >
-                          <option value="agent">Agent (Telecaller)</option>
-                          <option value="team_leader">Supervisor (Team Leader)</option>
-                          <option value="admin">Admin (Full Control)</option>
-                        </select>
-                      </div>
-
-                      {/* Department */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Department</label>
-                        <select
-                          value={department}
-                          onChange={e => setDepartment(e.target.value)}
-                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] cursor-pointer"
-                        >
-                          <option value="Sales">Sales & Outreach</option>
-                          <option value="Service">Customer Support</option>
-                          <option value="HR">HR & Recruitment</option>
-                          <option value="Operations">Call Center Operations</option>
-                        </select>
-                      </div>
-
-                      {/* Pool Mapping */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Pool Mapping</label>
-                        <select
-                          value={poolId}
-                          onChange={e => setPoolId(e.target.value)}
-                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-extrabold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] cursor-pointer"
-                        >
-                          <option value="">No Pool Assigned</option>
-                          {pools.map(p => (
-                            <option key={p.id} value={p.id}>{p.name.replace(/_/g, " ").toUpperCase()}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Supervisor Mapping */}
-                      {role === "agent" && (
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-1">Supervisor Mapping</label>
-                          <select
-                            value={supervisorId}
-                            onChange={e => setSupervisorId(e.target.value)}
-                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-extrabold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] cursor-pointer"
+                      {/* System Role Selection Cards */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-slate-700">Select System Role *</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {/* Agent Card */}
+                          <button
+                            type="button"
+                            onClick={() => setRole("agent")}
+                            className={`relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex items-center gap-3.5 ${
+                              role === "agent"
+                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                : "bg-white text-slate-900 border-blue-200/80 hover:border-[#0F4C9A] hover:bg-blue-50/50 hover:-translate-y-0.5 shadow-xs"
+                            }`}
                           >
-                            <option value="">Unassigned</option>
-                            {supervisors.map(s => (
-                              <option key={s.id} value={s.id}>{s.name} ({s.employee_id})</option>
-                            ))}
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${role === "agent" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                              <User className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="block font-semibold text-sm tracking-tight uppercase">Agent</span>
+                              <span className={`block text-[11px] font-medium ${role === "agent" ? "text-blue-100" : "text-slate-400"}`}>Telecaller & Outreach</span>
+                            </div>
+                            {role === "agent" && (
+                              <span className="absolute top-3.5 right-3.5 h-5 w-5 rounded-full bg-white/20 flex items-center justify-center">
+                                <Check className="h-3.5 w-3.5 text-white" />
+                              </span>
+                            )}
+                          </button>
+
+                          {/* TL Card */}
+                          <button
+                            type="button"
+                            onClick={() => setRole("team_leader")}
+                            className={`relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex items-center gap-3.5 ${
+                              role === "team_leader"
+                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                : "bg-white text-slate-900 border-blue-200/80 hover:border-[#0F4C9A] hover:bg-blue-50/50 hover:-translate-y-0.5 shadow-xs"
+                            }`}
+                          >
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${role === "team_leader" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                              <Shield className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="block font-semibold text-sm tracking-tight uppercase">TL</span>
+                              <span className={`block text-[11px] font-medium ${role === "team_leader" ? "text-blue-100" : "text-slate-400"}`}>Team Leader</span>
+                            </div>
+                            {role === "team_leader" && (
+                              <span className="absolute top-3.5 right-3.5 h-5 w-5 rounded-full bg-white/20 flex items-center justify-center">
+                                <Check className="h-3.5 w-3.5 text-white" />
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Admin Card */}
+                          <button
+                            type="button"
+                            onClick={() => setRole("admin")}
+                            className={`relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex items-center gap-3.5 ${
+                              role === "admin"
+                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                : "bg-white text-slate-900 border-blue-200/80 hover:border-[#0F4C9A] hover:bg-blue-50/50 hover:-translate-y-0.5 shadow-xs"
+                            }`}
+                          >
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${role === "admin" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                              <ShieldCheck className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="block font-semibold text-sm tracking-tight uppercase">Admin</span>
+                              <span className={`block text-[11px] font-medium ${role === "admin" ? "text-blue-100" : "text-slate-400"}`}>Full System Control</span>
+                            </div>
+                            {role === "admin" && (
+                              <span className="absolute top-3.5 right-3.5 h-5 w-5 rounded-full bg-white/20 flex items-center justify-center">
+                                <Check className="h-3.5 w-3.5 text-white" />
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Pool Selection Cards */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-semibold text-slate-700">Select Campaign Pool</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          {/* No Pool */}
+                          <button
+                            type="button"
+                            onClick={() => setPoolId("")}
+                            className={`relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex items-center gap-3.5 ${
+                              !poolId
+                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                : "bg-white text-slate-900 border-blue-200/80 hover:border-[#0F4C9A] hover:bg-blue-50/50 hover:-translate-y-0.5 shadow-xs"
+                            }`}
+                          >
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${!poolId ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                              <Layers className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="block font-semibold text-xs tracking-tight uppercase">No Pool</span>
+                              <span className={`block text-[10px] font-medium ${!poolId ? "text-blue-100" : "text-slate-400"}`}>Unassigned</span>
+                            </div>
+                            {!poolId && (
+                              <span className="absolute top-3 right-3 h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
+                                <Check className="h-3 w-3 text-white" />
+                              </span>
+                            )}
+                          </button>
+
+                          {pools.map(p => {
+                            const isSelected = poolId === p.id;
+                            const isCreditCard = p.name.toLowerCase().includes("credit") || p.name.toLowerCase().includes("card");
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => setPoolId(p.id)}
+                                className={`relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex items-center gap-3.5 ${
+                                  isSelected
+                                    ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                    : "bg-white text-slate-900 border-blue-200/80 hover:border-[#0F4C9A] hover:bg-blue-50/50 hover:-translate-y-0.5 shadow-xs"
+                                }`}
+                              >
+                                <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                                  {isCreditCard ? <Briefcase className="h-5 w-5" /> : <Layers className="h-5 w-5" />}
+                                </div>
+                                <div>
+                                  <span className="block font-semibold text-xs tracking-tight uppercase truncate max-w-[120px]">
+                                    {p.name.replace(/_/g, " ")}
+                                  </span>
+                                  <span className={`block text-[10px] font-medium ${isSelected ? "text-blue-100" : "text-slate-400"}`}>
+                                    {isCreditCard ? "Sales" : "Campaign Pool"}
+                                  </span>
+                                </div>
+                                {isSelected && (
+                                  <span className="absolute top-3 right-3 h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
+                                    <Check className="h-3 w-3 text-white" />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                        {/* Department */}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-2">Department</label>
+                          <select
+                            value={department}
+                            onChange={e => setDepartment(e.target.value)}
+                            className="w-full h-11 px-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] cursor-pointer transition shadow-2xs"
+                          >
+                            <option value="Sales">Sales & Outreach</option>
+                            <option value="Service">Customer Support</option>
+                            <option value="HR">HR & Recruitment</option>
+                            <option value="Operations">Call Center Operations</option>
                           </select>
                         </div>
-                      )}
 
-                      {/* Shift */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Shift</label>
-                        <select
-                          value={shift}
-                          onChange={e => setShift(e.target.value)}
-                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] cursor-pointer"
-                        >
-                          <option value="Day">Day Shift (9 AM - 6 PM)</option>
-                          <option value="Night">Night Shift (9 PM - 6 AM)</option>
-                          <option value="Flexible">Flexible Shift</option>
-                        </select>
-                      </div>
+                        {/* Supervisor Mapping */}
+                        {role === "agent" && (
+                          <div>
+                            <label className="block text-xs font-semibold text-slate-700 mb-2">Supervisor Mapping</label>
+                            <select
+                              value={supervisorId}
+                              onChange={e => setSupervisorId(e.target.value)}
+                              className="w-full h-11 px-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] cursor-pointer transition shadow-2xs"
+                            >
+                              <option value="">Unassigned</option>
+                              {supervisors.map(s => (
+                                <option key={s.id} value={s.id}>{s.name} ({s.employee_id})</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
 
-                      {/* Language */}
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">Preferred Language</label>
+                        {/* Shift Schedule */}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-2">Shift Schedule</label>
+                          <select
+                            value={shift}
+                            onChange={e => setShift(e.target.value)}
+                            className="w-full h-11 px-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] cursor-pointer transition shadow-2xs"
+                          >
+                            <option value="Day">Day Shift (9 AM - 6 PM)</option>
+                            <option value="Night">Night Shift (9 PM - 6 AM)</option>
+                            <option value="Flexible">Flexible Shift</option>
+                          </select>
+                        </div>
+                        {/* Preferred Language */}
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 mb-2">Preferred Language</label>
                         <select
                           value={language}
                           onChange={e => setLanguage(e.target.value)}
-                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] cursor-pointer"
+                          className="w-full h-11 px-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] cursor-pointer transition shadow-2xs"
                         >
                           <option value="English">English</option>
                           <option value="Hindi">Hindi</option>
                           <option value="Tamil">Tamil</option>
                           <option value="Telugu">Telugu</option>
                         </select>
+                        <p className="text-[11px] text-slate-400 font-normal mt-1.5">Default telephony interaction language</p>
                       </div>
 
+                      </div>
                     </div>
                   </div>
                 )}
@@ -550,51 +677,65 @@ export default function RegisterUserModal({
             </div>
           )}
 
-          {/* STEP 2: SECURITY & PERMISSIONS CONTROL */}
+          {/* STEP 2: SECURITY CREDENTIALS & POLICIES */}
           {currentStep === 2 && (
             <div className="space-y-6">
               
-              {/* SECTION 3: Security Credentials Accordion */}
-              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs">
+              {/* SECTION 3: Security Credentials Card */}
+              <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs transition">
                 <button
                   type="button"
                   onClick={() => toggleSection("security")}
-                  className="w-full px-5 py-3.5 flex items-center justify-between bg-white border-b border-slate-100 text-left font-black text-slate-900 text-sm cursor-pointer"
+                  className="w-full px-6 py-4 flex items-center justify-between bg-slate-50/70 border-b border-slate-100 text-left cursor-pointer hover:bg-slate-100/60 transition"
                 >
-                  <span className="flex items-center gap-2 text-[#0F4C9A]">
-                    <Lock className="h-4 w-4 text-[#0F4C9A]" />
-                    <span>3. Security Credentials & Password Policies</span>
-                  </span>
-                  {openSections.security ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold">
+                      <Lock className="h-4 w-4 text-[#0F4C9A]" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        3. Security Credentials & Password Policies
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                        Set account login credentials and security parameters
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80">
+                      Security Policy
+                    </span>
+                    {openSections.security ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  </div>
                 </button>
 
                 {openSections.security && (
-                  <div className="p-5 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-6 bg-white space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       
                       {/* Password */}
                       <div>
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="text-xs font-bold text-slate-700">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-xs font-semibold text-slate-700">
                             Password <span className="text-rose-500">*</span>
                           </label>
                           <button
                             type="button"
                             onClick={handleGenerateStrongPassword}
-                            className="text-[10px] font-extrabold text-[#0F4C9A] hover:underline cursor-pointer"
+                            className="text-[11px] font-bold text-[#0F4C9A] hover:underline cursor-pointer"
                           >
                             Generate Password
                           </button>
                         </div>
                         <div className="relative">
-                          <Lock className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
+                          <Lock className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                           <input
                             type={showPassword ? "text" : "password"}
                             required
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full pl-10 pr-10 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] transition"
+                            className="w-full h-11 pl-10 pr-10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                           <button
                             type="button"
@@ -607,14 +748,14 @@ export default function RegisterUserModal({
 
                         {/* Password Strength Meter */}
                         {password && (
-                          <div className="mt-2 space-y-1">
+                          <div className="mt-2.5 space-y-1">
                             <div className="flex justify-between items-center text-[10px] font-bold">
                               <span className="text-slate-400 uppercase">Strength:</span>
                               <span className={strength.score > 50 ? "text-emerald-600" : "text-amber-600"}>
                                 {strength.label}
                               </span>
                             </div>
-                            <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                               <div
                                 className={`h-full transition-all duration-300 ${strength.color}`}
                                 style={{ width: `${strength.score}%` }}
@@ -622,154 +763,59 @@ export default function RegisterUserModal({
                             </div>
                           </div>
                         )}
+                        <p className="text-[11px] text-slate-400 font-normal mt-1.5">At least 6 characters with uppercase & symbols</p>
                       </div>
 
                       {/* Confirm Password */}
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-2">
                           Confirm Password <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <Lock className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
+                          <Lock className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
                           <input
                             type="password"
                             required
                             value={confirmPassword}
                             onChange={e => setConfirmPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A] transition"
+                            className="w-full h-11 pl-10 pr-4 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                         </div>
                         {confirmPassword && password !== confirmPassword && (
-                          <span className="text-[10px] text-rose-500 font-bold mt-1 block">Passwords do not match</span>
+                          <span className="text-[11px] text-rose-500 font-semibold mt-1.5 block">Passwords do not match</span>
                         )}
+                        <p className="text-[11px] text-slate-400 font-normal mt-1.5">Re-enter password for confirmation</p>
                       </div>
 
                     </div>
 
-                    <div className="pt-2 border-t border-slate-200/80 space-y-2 text-xs">
-                      <label className="flex items-center gap-2 font-bold text-slate-700 cursor-pointer">
+                    {/* Interactive Security Options Grid */}
+                    <div className="pt-2 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      <label className="flex items-center gap-3.5 p-4 bg-slate-50/70 border border-slate-200/90 rounded-2xl cursor-pointer hover:bg-slate-100/60 transition shadow-2xs">
                         <input
                           type="checkbox"
                           checked={sendCredentials}
                           onChange={e => setSendCredentials(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] rounded cursor-pointer"
+                          className="h-4 w-4 text-[#0F4C9A] rounded border-slate-300 focus:ring-[#0F4C9A] accent-[#0F4C9A] cursor-pointer"
                         />
-                        <span>Send Login Credentials via Email</span>
+                        <div>
+                          <span className="block font-bold text-slate-800">Send Login Credentials via Email</span>
+                          <span className="block text-[11px] text-slate-400 font-normal mt-0.5">Automated welcome email with initial password</span>
+                        </div>
                       </label>
 
-                      <label className="flex items-center gap-2 font-semibold text-slate-600 cursor-pointer">
+                      <label className="flex items-center gap-3.5 p-4 bg-slate-50/70 border border-slate-200/90 rounded-2xl cursor-pointer hover:bg-slate-100/60 transition shadow-2xs">
                         <input
                           type="checkbox"
                           checked={requirePasswordChange}
                           onChange={e => setRequirePasswordChange(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] rounded cursor-pointer"
+                          className="h-4 w-4 text-[#0F4C9A] rounded border-slate-300 focus:ring-[#0F4C9A] accent-[#0F4C9A] cursor-pointer"
                         />
-                        <span>Require password change on first login</span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* SECTION 4: Permissions & AI Access Accordion */}
-              <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl overflow-hidden shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => toggleSection("permissions")}
-                  className="w-full px-5 py-3.5 flex items-center justify-between bg-white border-b border-slate-100 text-left font-black text-slate-900 text-sm cursor-pointer"
-                >
-                  <span className="flex items-center gap-2 text-[#0F4C9A]">
-                    <SlidersHorizontal className="h-4 w-4 text-[#0F4C9A]" />
-                    <span>4. Telephony Permissions & AI Access Controls</span>
-                  </span>
-                  {openSections.permissions ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
-                </button>
-
-                {openSections.permissions && (
-                  <div className="p-5 space-y-5">
-                    
-                    {/* Account Status Toggle */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Account Active Status</label>
-                      <div className="flex items-center gap-3 bg-white p-3 border border-slate-200 rounded-xl">
-                        <input
-                          type="checkbox"
-                          id="status-toggle"
-                          checked={isActive}
-                          onChange={e => setIsActive(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] focus:ring-[#0F4C9A] rounded cursor-pointer"
-                        />
-                        <label htmlFor="status-toggle" className="text-xs font-bold text-slate-800 cursor-pointer">
-                          {isActive ? "Active Account (Permitted System Access)" : "Inactive Account (Suspended)"}
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Multi-Select Skills */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">Assigned Agent Skills</label>
-                      <div className="flex flex-wrap gap-2">
-                        {SKILL_OPTIONS.map(skill => {
-                          const isSelected = selectedSkills.includes(skill);
-                          return (
-                            <button
-                              type="button"
-                              key={skill}
-                              onClick={() => toggleSkill(skill)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
-                                isSelected
-                                  ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-2xs"
-                                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-100"
-                              }`}
-                            >
-                              {skill} {isSelected && "✓"}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Telephony & AI Feature Permissions */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
-                      <label className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={recordingPermission}
-                          onChange={e => setRecordingPermission(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] rounded cursor-pointer"
-                        />
-                        <span>Call Recording Permission</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={monitoringPermission}
-                          onChange={e => setMonitoringPermission(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] rounded cursor-pointer"
-                        />
-                        <span>Live Call Monitoring & Whisper</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={aiCopilotAccess}
-                          onChange={e => setAiCopilotAccess(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] rounded cursor-pointer"
-                        />
-                        <span>AI Telephony Copilot & Sentiment</span>
-                      </label>
-
-                      <label className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-xl font-bold text-slate-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={apiAccess}
-                          onChange={e => setApiAccess(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] rounded cursor-pointer"
-                        />
-                        <span>Developer API Access Token</span>
+                        <div>
+                          <span className="block font-bold text-slate-800">Require password change on first login</span>
+                          <span className="block text-[11px] text-slate-400 font-normal mt-0.5">Enforce security policy on first portal session</span>
+                        </div>
                       </label>
                     </div>
 
@@ -782,12 +828,13 @@ export default function RegisterUserModal({
 
         </form>
 
-        {/* Sticky Footer */}
-        <div className="px-6 py-4 border-t border-slate-200/80 bg-slate-50 flex justify-between items-center shrink-0">
+        {/* Sticky Footer with Aligned Actions */}
+        <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
+          
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-2 text-xs font-extrabold text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+            className="px-5 h-11 text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-white rounded-xl transition cursor-pointer"
           >
             Cancel
           </button>
@@ -797,16 +844,26 @@ export default function RegisterUserModal({
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className="px-5 py-2.5 bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                className="px-6 h-11 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer"
               >
-                <span>Continue to Step 2: Permissions</span>
+                <span>Continue to Security</span>
+                <ArrowRight className="h-4 w-4" />
               </button>
             ) : (
               <>
                 <button
                   type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="px-5 h-11 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 border border-slate-200 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => showToast("Draft saved locally.", "info")}
-                  className="px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-200/70 border border-slate-200 rounded-xl transition cursor-pointer"
+                  className="px-5 h-11 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 border border-slate-200 rounded-xl transition cursor-pointer"
                 >
                   Save Draft
                 </button>
@@ -815,7 +872,7 @@ export default function RegisterUserModal({
                   type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className="px-5 py-2.5 bg-[#0F4C9A] hover:bg-blue-800 text-white font-extrabold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                  className="px-6 h-11 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
                 >
                   {isSubmitting ? (
                     <>
@@ -835,6 +892,7 @@ export default function RegisterUserModal({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

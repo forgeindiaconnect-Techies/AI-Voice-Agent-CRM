@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from app.core.config import settings
 from app.core.database import init_indexes, check_db_connection
-from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws
+from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws, ai_agents
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logger = logging.getLogger("uvicorn.error")
@@ -89,6 +89,7 @@ app.include_router(calls.router)
 app.include_router(leave.router)
 app.include_router(reports.router)
 app.include_router(ws.router)
+app.include_router(ai_agents.router)
 
 
 # ── Startup ──────────────────────────────────────────────────────────────────

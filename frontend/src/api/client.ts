@@ -2,7 +2,11 @@
  * Dynamic API Base URL Resolver.
  * Automatically adapts to current browser location (localhost, 127.0.0.1, or LAN IP e.g. 192.168.x.x).
  */
+let currentBaseUrl: string | null = null;
+
 const getBaseUrl = (): string => {
+  if (currentBaseUrl !== null) return currentBaseUrl;
+
   // If explicitly configured in environment and not default placeholder, use it
   if (
     import.meta.env.VITE_API_URL &&
@@ -22,6 +26,11 @@ const getBaseUrl = (): string => {
   if (typeof window !== "undefined") {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
+    // If accessing via localhost or 127.0.0.1, use direct port 8000
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `${protocol}//${hostname}:8000`;
+    }
+    // On LAN IP or custom domain, try direct port 8000 first (will fallback to relative proxy if port 8000 blocked/offline)
     return `${protocol}//${hostname}:8000`;
   }
 
@@ -33,6 +42,19 @@ const BASE_URL = getBaseUrl();
 function getToken(): string | null {
   return localStorage.getItem("access_token");
 }
+
+const getWsUrl = (roomPath: string = ""): string => {
+  const token = getToken();
+  const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
+  const cleanPath = roomPath ? (roomPath.startsWith("/") ? roomPath : `/${roomPath}`) : "";
+  if (typeof window !== "undefined") {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
+  }
+  return `ws://localhost:8000/ws${cleanPath}${tokenQuery}`;
+};
+
+const WS_URL = getWsUrl();
 
 export type ApiFetchOptions = RequestInit & {
   timeoutMs?: number;
@@ -69,11 +91,40 @@ export async function apiFetch(
     const combinedSignal = signal || controller.signal;
 
     try {
-      const res = await fetch(`${BASE_URL}${path}`, {
-        ...fetchOptions,
-        headers,
-        signal: combinedSignal,
-      });
+      let targetUrl = `${BASE_URL}${path}`;
+      if (currentBaseUrl === "") {
+        targetUrl = path;
+      }
+
+      let res: Response;
+      try {
+        res = await fetch(targetUrl, {
+          ...fetchOptions,
+          headers,
+          signal: combinedSignal,
+        });
+      } catch (primaryErr: any) {
+        // If direct connection failed (e.g. Failed to fetch on LAN IP) and we haven't already fallen back to relative proxy
+        if (
+          currentBaseUrl === null &&
+          typeof window !== "undefined" &&
+          (primaryErr.name === "TypeError" || primaryErr.message?.includes("fetch"))
+        ) {
+          try {
+            res = await fetch(path, {
+              ...fetchOptions,
+              headers,
+              signal: combinedSignal,
+            });
+            // If relative proxy path succeeds, switch currentBaseUrl to "" for subsequent requests
+            currentBaseUrl = "";
+          } catch {
+            throw primaryErr;
+          }
+        } else {
+          throw primaryErr;
+        }
+      }
 
       clearTimeout(timeoutId);
 
@@ -89,7 +140,13 @@ export async function apiFetch(
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-        throw new Error(errorData.detail || `Server returned error (${res.status})`);
+        let detailMsg = errorData.detail;
+        if (Array.isArray(detailMsg)) {
+          detailMsg = detailMsg.map((e: any) => e.msg || e.detail || JSON.stringify(e)).join("; ");
+        } else if (typeof detailMsg === "object" && detailMsg !== null) {
+          detailMsg = detailMsg.msg || detailMsg.detail || JSON.stringify(detailMsg);
+        }
+        throw new Error(detailMsg || `Server returned error (${res.status})`);
       }
 
       return await res.json();
@@ -123,6 +180,8 @@ export const api = {
   get: (path: string, signal?: AbortSignal) => apiFetch(path, {}, signal),
   post: (path: string, body?: unknown) =>
     apiFetch(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  put: (path: string, body?: unknown) =>
+    apiFetch(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
   patch: (path: string, body?: unknown) =>
     apiFetch(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   delete: (path: string) =>
@@ -138,4 +197,4 @@ export const api = {
   },
 };
 
-export { BASE_URL };
+export { BASE_URL, WS_URL, getWsUrl, getToken };

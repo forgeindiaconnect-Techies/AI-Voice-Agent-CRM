@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
 from bson import ObjectId
 from app.core.database import calls_col, leads_col, users_col, audit_logs_col
 from app.core.utils import utcnow, oid_str
@@ -8,6 +8,7 @@ from app.schemas.common import (
     CallStart,
     CallEnd,
     MonitorAction,
+    MonitorActionPayload,
     Role,
     CallQualityEvaluation,
     ManualDialPayload,
@@ -107,26 +108,37 @@ async def live_calls(pool_id: str | None = None, user: dict = Depends(get_curren
 
 
 @router.post("/{call_id}/monitor", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
-async def monitor_call(call_id: str, action: MonitorAction, user: dict = Depends(get_current_user)):
+async def monitor_call(
+    call_id: str,
+    action: MonitorAction | None = Query(None),
+    payload: MonitorActionPayload | None = Body(None),
+    user: dict = Depends(get_current_user)
+):
     """Signals a listen/whisper/barge/transfer action on a live call over the pool's websocket channel."""
-    call = await calls_col.find_one({"_id": ObjectId(call_id)})
+    act_str = payload.action if payload and payload.action else action
+    if not act_str:
+        act_str = MonitorAction.LISTEN
+
+    query = {"_id": ObjectId(call_id)} if ObjectId.is_valid(call_id) else {"id": call_id}
+    call = await calls_col.find_one(query)
     if not call:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Call not found")
         
     # Security scope check for Team Leader
     if user["role"] == Role.TEAM_LEADER:
-        agent = await users_col.find_one({"_id": ObjectId(call["agent_id"])})
+        agent_q = {"_id": ObjectId(call["agent_id"])} if ObjectId.is_valid(call["agent_id"]) else {"id": call["agent_id"]}
+        agent = await users_col.find_one(agent_q)
         if not agent or agent.get("supervisor_id") != _uid(user):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Forbidden: you can monitor only your assigned team calls")
             
     await calls_col.update_one(
-        {"_id": ObjectId(call_id)},
-        {"$push": {"monitor_events": {"action": action, "by": _uid(user), "at": utcnow()}}},
+        query,
+        {"$push": {"monitor_events": {"action": act_str, "by": _uid(user), "at": utcnow()}}},
     )
-    await ws_manager.broadcast(call["pool_id"], {
-        "event": "monitor_action", "call_id": call_id, "action": action, "supervisor_id": _uid(user),
+    await ws_manager.broadcast(call.get("pool_id", "global"), {
+        "event": "monitor_action", "call_id": call_id, "action": act_str, "supervisor_id": _uid(user),
     })
-    return {"status": "signal_sent", "action": action}
+    return {"status": "signal_sent", "action": act_str}
 
 
 @router.post("/{call_id}/quality", dependencies=[Depends(require_roles(Role.TEAM_LEADER, Role.ADMIN))])
