@@ -44,7 +44,7 @@ def is_valid_email(email_str: str) -> bool:
     return bool(re.match(pattern, email_str))
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user)):
     normalized = normalize_phone(payload.phone)
     if not normalized:
@@ -276,19 +276,9 @@ async def list_leads(user: dict = Depends(get_current_user), pool_id: str | None
     if user["role"] == Role.AGENT:
         query["$or"] = [
             {"assigned_agent_id": uid},
-            {"created_by": uid}
-        ]
-    elif user["role"] == Role.TEAM_LEADER:
-        # Team leaders can view leads in their pool, leads assigned to them/their team, or all unassigned leads
-        team_or = [
-            {"supervisor_id": uid},
             {"created_by": uid},
-            {"assigned_agent_id": uid},
             {"assigned_agent_id": None}
         ]
-        if user.get("pool_id"):
-            team_or.append({"pool_id": user.get("pool_id")})
-        query["$or"] = team_or
         
     if pool_id:
         query["pool_id"] = pool_id
