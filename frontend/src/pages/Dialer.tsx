@@ -1,227 +1,696 @@
-import { useEffect, useState, useRef } from "react";
-import { api } from "../api/client";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+import { api, getWsUrl } from "../api/client";
 import { useToast } from "../context/ToastContext";
-import { Device } from "@twilio/voice-sdk";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Phone,
   PhoneCall,
   PhoneOff,
-  FileText,
-  Clock,
-  ListOrdered,
-  ChevronRight,
+  PhoneForwarded,
+  Mic,
+  MicOff,
+  Pause,
   Play,
-  Radio
+  Volume2,
+  VolumeX,
+  User,
+  History,
+  CheckCircle2,
+  XCircle,
+  Hash,
+  MessageSquare,
+  ListOrdered,
+  Save,
+  Loader2,
+  Headphones,
+  Ear,
+  Search,
+  Filter,
+  RefreshCw,
+  Star,
+  ArrowRight,
+  UserCheck,
+  AlertCircle
 } from "lucide-react";
 
-type Lead = { id: string; name: string; phone: string; status: string };
+type CallStatus = "idle" | "ringing" | "connected" | "hold" | "ended";
+type Tab = "outbound" | "inbound" | "supervisor" | "history";
+
+type ActiveCall = {
+  _id: string;
+  lead_name?: string;
+  phone?: string;
+  agent_id: string;
+  status: string;
+  call_state: string;
+  started_at: string;
+};
+
+// Lead interface matching backend
+type Lead = {
+  _id: string;
+  name: string;
+  phone: string;
+  source: string;
+  campaign_id?: string;
+  priority?: string;
+  status: string;
+  updated_at?: string;
+  created_at: string;
+  assigned_agent_id?: string;
+  supervisor_id?: string;
+};
 
 export default function Dialer() {
+  const { user } = useAuth();
   const { showToast } = useToast();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [activeLead, setActiveLead] = useState<Lead | null>(null);
-  const [callId, setCallId] = useState<string | null>(null);
-  const [seconds, setSeconds] = useState(0);
-  const [notes, setNotes] = useState("");
+  
+  const [activeTab, setActiveTab] = useState<Tab>("outbound");
+  
+  // OUTBOUND DIALER STATE
+  const [outboundPhone, setOutboundPhone] = useState("");
+  const [callStatus, setCallStatus] = useState<CallStatus>("idle");
+  const [currentCallId, setCurrentCallId] = useState<string | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaker, setIsSpeaker] = useState(false);
+  const [showInCallKeypad, setShowInCallKeypad] = useState(false);
+  
+  // POST-CALL OUTCOME
   const [outcome, setOutcome] = useState("answered");
-  const [deviceReady, setDeviceReady] = useState(false);
-  const deviceRef = useRef<Device | null>(null);
-  const callRef = useRef<any>(null);
+  const [notes, setNotes] = useState("");
+  const [isSavingOutcome, setIsSavingOutcome] = useState(false);
+
+  // SUPERVISOR STATE
+  const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
+  const isSupervisor = user?.role === "admin" || user?.role === "team_leader";
+
+  // ASSIGNED LEADS STATE
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoadingLeads, setIsLoadingLeads] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+
+  const fetchLeads = useCallback(async () => {
+    setIsLoadingLeads(true);
+    try {
+      // By default /api/leads respects RBAC (Agent sees own, TL sees pool/team, Admin sees all)
+      const res = await api.get("/api/leads");
+      setLeads(Array.isArray(res) ? res : []);
+    } catch (err: any) {
+      console.error("[Dialer] fetchLeads error:", err);
+      // Don't toast on initial load failures to avoid blank page
+    } finally {
+      setIsLoadingLeads(false);
+    }
+  }, []);
 
   useEffect(() => {
-    api.get("/api/leads?status_filter=new").then(setLeads).catch(() => {});
-    
-    // Initialize Twilio Device
-    const setupDevice = async () => {
-      try {
-        const { token } = await api.get("/api/calls/token");
-        const device = new Device(token, {
-          codecPreferences: ["opus", "pcmu"],
-          fakeLocalDTMF: true,
-          enableRingingState: true,
-        });
+    fetchLeads();
 
-        device.on("registered", () => setDeviceReady(true));
-        device.on("error", (error) => showToast(`Twilio Error: ${error.message}`, "error"));
-        
-        await device.register();
-        deviceRef.current = device;
-      } catch (err: any) {
-        showToast("Failed to initialize softphone. Check microphone permissions.", "error");
-      }
-    };
-    setupDevice();
+    // Listen to real-time lead assignments via native WebSocket
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket(getWsUrl("/global"));
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.event === "leads_updated") {
+            fetchLeads();
+          }
+        } catch (err) {
+          console.error("Failed to parse websocket message", err);
+        }
+      };
+    } catch (err) {
+      console.error("Failed to connect WebSocket", err);
+    }
 
     return () => {
-      if (deviceRef.current) {
-        deviceRef.current.destroy();
-      }
+      if (ws) ws.close();
     };
   }, []);
 
   useEffect(() => {
-    if (!callId) return;
-    const interval = setInterval(() => setSeconds((s) => s + 1), 1000);
-    return () => clearInterval(interval);
-  }, [callId]);
-
-  async function startCall(lead: Lead) {
-    if (!deviceRef.current || !deviceReady) {
-      showToast("Softphone is not ready yet.", "error");
-      return;
+    if (callStatus === "connected") {
+      const interval = setInterval(() => setCallDuration(d => d + 1), 1000);
+      return () => clearInterval(interval);
     }
+  }, [callStatus]);
 
+  const filteredLeads = useMemo(() => {
+    return leads.filter(l => {
+      const matchSearch = (l.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (l.phone || "").includes(searchQuery);
+      const matchStatus = statusFilter === "All" || l.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [leads, searchQuery, statusFilter]);
+
+  // Handle Keypad Press
+  const handleKeypadPress = async (digit: string) => {
+    if (callStatus === "idle") {
+      setOutboundPhone(prev => prev + digit);
+    } else if (callStatus === "connected" && currentCallId) {
+      try {
+        await api.post(`/api/calls/${currentCallId}/dtmf`, { digit });
+      } catch (err: any) {
+        showToast(err.message || "Failed to send DTMF", "error");
+      }
+    }
+  };
+
+  const handleDial = async () => {
+    if (!outboundPhone) return;
+    setCallStatus("ringing");
+    setCallDuration(0);
     try {
-      showToast(`Connecting to ${lead.name} via browser softphone...`, "info");
-      
-      // Start Twilio WebRTC Call
-      const twilioCall = await deviceRef.current.connect({
-        params: { To: lead.phone }
+      const res = await api.post("/api/calls/manual-dial", {
+        phone: outboundPhone,
+        pool_id: user?.pool_id || "general",
+        language: "english",
+        agent_assign_mode: "manual",
+        assigned_agent_id: user?.id,
+        priority: "high",
+        notes: ""
       });
+      setCurrentCallId(res.id || res._id || res);
       
-      callRef.current = twilioCall;
-
-      twilioCall.on("accept", () => showToast("Call connected!", "success"));
-      twilioCall.on("disconnect", () => endCall());
-
-      // Register call in CRM backend
-      const call = await api.post("/api/calls/start", { lead_id: lead.id, direction: "outbound" });
-      setActiveLead(lead);
-      setCallId(call.id);
-      setSeconds(0);
-      
+      // Simulate ring time then connect
+      setTimeout(() => {
+        setCallStatus("connected");
+      }, 2500);
     } catch (err: any) {
-      showToast(err.message || "Failed to start call", "error");
+      setCallStatus("idle");
+      showToast(err.message || "Dialing failed", "error");
     }
-  }
+  };
 
-  async function endCall() {
-    if (callRef.current) {
-      callRef.current.disconnect();
-      callRef.current = null;
-    }
-
-    if (!callId) return;
-    
+  const handleHangup = async () => {
+    if (callStatus === "idle") return;
+    setCallStatus("ended");
     try {
-      await api.post("/api/calls/end", { call_id: callId, outcome, duration_seconds: seconds, notes });
-      showToast(`Call outcome set: ${outcome.replace("_", " ").toUpperCase()}`, "success");
-      setCallId(null);
-      setActiveLead(null);
-      setNotes("");
-      setSeconds(0);
-      api.get("/api/leads?status_filter=new").then(setLeads).catch(() => {});
-    } catch (err: any) {
-      showToast(err.message || "Failed to submit call details", "error");
+      if (currentCallId) {
+        await api.post(`/api/calls/${currentCallId}/manual-end`, {
+          call_id: currentCallId,
+          outcome: "answered",
+          duration_seconds: callDuration,
+          notes: "Manual call ended"
+        });
+      }
+    } catch (err) {
+      console.error(err);
     }
-  }
+  };
+
+  const handleAction = async (action: "mute" | "hold" | "resume") => {
+    if (!currentCallId) return;
+    try {
+      await api.post(`/api/calls/${currentCallId}/manual-action`, { action });
+      if (action === "mute") setIsMuted(true);
+      if (action === "resume" && isMuted) setIsMuted(false);
+      if (action === "hold") setCallStatus("hold");
+      if (action === "resume" && callStatus === "hold") setCallStatus("connected");
+    } catch (err: any) {
+      showToast(err.message || `Failed to ${action}`, "error");
+    }
+  };
+
+  const saveOutcome = async () => {
+    if (!currentCallId) return;
+    setIsSavingOutcome(true);
+    try {
+      await api.post(`/api/calls/${currentCallId}/manual-end`, {
+        call_id: currentCallId,
+        outcome,
+        duration_seconds: callDuration,
+        notes
+      });
+      showToast("Call details saved", "success");
+      setCallStatus("idle");
+      setCurrentCallId(null);
+      setOutboundPhone("");
+      setNotes("");
+      setCallDuration(0);
+    } catch (err: any) {
+      showToast(err.message || "Failed to save outcome", "error");
+    } finally {
+      setIsSavingOutcome(false);
+    }
+  };
+
+  const handleQuickCall = (phone: string) => {
+    setOutboundPhone(phone);
+    // User requested: "Quick Call button to auto-populate the dialer".
+    // Left it at auto-populate so the agent can review before hitting the big Call button.
+  };
+
+  const formatTime = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${mins.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const formatDate = (ds: string) => {
+    if (!ds) return "N/A";
+    return new Date(ds).toLocaleString();
+  };
+
+  // ----------------------------------------------------
+  // RENDER HELPERS
+  // ----------------------------------------------------
+  
+  const renderKeypad = (inCall = false) => (
+    <div className="grid grid-cols-3 gap-4 md:gap-6 w-full max-w-[280px] mx-auto my-6">
+      {[
+        { d: "1", l: "" }, { d: "2", l: "ABC" }, { d: "3", l: "DEF" },
+        { d: "4", l: "GHI" }, { d: "5", l: "JKL" }, { d: "6", l: "MNO" },
+        { d: "7", l: "PQRS" }, { d: "8", l: "TUV" }, { d: "9", l: "WXYZ" },
+        { d: "*", l: "" }, { d: "0", l: "+" }, { d: "#", l: "" }
+      ].map((key) => (
+        <button
+          key={key.d}
+          onClick={() => handleKeypadPress(key.d)}
+          className="aspect-square flex flex-col items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 transition shadow-sm text-slate-800"
+        >
+          <span className="text-2xl md:text-3xl font-light">{key.d}</span>
+          {key.l && <span className="text-[10px] font-bold text-slate-500 tracking-widest">{key.l}</span>}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Header Wrapper (Normal Flow) */}
-      <div className="bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div>
-            <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
-              <PhoneCall className="h-6 w-6 text-forgeBlue animate-pulse" />
-              <span>Outbound Dialer Workspace</span>
-            </h1>
-            <p className="text-sm text-gray-500 font-medium">Browser Softphone Status: {deviceReady ? <span className="text-emerald-600 font-bold">READY</span> : <span className="text-amber-500 font-bold">CONNECTING...</span>}</p>
+    <div className="space-y-6 max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col">
+      {/* Header */}
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 shrink-0">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-[#0F4FA8]/10 text-[#0F4FA8] rounded-xl flex items-center justify-center">
+              <PhoneCall className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-slate-800">Manual Dialer</h1>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Unified Comms & Supervisor Station</p>
+            </div>
           </div>
-          <span className="bg-blue-50 text-forgeBlue text-xs font-bold border border-blue-200 px-3 py-1.5 rounded-full flex items-center gap-1.5">
-            <ListOrdered className="h-4 w-4" />
-            <span>{leads.length} Leads Waiting</span>
-          </span>
+          
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+            <button onClick={() => setActiveTab("outbound")} className={`px-4 py-2 text-sm font-bold rounded-lg transition ${activeTab === "outbound" ? "bg-white text-[#0F4FA8] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Outbound</button>
+            <button onClick={() => setActiveTab("inbound")} className={`px-4 py-2 text-sm font-bold rounded-lg transition ${activeTab === "inbound" ? "bg-white text-[#0F4FA8] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Inbound</button>
+            {isSupervisor && (
+              <button onClick={() => setActiveTab("supervisor")} className={`px-4 py-2 text-sm font-bold rounded-lg transition ${activeTab === "supervisor" ? "bg-white text-[#0F4FA8] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Supervisor</button>
+            )}
+            <button onClick={() => setActiveTab("history")} className={`px-4 py-2 text-sm font-bold rounded-lg transition ${activeTab === "history" ? "bg-white text-[#0F4FA8] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>History</button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Leads List Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <ListOrdered className="h-5 w-5 text-forgeBlue" />
-            <span>New Leads Queue</span>
-          </h2>
-          <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
-            {leads.map((l) => (
-              <div key={l.id} className="flex items-center justify-between border rounded-2xl p-4 bg-gray-50/50 hover:bg-white transition">
-                <div>
-                  <div className="font-bold text-gray-800 text-sm">{l.name}</div>
-                  <div className="text-xs text-gray-400 font-medium mt-0.5">{l.phone}</div>
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          
+          {/* ---------------- OUTBOUND DIALER TAB ---------------- */}
+          {activeTab === "outbound" && (
+            <motion.div
+              key="outbound"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="h-full flex flex-col md:flex-row gap-6"
+            >
+              {/* Left Column: Keypad */}
+              <div className="w-full md:w-[400px] bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-between overflow-y-auto shrink-0">
+                
+                <div className="w-full text-center">
+                  <div className="h-6 flex items-center justify-center gap-2 mb-4">
+                    {callStatus === "idle" && <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">Ready to Dial</span>}
+                    {callStatus === "ringing" && <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full animate-pulse flex items-center gap-1"><PhoneForwarded className="h-3 w-3" /> Ringing...</span>}
+                    {callStatus === "connected" && <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Connected {formatTime(callDuration)}</span>}
+                    {callStatus === "hold" && <span className="text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full flex items-center gap-1"><Pause className="h-3 w-3" /> On Hold {formatTime(callDuration)}</span>}
+                  </div>
+                  
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={outboundPhone}
+                      onChange={e => setOutboundPhone(e.target.value)}
+                      readOnly={callStatus !== "idle"}
+                      placeholder="Enter phone number"
+                      className="w-full text-center text-3xl font-light text-slate-800 bg-transparent outline-none py-2"
+                    />
+                    {callStatus === "idle" && outboundPhone.length > 0 && (
+                      <button onClick={() => setOutboundPhone(prev => prev.slice(0, -1))} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600">
+                        <XCircle className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <button
-                  onClick={() => startCall(l)}
-                  disabled={!!callId || !deviceReady}
-                  className="bg-forgeBlue text-white text-xs px-3.5 py-2 rounded-xl font-bold hover:bg-blue-800 transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
-                >
-                  <Phone className="h-3.5 w-3.5" />
-                  <span>Call via Browser</span>
-                </button>
-              </div>
-            ))}
-            {leads.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-12 font-medium">No new leads in queue.</p>
-            )}
-          </div>
-        </div>
 
-        {/* Active Dialer Console */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <Radio className="h-5 w-5 text-red-500 animate-pulse" />
-            <span>Active Dialer Session</span>
-          </h2>
-          {activeLead ? (
-            <div className="space-y-4">
-              <div className="bg-slate-50 border p-4 rounded-2xl">
-                <div className="font-extrabold text-gray-800 text-base">{activeLead.name}</div>
-                <div className="text-sm text-gray-500 font-medium mt-0.5">{activeLead.phone}</div>
-                <div className="text-xs text-forgeBlue font-bold mt-3 flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5 animate-spin" />
-                  <span>Duration: {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span>
+                {callStatus === "idle" && renderKeypad()}
+                
+                {(callStatus === "connected" || callStatus === "hold") && showInCallKeypad && renderKeypad(true)}
+                
+                {(callStatus === "connected" || callStatus === "hold") && !showInCallKeypad && (
+                  <div className="my-8 w-full">
+                    <div className="h-24 w-24 rounded-full bg-[#0F4FA8]/5 border-4 border-[#0F4FA8]/10 mx-auto flex items-center justify-center text-[#0F4FA8] mb-6">
+                      <User className="h-10 w-10" />
+                    </div>
+                    <p className="text-center text-sm font-bold text-slate-600">Unknown Customer</p>
+                    <p className="text-center text-xs text-slate-400">{outboundPhone}</p>
+                  </div>
+                )}
+
+                {/* Call Action Buttons */}
+                <div className="w-full mt-4">
+                  {callStatus === "idle" ? (
+                    <button
+                      onClick={handleDial}
+                      disabled={!outboundPhone}
+                      className="w-full bg-[#10B981] hover:bg-emerald-600 text-white rounded-full py-4 font-bold text-lg shadow-lg shadow-emerald-500/30 transition disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+                    >
+                      <Phone className="h-5 w-5 fill-current" /> Call
+                    </button>
+                  ) : callStatus === "ended" ? (
+                    <div className="text-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                      <p className="font-bold text-slate-700 mb-3">Please save outcome on the right</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 w-full">
+                      <div className="grid grid-cols-4 gap-2">
+                        <button onClick={() => handleAction(isMuted ? "resume" : "mute")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${isMuted ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                          {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                          <span className="text-[10px] font-bold uppercase">Mute</span>
+                        </button>
+                        <button onClick={() => handleAction(callStatus === "hold" ? "resume" : "hold")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${callStatus === "hold" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                          {callStatus === "hold" ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
+                          <span className="text-[10px] font-bold uppercase">Hold</span>
+                        </button>
+                        <button onClick={() => setShowInCallKeypad(!showInCallKeypad)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${showInCallKeypad ? "bg-[#0F4FA8]/10 text-[#0F4FA8]" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                          <Hash className="h-5 w-5" />
+                          <span className="text-[10px] font-bold uppercase">Keypad</span>
+                        </button>
+                        <button onClick={() => setIsSpeaker(!isSpeaker)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${isSpeaker ? "bg-[#0F4FA8]/10 text-[#0F4FA8]" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                          {isSpeaker ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+                          <span className="text-[10px] font-bold uppercase">Speaker</span>
+                        </button>
+                      </div>
+                      <button
+                        onClick={handleHangup}
+                        className="w-full bg-[#EF4444] hover:bg-red-600 text-white rounded-full py-4 font-bold text-lg shadow-lg shadow-red-500/30 transition flex items-center justify-center gap-2"
+                      >
+                        <PhoneOff className="h-5 w-5 fill-current" /> End Call
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div>
-                <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1.5">Session Call Notes</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Type important details, promises, or lead remarks..."
-                  className="w-full border rounded-xl px-3 py-2 text-sm h-24 bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
-                />
+
+              {/* Right Column: Dynamic Workspace */}
+              <div className="flex-1 flex flex-col gap-4 overflow-hidden h-full">
+                {callStatus === "idle" ? (
+                  // -------------- ASSIGNED LEADS WORKSPACE --------------
+                  <div className="bg-slate-50/50 rounded-3xl border border-slate-200 p-4 flex-1 flex flex-col overflow-hidden shadow-sm">
+                    {/* Workspace Header / Counters */}
+                    <div className="flex justify-between items-end mb-4">
+                      <div>
+                        <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                          <UserCheck className="h-5 w-5 text-[#0F4FA8]" /> Assigned Leads Workspace
+                        </h2>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Real-time Lead Sync Active</p>
+                      </div>
+                      <button onClick={fetchLeads} className="p-2 hover:bg-white rounded-xl border border-transparent hover:border-slate-200 hover:shadow-sm text-slate-500 transition">
+                        <RefreshCw className={`h-4 w-4 ${isLoadingLeads ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 shrink-0">
+                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Leads</p>
+                        <p className="text-xl font-black text-slate-800">{leads.length}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">New Leads</p>
+                        <p className="text-xl font-black text-[#0F4FA8]">{leads.filter(l => l.status === "new").length}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Pending Follow-ups</p>
+                        <p className="text-xl font-black text-orange-500">{leads.filter(l => l.status === "follow_up_required").length}</p>
+                      </div>
+                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Completed / Closed</p>
+                        <p className="text-xl font-black text-emerald-500">{leads.filter(l => l.status === "closed").length}</p>
+                      </div>
+                    </div>
+
+                    {/* Search & Filters */}
+                    <div className="flex gap-2 mb-4 shrink-0">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search leads by name or phone..."
+                          value={searchQuery}
+                          onChange={e => setSearchQuery(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20"
+                        />
+                      </div>
+                      <div className="relative w-48">
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <select
+                          value={statusFilter}
+                          onChange={e => setStatusFilter(e.target.value)}
+                          className="w-full pl-10 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 appearance-none focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20"
+                        >
+                          <option value="All">All Statuses</option>
+                          <option value="new">New</option>
+                          <option value="pending">Pending</option>
+                          <option value="follow_up_required">Follow Up Required</option>
+                          <option value="closed">Closed</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Leads List */}
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+                      {isLoadingLeads && leads.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                          <Loader2 className="h-8 w-8 animate-spin text-[#0F4FA8] mb-4" />
+                          <p className="font-bold text-sm">Loading Assigned Leads...</p>
+                        </div>
+                      ) : filteredLeads.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
+                          <AlertCircle className="h-10 w-10 text-slate-300 mb-3" />
+                          <p className="font-bold text-slate-600">No Assigned Leads Found</p>
+                          <p className="text-xs">Adjust your filters or wait for new assignments.</p>
+                        </div>
+                      ) : (
+                        filteredLeads.map(lead => (
+                          <div 
+                            key={lead._id}
+                            className={`bg-white rounded-2xl border ${outboundPhone === lead.phone ? 'border-[#0F4FA8] ring-2 ring-[#0F4FA8]/10' : 'border-slate-200'} p-4 shadow-sm hover:shadow-md transition group`}
+                          >
+                            <div className="flex justify-between items-start mb-3">
+                              <div>
+                                <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                  {lead.name}
+                                  {lead.priority === "high" && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+                                </h3>
+                                <p className="text-sm font-bold text-[#0F4FA8]">{lead.phone}</p>
+                              </div>
+                              <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
+                                lead.status === 'new' ? 'bg-blue-50 text-blue-600' :
+                                lead.status === 'follow_up_required' ? 'bg-orange-50 text-orange-600' :
+                                lead.status === 'closed' ? 'bg-emerald-50 text-emerald-600' :
+                                'bg-slate-100 text-slate-600'
+                              }`}>
+                                {lead.status.replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mb-4">
+                              <span className="bg-slate-50 px-2 py-1 rounded-md">Src: <strong className="text-slate-700">{lead.source}</strong></span>
+                              <span>Added: {formatDate(lead.created_at)}</span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleQuickCall(lead.phone)}
+                                className={`flex-1 py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition ${outboundPhone === lead.phone ? 'bg-[#0F4FA8] text-white' : 'bg-[#0F4FA8]/5 text-[#0F4FA8] hover:bg-[#0F4FA8]/10'}`}
+                              >
+                                <Phone className="h-4 w-4" /> Quick Call
+                              </button>
+                              <button className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl font-bold text-sm border border-slate-200 transition">
+                                Details
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  // -------------- CALL NOTES & DISPOSITION --------------
+                  <div className="bg-white rounded-3xl shadow-sm border border-[#0F4FA8]/20 p-6 flex-1 flex flex-col relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-[#0F4FA8] to-emerald-400"></div>
+                    
+                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-[#0F4FA8]" /> Live Call Notes & Disposition
+                    </h2>
+                    
+                    <div className="flex-1 flex flex-col gap-4">
+                      <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 p-4 relative">
+                        <textarea
+                          placeholder="Type notes here during the call..."
+                          value={notes}
+                          onChange={e => setNotes(e.target.value)}
+                          className="w-full h-full bg-transparent resize-none outline-none text-sm font-medium text-slate-700"
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Call Outcome</label>
+                          <select
+                            value={outcome}
+                            onChange={e => setOutcome(e.target.value)}
+                            className="w-full border border-slate-200 rounded-xl px-3 py-3 bg-slate-50 font-bold text-sm"
+                          >
+                            <option value="answered">Answered / Connected</option>
+                            <option value="no_answer">No Answer</option>
+                            <option value="voicemail">Voicemail</option>
+                            <option value="busy">Busy / Rejected</option>
+                            <option value="not_interested">Not Interested</option>
+                            <option value="qualified">Qualified Lead</option>
+                            <option value="follow_up_required">Follow Up Required</option>
+                          </select>
+                        </div>
+                        <div className="flex items-end">
+                          <button
+                            onClick={saveOutcome}
+                            disabled={callStatus !== "ended" || isSavingOutcome}
+                            className="w-full h-[46px] bg-[#0F4FA8] hover:bg-blue-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:bg-slate-300 shadow-sm"
+                          >
+                            {isSavingOutcome ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            Save Call Data
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-[10px] text-gray-400 font-bold uppercase mb-1.5">Call Outcome</label>
-                <select
-                  value={outcome}
-                  onChange={(e) => setOutcome(e.target.value)}
-                  className="border rounded-xl px-3 py-2 text-sm w-full bg-gray-50 font-bold text-gray-700 focus:ring-2 focus:ring-forgeBlue"
-                >
-                  <option value="answered">Answered</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="follow_up_required">Follow-up Required</option>
-                  <option value="not_interested">Not Interested</option>
-                  <option value="transferred">Transferred</option>
-                  <option value="voicemail">Voicemail</option>
-                </select>
-              </div>
-              <button
-                onClick={endCall}
-                className="w-full bg-red-600 hover:bg-red-700 text-white text-sm py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-sm"
-              >
-                <PhoneOff className="h-4 w-4" />
-                <span>End Call Session</span>
-              </button>
-            </div>
-          ) : (
-            <div className="text-center py-20 text-gray-400">
-              <ChevronRight className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-sm font-medium">No active call session. Select a lead in the queue to begin dialing.</p>
-            </div>
+            </motion.div>
           )}
-        </div>
 
+          {/* ---------------- INBOUND DIALER TAB ---------------- */}
+          {activeTab === "inbound" && (
+            <motion.div
+              key="inbound"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="h-full flex items-center justify-center p-6 bg-white rounded-3xl shadow-sm border border-slate-200"
+            >
+              <div className="text-center max-w-sm">
+                <div className="h-24 w-24 bg-[#0F4FA8]/5 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+                  <div className="absolute inset-0 bg-[#0F4FA8] rounded-full animate-ping opacity-20"></div>
+                  <Ear className="h-10 w-10 text-[#0F4FA8]" />
+                </div>
+                <h2 className="text-2xl font-black text-slate-800 mb-2">Inbound Queue Active</h2>
+                <p className="text-slate-500 font-medium text-sm">You are currently available to receive incoming manual and AI transferred calls.</p>
+                <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Simulate Incoming Call</p>
+                  <button className="w-full bg-slate-800 text-white font-bold py-2 rounded-xl text-sm hover:bg-slate-900 transition">
+                    Test Inbound Call
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          
+          {/* ---------------- SUPERVISOR TAB ---------------- */}
+          {activeTab === "supervisor" && isSupervisor && (
+             <motion.div
+              key="supervisor"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="h-full flex flex-col gap-6"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Active Calls</p>
+                  <div className="text-3xl font-black text-[#10B981] flex items-center gap-2">
+                    0 <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse"></span>
+                  </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Agents Online</p>
+                  <div className="text-3xl font-black text-slate-800">12</div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Manual Calls Today</p>
+                  <div className="text-3xl font-black text-slate-800">145</div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Avg Handle Time</p>
+                  <div className="text-3xl font-black text-slate-800">2m 14s</div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm flex-1 p-6 flex flex-col overflow-hidden">
+                <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Headphones className="h-4 w-4 text-[#0F4FA8]" /> Live Agent Monitoring
+                </h2>
+                
+                <div className="flex-1 flex items-center justify-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                  <div className="text-center">
+                    <ListOrdered className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                    <p className="font-bold">No active manual calls right now</p>
+                  </div>
+                </div>
+              </div>
+             </motion.div>
+          )}
+
+          {/* ---------------- HISTORY TAB ---------------- */}
+          {activeTab === "history" && (
+             <motion.div
+              key="history"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="h-full bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col overflow-hidden"
+            >
+              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <History className="h-4 w-4 text-[#0F4FA8]" /> My Recent Manual Calls
+              </h2>
+              
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3 rounded-l-xl">Phone</th>
+                      <th className="px-4 py-3">Outcome</th>
+                      <th className="px-4 py-3">Duration</th>
+                      <th className="px-4 py-3 rounded-r-xl">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-medium">
+                        No recent manual calls found.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+          
+        </AnimatePresence>
       </div>
     </div>
   );

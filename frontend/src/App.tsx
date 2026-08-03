@@ -106,7 +106,7 @@ export default function App() {
         <Route
           path="dialer"
           element={
-            <ProtectedRoute roles={["agent"]}>
+            <ProtectedRoute roles={["admin", "team_leader", "agent"]}>
               <Dialer />
             </ProtectedRoute>
           }

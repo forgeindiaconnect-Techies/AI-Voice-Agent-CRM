@@ -95,6 +95,7 @@ export default function Layout() {
               icon: <Radio className="h-5 w-5" />,
               badge: <span className="h-2.5 w-2.5 rounded-full bg-[#10B981] ml-auto shrink-0 shadow-xs animate-pulse" />
             },
+            { to: "/dialer", label: "Manual Dialer", icon: <Phone className="h-5 w-5" /> },
             { to: "/reports", label: "Call Logs", icon: <History className="h-5 w-5" /> },
           ],
         },
@@ -129,6 +130,7 @@ export default function Layout() {
               icon: <Radio className="h-5 w-5" />,
               badge: <span className="h-2.5 w-2.5 rounded-full bg-[#10B981] ml-auto shrink-0 shadow-xs animate-pulse" />
             },
+            { to: "/dialer", label: "Manual Dialer", icon: <Phone className="h-5 w-5" /> },
             { to: "/reports", label: "Call Logs", icon: <History className="h-5 w-5" /> },
           ],
         },
