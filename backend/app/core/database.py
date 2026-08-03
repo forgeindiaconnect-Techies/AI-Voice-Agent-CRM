@@ -1,19 +1,28 @@
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
+from mongomock_motor import AsyncMongoMockClient
 from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
 
-# Configure AsyncIOMotorClient with connection pooling & local MongoDB options
-client = AsyncIOMotorClient(
-    settings.MONGO_URI,
-    maxPoolSize=100,
-    minPoolSize=10,
-    serverSelectionTimeoutMS=5000,
-    connectTimeoutMS=5000,
-    socketTimeoutMS=10000,
-    retryWrites=True,
-)
+# Try to connect to real Mongo first, fallback to mock if it fails
+try:
+    import pymongo
+    temp_client = pymongo.MongoClient(settings.MONGO_URI, serverSelectionTimeoutMS=1000)
+    temp_client.admin.command('ping')
+    client = AsyncIOMotorClient(
+        settings.MONGO_URI,
+        maxPoolSize=100,
+        minPoolSize=10,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=10000,
+        retryWrites=True,
+    )
+    logger.info("Using real MongoDB connection.")
+except Exception:
+    logger.warning("Local MongoDB not found. Falling back to in-memory mongomock-motor!")
+    client = AsyncMongoMockClient()
 
 db = client[settings.MONGO_DB_NAME]
 

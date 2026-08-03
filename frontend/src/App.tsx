@@ -16,7 +16,8 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 function ProtectedRoute({ children, roles }: { children: JSX.Element; roles?: string[] }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  const normalizedRole = user.role === "supervisor" ? "team_leader" : user.role;
+  if (roles && !roles.includes(normalizedRole)) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -89,7 +90,7 @@ export default function App() {
         <Route
           path="dialer"
           element={
-            <ProtectedRoute roles={["agent"]}>
+            <ProtectedRoute roles={["agent", "team_leader", "admin"]}>
               <Dialer />
             </ProtectedRoute>
           }

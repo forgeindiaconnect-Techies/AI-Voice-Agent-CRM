@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     MONGO_URI: str = "mongodb://127.0.0.1:27017"
     MONGO_DB_NAME: str = "ai_voice_crm"
     JWT_SECRET: str = "dev_secret_change_me"
@@ -9,9 +11,17 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     FRONTEND_ORIGIN: str = "http://localhost:5173"
-
-    class Config:
-        env_file = ".env"
+    
+    # Vapi integration
+    VAPI_API_KEY: str = ""
+    VAPI_ASSISTANT_ID: str = ""
+    # Twilio Configuration (WebRTC)
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_PHONE_NUMBER: str = ""
+    TWILIO_API_KEY: str = ""
+    TWILIO_API_SECRET: str = ""
+    TWILIO_TWIML_APP_SID: str = ""
 
 
 settings = Settings()

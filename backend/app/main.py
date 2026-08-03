@@ -88,6 +88,7 @@ app.include_router(users.router)
 app.include_router(pools.router)
 app.include_router(campaigns.router)
 app.include_router(leads.router)
+# Duplication removed
 app.include_router(calls.router)
 app.include_router(leave.router)
 app.include_router(reports.router)
@@ -106,7 +107,29 @@ async def on_startup():
             "Local MongoDB is not accessible during startup. "
             "Make sure local MongoDB is running on mongodb://127.0.0.1:27017"
         )
-    logger.info(f"CORS allowed origins: {allowed_origins}")
+        
+    # Seed mock users if using mongomock
+    from app.core.database import users_col, pools_col
+    from app.core.security import hash_password
+    from app.core.utils import utcnow, gen_employee_id
+    
+    try:
+        count = await users_col.count_documents({})
+        if count == 0:
+            default_users = [
+                {"name": "System Admin", "email": "admin@forgeindia.com", "password": hash_password("Admin@123"), "role": "admin", "employee_id": gen_employee_id("admin"), "is_active": True, "created_at": utcnow()},
+                {"name": "Team Leader", "email": "tl@forgeindia.com", "password": hash_password("Leader@123"), "role": "supervisor", "employee_id": gen_employee_id("supervisor"), "is_active": True, "created_at": utcnow()},
+                {"name": "Sales Agent", "email": "agent@forgeindia.com", "password": hash_password("Agent@123"), "role": "agent", "employee_id": gen_employee_id("agent"), "agent_phone": "+919444667411", "is_active": True, "created_at": utcnow()}
+            ]
+            await users_col.insert_many(default_users)
+            logger.info("Seeded in-memory mock database with default users.")
+            
+        pool_count = await pools_col.count_documents({})
+        if pool_count == 0:
+            await pools_col.insert_one({"name": "Customer Support", "description": "Default pool", "created_at": utcnow()})
+            logger.info("Seeded default pool.")
+    except Exception as e:
+        logger.warning(f"Could not seed users due to DB error: {e}")
 
 
 # ── Health & Root ────────────────────────────────────────────────────────────

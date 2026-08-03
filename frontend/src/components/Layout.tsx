@@ -88,6 +88,7 @@ export default function Layout() {
               badge: <span className="bg-[#FFC107]/10 text-[#FFC107] border border-[#FFC107]/40 text-[10px] font-black px-2 py-0.5 rounded-full ml-auto">3 Active</span>
             },
             { to: "/leads", label: "Lead Management", icon: <Users className="h-6 w-6" /> },
+            { to: "/dialer", label: "Softphone Dialer", icon: <Phone className="h-6 w-6" /> },
           ],
         },
         {
@@ -117,6 +118,7 @@ export default function Layout() {
             { to: "/", label: "Dashboard", icon: <LayoutDashboard className="h-6 w-6" /> },
             { to: "/leads", label: "Leads Pool", icon: <Users className="h-6 w-6" /> },
             { to: "/campaigns", label: "Voice Campaigns", icon: <PhoneCall className="h-6 w-6" /> },
+            { to: "/dialer", label: "Softphone Dialer", icon: <Phone className="h-6 w-6" /> },
           ],
         },
         {

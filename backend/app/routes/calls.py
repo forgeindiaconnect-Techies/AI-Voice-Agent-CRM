@@ -1,7 +1,9 @@
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, status
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from bson import ObjectId
-from app.core.database import calls_col, leads_col, users_col, audit_logs_col
+from app.core.config import settings
+from app.core.database import calls_col, leads_col, users_col, audit_logs_col, campaigns_col
 from app.core.utils import utcnow, oid_str
 from app.core.deps import require_roles, get_current_user
 from app.schemas.common import (
@@ -19,32 +21,109 @@ from app.schemas.common import (
 from app.services.ws_manager import ws_manager
 
 router = APIRouter(prefix="/api/calls", tags=["calls"])
+from fastapi.responses import HTMLResponse, PlainTextResponse
+from twilio.jwt.access_token import AccessToken
+from twilio.jwt.access_token.grants import VoiceGrant
+from twilio.twiml.voice_response import VoiceResponse, Dial
+from typing import Optional
+from pydantic import BaseModel
+import re
+
+class TwimlRequest(BaseModel):
+    To: Optional[str] = None
+    From: Optional[str] = None
+
+@router.get("/token")
+async def get_twilio_token(user: dict = Depends(get_current_user)):
+    """Generate a Twilio Voice Access Token for WebRTC browser calling"""
+    if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_API_KEY:
+        raise HTTPException(status_code=500, detail="Twilio credentials missing")
+        
+    # Generate access token
+    token = AccessToken(
+        settings.TWILIO_ACCOUNT_SID,
+        settings.TWILIO_API_KEY,
+        settings.TWILIO_API_SECRET,
+        identity=_uid(user)
+    )
+    
+    # Grant access to Voice
+    voice_grant = VoiceGrant(
+        outgoing_application_sid=settings.TWILIO_TWIML_APP_SID,
+        incoming_allow=True
+    )
+    token.add_grant(voice_grant)
+    
+    return {"token": token.to_jwt()}
+
+from fastapi import Form
+
+@router.post("/twiml")
+async def get_twiml(To: str = Form(""), From: str = Form("")):
+    """Twilio webhook to generate TwiML for routing the call"""
+    response = VoiceResponse()
+    
+    if To:
+        To = To.replace(" ", "+")
+        
+        dial = Dial(caller_id=settings.TWILIO_PHONE_NUMBER)
+        
+        # If the incoming call is targeting our Twilio Number, route it to an available agent
+        if To == settings.TWILIO_PHONE_NUMBER:
+            # Find the first available agent/supervisor for testing inbound calls
+            agent = await users_col.find_one({"role": {"$in": [Role.AGENT, Role.TEAM_LEADER, "supervisor"]}, "status": "active"})
+            if agent:
+                dial.client(str(agent["_id"]))
+                response.append(dial)
+            else:
+                response.say("Sorry, no agents are currently available.")
+        # Phone numbers usually have digits/plus. Clients are alphanumeric.
+        elif re.match(r"^[\d\+\-\(\) ]+$", To):
+            dial.number(To)
+            response.append(dial)
+        else:
+            dial.client(To)
+            response.append(dial)
+            
+    else:
+        response.say("Thanks for calling. Please provide a destination.")
+        
+    return PlainTextResponse(str(response), media_type="text/xml")
+
+
+@router.post("/start")
+async def start_call(payload: CallStart, user: dict = Depends(require_roles(Role.AGENT, Role.TEAM_LEADER, Role.ADMIN))):
+    """
+    Called by the frontend when a call session starts.
+    For Twilio WebRTC, the actual audio is handled by the browser SDK.
+    This endpoint just records the call start in the database.
+    """
+    lead = await leads_col.find_one({"_id": ObjectId(payload.lead_id)})
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+        
+    doc = {
+        "lead_id": payload.lead_id,
+        "agent_id": _uid(user),
+        "direction": payload.direction,
+        "status": "in_progress",
+        "started_at": utcnow()
+    }
+    result = await calls_col.insert_one(doc)
+    doc["_id"] = result.inserted_id
+            
+    await leads_col.update_one({"_id": ObjectId(payload.lead_id)}, {"$set": {"status": "in_progress"}})
+    await ws_manager.broadcast(lead["pool_id"], {
+        "type": "lead_status_changed",
+        "lead_id": payload.lead_id,
+        "status": "in_progress"
+    })
+    
+    return {"status": "success", "id": str(doc["_id"])}
 
 
 def _uid(user: dict) -> str:
     return user.get("id") or str(user["_id"])
-
-
-@router.post("/start", dependencies=[Depends(require_roles(Role.AGENT))])
-async def start_call(payload: CallStart, user: dict = Depends(get_current_user)):
-    lead = await leads_col.find_one({"_id": ObjectId(payload.lead_id)})
-    if not lead:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
-    doc = {
-        "lead_id": payload.lead_id,
-        "agent_id": _uid(user),
-        "pool_id": lead["pool_id"],
-        "direction": payload.direction,
-        "status": "live",
-        "started_at": utcnow(),
-    }
-    result = await calls_col.insert_one(doc)
-    doc["_id"] = result.inserted_id
-    await leads_col.update_one({"_id": ObjectId(payload.lead_id)}, {"$set": {"status": "in_progress"}})
-    await ws_manager.broadcast(lead["pool_id"], {
-        "event": "call_started", "call_id": str(doc["_id"]), "lead_name": lead["name"], "agent_id": _uid(user),
-    })
-    return oid_str(doc)
 
 
 @router.post("/end", dependencies=[Depends(require_roles(Role.AGENT))])
@@ -62,7 +141,8 @@ async def end_call(payload: CallEnd):
         "ended_at": utcnow(),
     }
     await calls_col.update_one({"_id": ObjectId(payload.call_id)}, {"$set": update})
-    await ws_manager.broadcast(call["pool_id"], {"event": "call_ended", "call_id": payload.call_id})
+    if call.get("pool_id"):
+        await ws_manager.broadcast(call["pool_id"], {"event": "call_ended", "call_id": payload.call_id})
     return {"status": "completed"}
 
 
@@ -799,3 +879,16 @@ async def manual_call_conference(call_id: str, payload: ManualConferencePayload,
     return {"status": "success", "conference_established_with": invitee["name"]}
 
 
+@router.post("/test-inbound", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+async def test_inbound(user: dict = Depends(get_current_user)):
+    """Simulates an inbound call directly to the user's browser via Twilio API (100% Free)"""
+    from twilio.rest import Client
+    client = Client(settings.TWILIO_API_KEY, settings.TWILIO_API_SECRET, settings.TWILIO_ACCOUNT_SID)
+    
+    agent_id = _uid(user)
+    call = client.calls.create(
+        to=f"client:{agent_id}",
+        from_="+12345678900",
+        twiml="<Response><Say>Hello! This is a completely free simulated incoming call from the Twilio API! Your browser WebRTC setup is working perfectly.</Say></Response>"
+    )
+    return {"message": "Ringing your browser now!", "sid": call.sid}
