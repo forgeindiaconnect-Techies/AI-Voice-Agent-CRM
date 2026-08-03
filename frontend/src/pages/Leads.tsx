@@ -53,9 +53,11 @@ import {
 } from "lucide-react";
 
 type Lead = {
+  _id?: string;
   id: string;
-  lead_id: string;
+  lead_id?: string;
   name: string;
+  customer_name?: string;
   phone: string;
   email?: string;
   location?: string;
@@ -459,11 +461,16 @@ export default function Leads() {
   const filteredLeads = useMemo(() => {
     return leads.filter(l => {
       const term = searchQuery.toLowerCase();
+      const nameStr = (l.name || l.customer_name || "").toLowerCase();
+      const phoneStr = (l.phone || "").toLowerCase();
+      const leadIdStr = (l.lead_id || l.id || l._id || "").toLowerCase();
+      const emailStr = (l.email || "").toLowerCase();
+
       const matchesSearch =
-        l.name.toLowerCase().includes(term) ||
-        l.phone.toLowerCase().includes(term) ||
-        l.lead_id.toLowerCase().includes(term) ||
-        (l.email && l.email.toLowerCase().includes(term));
+        nameStr.includes(term) ||
+        phoneStr.includes(term) ||
+        leadIdStr.includes(term) ||
+        emailStr.includes(term);
 
       let matchesQuickChip = true;
       if (quickChipFilter !== "all") {
