@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
+import { Device } from "@twilio/voice-sdk";
 import {
   Phone,
   PhoneCall,
@@ -23,9 +24,39 @@ export default function Dialer() {
   const [seconds, setSeconds] = useState(0);
   const [notes, setNotes] = useState("");
   const [outcome, setOutcome] = useState("answered");
+  const [deviceReady, setDeviceReady] = useState(false);
+  const deviceRef = useRef<Device | null>(null);
+  const callRef = useRef<any>(null);
 
   useEffect(() => {
     api.get("/api/leads?status_filter=new").then(setLeads).catch(() => {});
+    
+    // Initialize Twilio Device
+    const setupDevice = async () => {
+      try {
+        const { token } = await api.get("/api/calls/token");
+        const device = new Device(token, {
+          codecPreferences: ["opus", "pcmu"],
+          fakeLocalDTMF: true,
+          enableRingingState: true,
+        });
+
+        device.on("registered", () => setDeviceReady(true));
+        device.on("error", (error) => showToast(`Twilio Error: ${error.message}`, "error"));
+        
+        await device.register();
+        deviceRef.current = device;
+      } catch (err: any) {
+        showToast("Failed to initialize softphone. Check microphone permissions.", "error");
+      }
+    };
+    setupDevice();
+
+    return () => {
+      if (deviceRef.current) {
+        deviceRef.current.destroy();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -35,19 +66,43 @@ export default function Dialer() {
   }, [callId]);
 
   async function startCall(lead: Lead) {
+    if (!deviceRef.current || !deviceReady) {
+      showToast("Softphone is not ready yet.", "error");
+      return;
+    }
+
     try {
+      showToast(`Connecting to ${lead.name} via browser softphone...`, "info");
+      
+      // Start Twilio WebRTC Call
+      const twilioCall = await deviceRef.current.connect({
+        params: { To: lead.phone }
+      });
+      
+      callRef.current = twilioCall;
+
+      twilioCall.on("accept", () => showToast("Call connected!", "success"));
+      twilioCall.on("disconnect", () => endCall());
+
+      // Register call in CRM backend
       const call = await api.post("/api/calls/start", { lead_id: lead.id, direction: "outbound" });
       setActiveLead(lead);
       setCallId(call.id);
       setSeconds(0);
-      showToast(`Initiating call to ${lead.name}...`, "success");
+      
     } catch (err: any) {
       showToast(err.message || "Failed to start call", "error");
     }
   }
 
   async function endCall() {
+    if (callRef.current) {
+      callRef.current.disconnect();
+      callRef.current = null;
+    }
+
     if (!callId) return;
+    
     try {
       await api.post("/api/calls/end", { call_id: callId, outcome, duration_seconds: seconds, notes });
       showToast(`Call outcome set: ${outcome.replace("_", " ").toUpperCase()}`, "success");
@@ -71,7 +126,7 @@ export default function Dialer() {
               <PhoneCall className="h-6 w-6 text-forgeBlue animate-pulse" />
               <span>Outbound Dialer Workspace</span>
             </h1>
-            <p className="text-sm text-gray-500 font-medium">Handle new campaign leads, record outcomes, and submit shift call logs</p>
+            <p className="text-sm text-gray-500 font-medium">Browser Softphone Status: {deviceReady ? <span className="text-emerald-600 font-bold">READY</span> : <span className="text-amber-500 font-bold">CONNECTING...</span>}</p>
           </div>
           <span className="bg-blue-50 text-forgeBlue text-xs font-bold border border-blue-200 px-3 py-1.5 rounded-full flex items-center gap-1.5">
             <ListOrdered className="h-4 w-4" />
@@ -97,11 +152,11 @@ export default function Dialer() {
                 </div>
                 <button
                   onClick={() => startCall(l)}
-                  disabled={!!callId}
+                  disabled={!!callId || !deviceReady}
                   className="bg-forgeBlue text-white text-xs px-3.5 py-2 rounded-xl font-bold hover:bg-blue-800 transition disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                 >
                   <Phone className="h-3.5 w-3.5" />
-                  <span>Call</span>
+                  <span>Call via Browser</span>
                 </button>
               </div>
             ))}
