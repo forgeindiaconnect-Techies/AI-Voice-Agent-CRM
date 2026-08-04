@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Phone, AlertCircle, CheckCircle2 } from "lucide-react";
 
 interface PhoneInputProps {
@@ -41,34 +41,49 @@ export function PhoneInput({
   className = ""
 }: PhoneInputProps) {
   const countryCode = "+91";
+  
+  // Extract initial 10-digit mobile number from value prop
   const [mobileNumber, setMobileNumber] = useState(() => sanitizeIndianPhone(value));
   const [touched, setTouched] = useState(false);
+  const lastValuePropRef = useRef(value);
 
+  // Synchronize from parent value prop ONLY if parent passed an externally changed value
   useEffect(() => {
-    const extracted = sanitizeIndianPhone(value);
-    setMobileNumber(extracted);
-  }, [value]);
+    const currentFull = mobileNumber ? `${countryCode}${mobileNumber}` : "";
+    if (value !== lastValuePropRef.current && value !== currentFull) {
+      const extracted = sanitizeIndianPhone(value);
+      setMobileNumber(extracted);
+      lastValuePropRef.current = value;
+    }
+  }, [value, mobileNumber]);
 
-  const updatePhone = (newRawNumber: string) => {
-    const cleaned = sanitizeIndianPhone(newRawNumber);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawVal = e.target.value;
+    // Allow only numeric digits and max 10 chars
+    const cleaned = rawVal.replace(/\D/g, "").slice(0, 10);
+
     setMobileNumber(cleaned);
 
     const isValid = isValidIndianMobile(cleaned);
     const fullValue = cleaned ? `${countryCode}${cleaned}` : "";
+    lastValuePropRef.current = fullValue;
     onChange(fullValue, cleaned, isValid);
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updatePhone(e.target.value);
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData("text");
-    updatePhone(pastedText);
+    const cleaned = sanitizeIndianPhone(pastedText);
+
+    setMobileNumber(cleaned);
+
+    const isValid = isValidIndianMobile(cleaned);
+    const fullValue = cleaned ? `${countryCode}${cleaned}` : "";
+    lastValuePropRef.current = fullValue;
+    onChange(fullValue, cleaned, isValid);
   };
 
-  // Validation state calculation
+  // Validation logic
   const isValid = isValidIndianMobile(mobileNumber);
   let validationMessage = "";
 
@@ -108,7 +123,7 @@ export function PhoneInput({
           pattern="[0-9]*"
           maxLength={10}
           value={mobileNumber}
-          onChange={handleChange}
+          onChange={handleInputChange}
           onPaste={handlePaste}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
