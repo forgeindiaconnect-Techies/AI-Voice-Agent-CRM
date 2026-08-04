@@ -142,11 +142,7 @@ export function PhoneInput({
         <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
           <span>Valid 10-digit Indian mobile number (+91 {digits})</span>
         </p>
-      ) : (
-        <p className="text-[11px] text-slate-400 font-normal">
-          Fixed prefix +91 · 10-digit numeric mobile number starting with 6-9
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }
