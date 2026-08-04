@@ -47,20 +47,11 @@ const getWsUrl = (roomPath: string = ""): string => {
   const token = getToken();
   const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
   const cleanPath = roomPath ? (roomPath.startsWith("/") ? roomPath : `/${roomPath}`) : "";
-
   if (typeof window !== "undefined") {
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    if (currentBaseUrl === "") {
-      return `${wsProtocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
-    }
-    const hostname = window.location.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return `${wsProtocol}//127.0.0.1:8000/ws${cleanPath}${tokenQuery}`;
-    }
-    return `${wsProtocol}//${hostname}:8000/ws${cleanPath}${tokenQuery}`;
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return `${protocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
   }
-
-  return `ws://127.0.0.1:8000/ws${cleanPath}${tokenQuery}`;
+  return `ws://localhost:8000/ws${cleanPath}${tokenQuery}`;
 };
 
 const WS_URL = getWsUrl();

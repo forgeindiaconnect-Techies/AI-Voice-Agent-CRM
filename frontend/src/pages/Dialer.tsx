@@ -50,11 +50,8 @@ type ActiveCall = {
 
 // Lead interface matching backend
 type Lead = {
-  _id?: string;
-  id?: string;
-  lead_id?: string;
-  name?: string;
-  customer_name?: string;
+  _id: string;
+  name: string;
   phone: string;
   source: string;
   campaign_id?: string;
@@ -137,31 +134,24 @@ export default function Dialer() {
     }
 
     return () => {
-      if (ws) {
-        if (ws.readyState === WebSocket.CONNECTING) {
-          ws.onopen = () => ws?.close();
-        } else {
-          ws.close();
-        }
-      }
+      if (ws) ws.close();
     };
   }, []);
 
   useEffect(() => {
-    // Initialize Twilio Device if token endpoint is available
+    // Initialize Twilio Device
     const setupDevice = async () => {
       try {
-        const res = await api.get("/api/calls/token");
-        if (res && res.token) {
-          const device = new Device(res.token);
-          device.on("registered", () => setDeviceReady(true));
-          device.on("error", (error) => console.warn("Twilio Softphone Error:", error));
-          await device.register();
-          deviceRef.current = device;
-        }
+        const { token } = await api.get("/api/calls/token");
+        const device = new Device(token);
+
+        device.on("registered", () => setDeviceReady(true));
+        device.on("error", (error) => showToast(`Twilio Error: ${error.message}`, "error"));
+        
+        await device.register();
+        deviceRef.current = device;
       } catch (err: any) {
-        // WebRTC token optional; fallback to manual dialer endpoint
-        console.log("WebRTC Softphone token not configured, using direct CRM dialer.");
+        showToast("Failed to initialize softphone. Check microphone permissions.", "error");
       }
     };
     setupDevice();
@@ -204,54 +194,37 @@ export default function Dialer() {
 
   const handleDial = async () => {
     if (!outboundPhone) return;
+    if (!deviceRef.current || !deviceReady) {
+      showToast("Softphone is not ready yet.", "error");
+      return;
+    }
 
     setCallStatus("ringing");
     setCallDuration(0);
-
     try {
-      // 1. Try WebRTC connection if device is registered
-      if (deviceRef.current && deviceReady) {
-        try {
-          try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-          } catch (micErr) {
-            showToast("Microphone permission denied! Please allow microphone access to make calls.", "error");
-            setCallStatus("ended");
-            return;
-          }
-
-          const twilioCall = await deviceRef.current.connect({
-            params: { To: outboundPhone }
-          });
-          callRef.current = twilioCall;
-          twilioCall.on("accept", () => {
-            setCallStatus("connected");
-            showToast("Call connected via WebRTC", "success");
-          });
-          twilioCall.on("disconnect", () => setCallStatus("ended"));
-        } catch (e) {
-          console.warn("WebRTC connect error, using CRM manual dial:", e);
-        }
-      }
-
-      // 2. Call CRM Backend Manual Dial API
-      const res = await api.post("/api/calls/manual-dial", {
-        phone: outboundPhone,
-        pool_id: user?.pool_id || "general",
-        language: "english",
-        agent_assign_mode: "manual",
-        assigned_agent_id: user?.id,
-        priority: "high",
-        notes: ""
+      // 1. Connect via Twilio WebRTC
+      const twilioCall = await deviceRef.current.connect({
+        params: { To: outboundPhone }
       });
+      callRef.current = twilioCall;
 
-      setCurrentCallId(res.id || res._id || res.call_id || "call_" + Date.now());
+      // 2. Register call in CRM backend (this shouldn't dial out, just register the session)
+      const res = await api.post("/api/calls/start", {
+        lead_id: leads.find(l => l.phone === outboundPhone)?._id || "",
+        direction: "outbound"
+      });
+      setCurrentCallId(res.id || res._id || res);
       
-      // Simulate ring time then connect
-      setTimeout(() => {
+      twilioCall.on("accept", () => {
         setCallStatus("connected");
         showToast("Call connected!", "success");
-      }, 2000);
+      });
+      
+      twilioCall.on("disconnect", () => {
+        setCallStatus("ended");
+        handleHangup();
+      });
+
     } catch (err: any) {
       setCallStatus("idle");
       showToast(err.message || "Dialing failed", "error");
@@ -563,15 +536,15 @@ export default function Dialer() {
                           <p className="text-xs">Adjust your filters or wait for new assignments.</p>
                         </div>
                       ) : (
-                        filteredLeads.map((lead, idx) => (
+                        filteredLeads.map(lead => (
                           <div 
-                            key={lead._id || lead.id || lead.lead_id || `lead-${idx}`}
+                            key={lead._id}
                             className={`bg-white rounded-2xl border ${outboundPhone === lead.phone ? 'border-[#0F4FA8] ring-2 ring-[#0F4FA8]/10' : 'border-slate-200'} p-4 shadow-sm hover:shadow-md transition group`}
                           >
                             <div className="flex justify-between items-start mb-3">
                               <div>
                                 <h3 className="font-black text-slate-800 flex items-center gap-2">
-                                  {lead.name || (lead as any).customer_name || "Unknown Customer"}
+                                  {lead.name}
                                   {lead.priority === "high" && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
                                 </h3>
                                 <p className="text-sm font-bold text-[#0F4FA8]">{lead.phone}</p>
