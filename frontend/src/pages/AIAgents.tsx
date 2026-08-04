@@ -123,13 +123,7 @@ export default function AIAgents() {
     }
 
     return () => {
-      if (socket) {
-        if (socket.readyState === WebSocket.CONNECTING) {
-          socket.onopen = () => socket?.close();
-        } else {
-          socket.close();
-        }
-      }
+      if (socket) socket.close();
     };
   }, [fetchAgents]);
 
