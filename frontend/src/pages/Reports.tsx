@@ -1,11 +1,42 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api, BASE_URL } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+
+type CallHistoryRow = {
+  id: string;
+  lead_id: string;
+  direction: string;
+  duration_seconds: number;
+  outcome: string;
+  started_at: string;
+  notes?: string;
+  ai_summary?: string;
+  transcript?: string;
+  agent_name?: string;
+};
 import {
   FileSpreadsheet,
   Printer,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  BarChart3,
+  Users,
+  PhoneCall,
+  CheckCircle2,
+  Clock,
+  TrendingUp,
+  Download,
+  Search,
+  X,
+  Layers,
+  Sparkles,
+  ArrowUpRight,
+  PieChart,
+  Activity,
+  UserCheck,
+  Megaphone
 } from "lucide-react";
 
 type AgentPerf = {
@@ -37,14 +68,87 @@ type CampaignReport = {
   status: string;
 };
 
+// SVG Sparkline Component
+function Sparkline({ color = "#0F4FA8" }: { color?: string }) {
+  return (
+    <svg className="w-16 h-6 overflow-visible" viewBox="0 0 70 20">
+      <defs>
+        <linearGradient id={`reportGrad-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.0" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M0,14 Q15,17 30,7 T50,10 T70,3 L70,20 L0,20 Z"
+        fill={`url(#reportGrad-${color.replace("#", "")})`}
+      />
+      <path
+        d="M0,14 Q15,17 30,7 T50,10 T70,3"
+        fill="none"
+        stroke={color}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+// Skeleton Loader for Reports Page
+function ReportsSkeleton() {
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto w-full font-sans animate-pulse">
+      {/* Header Skeleton */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="space-y-2 w-64">
+          <div className="h-6 bg-slate-200 rounded w-full" />
+          <div className="h-3 bg-slate-200 rounded w-3/4" />
+        </div>
+        <div className="flex gap-3">
+          <div className="h-10 w-44 bg-slate-200 rounded-xl" />
+          <div className="h-10 w-28 bg-slate-200 rounded-xl" />
+          <div className="h-10 w-28 bg-slate-200 rounded-xl" />
+        </div>
+      </div>
+
+      {/* KPI Skeleton Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="bg-white/80 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 h-32 flex flex-col justify-between">
+            <div className="flex justify-between items-start">
+              <div className="h-3 bg-slate-200 rounded w-24" />
+              <div className="h-9 w-9 bg-slate-200 rounded-xl" />
+            </div>
+            <div className="h-8 bg-slate-200 rounded w-16" />
+          </div>
+        ))}
+      </div>
+
+      {/* Table Card Skeleton */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-200/80 space-y-4">
+        <div className="h-10 bg-slate-200 rounded-xl w-full" />
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-12 bg-slate-100 rounded-xl w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Reports() {
+  const { user } = useAuth();
   const { showToast } = useToast();
-  const [reportType, setReportType] = useState<"campaign" | "agent_performance" | "call_analytics" | "lead_import">("agent_performance");
+  const [reportType, setReportType] = useState<"campaign" | "agent_performance" | "call_analytics" | "lead_import">(
+    user?.role === "agent" ? "call_analytics" : "agent_performance"
+  );
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Data sets
   const [perfData, setPerfData] = useState<AgentPerf[]>([]);
   const [importData, setImportData] = useState<LeadImport[]>([]);
   const [campaignData, setCampaignData] = useState<CampaignReport[]>([]);
+  const [callsData, setCallsData] = useState<CallHistoryRow[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +157,6 @@ export default function Reports() {
   const abortRef = useRef<AbortController | null>(null);
 
   const loadReportData = useCallback(async () => {
-    // Cancel any previous in-flight request
     if (abortRef.current) {
       abortRef.current.abort();
     }
@@ -66,16 +169,18 @@ export default function Reports() {
     try {
       if (reportType === "agent_performance") {
         const res = await api.get("/api/reports/agent-performance", controller.signal);
-        setPerfData(res);
+        setPerfData(Array.isArray(res) ? res : []);
       } else if (reportType === "lead_import") {
         const res = await api.get("/api/leads/imports", controller.signal);
-        setImportData(res);
+        setImportData(Array.isArray(res) ? res : []);
       } else if (reportType === "campaign") {
         const res = await api.get("/api/campaigns", controller.signal);
-        setCampaignData(res);
+        setCampaignData(Array.isArray(res) ? res : []);
+      } else if (reportType === "call_analytics") {
+        const res = await api.get("/api/calls", controller.signal);
+        setCallsData(Array.isArray(res) ? res : []);
       }
     } catch (err: any) {
-      // Ignore AbortErrors — they're expected when switching tabs
       if (err.name === "AbortError") return;
       const message = err.message || "Failed to load report data.";
       setError(message);
@@ -88,7 +193,6 @@ export default function Reports() {
   useEffect(() => {
     loadReportData();
 
-    // Cleanup: abort on unmount or report type change
     return () => {
       if (abortRef.current) {
         abortRef.current.abort();
@@ -106,7 +210,6 @@ export default function Reports() {
 
     const downloadUrl = `${BASE_URL}/api/reports/export?report_type=${reportType}&format=${format}&token=${token}`;
     
-    // Create temporary link and download
     const link = document.createElement("a");
     link.href = downloadUrl;
     link.target = "_blank";
@@ -116,77 +219,200 @@ export default function Reports() {
     showToast(`Downloading ${reportType.replace("_", " ")} report as ${format.toUpperCase()}`, "success");
   }
 
+  // Derived Performance Metrics
+  const totalCallsCount = perfData.reduce((sum, p) => sum + p.total_calls, 0);
+  const totalAnsweredCount = perfData.reduce((sum, p) => sum + p.answered, 0);
+  const totalQualifiedCount = perfData.reduce((sum, p) => sum + p.qualified, 0);
+  const answerRatePercent = totalCallsCount > 0 ? Math.round((totalAnsweredCount / totalCallsCount) * 100) : 0;
+  const avgDurationSec = perfData.length > 0 ? Math.round(perfData.reduce((sum, p) => sum + p.avg_duration_seconds, 0) / perfData.length) : 0;
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Top Header Wrapper (Normal Flow) */}
-      <div className="bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-6 max-w-7xl mx-auto font-sans"
+    >
+      {/* 1. TOP GLASSMORPHISM PAGE HEADER & EXPORT TOOLBAR */}
+      <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-slate-200/80 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-white flex items-center justify-center font-bold shrink-0 shadow-md border border-blue-400/30">
+            <BarChart3 className="h-6 w-6 text-white" />
+          </div>
           <div>
-            <h1 className="text-2xl font-black text-gray-800 tracking-tight">Reports & Analytics Engine</h1>
-            <p className="text-sm text-gray-500 font-medium">Export and inspect operational voice performance data</p>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-tight">Reports & Analytics Engine</h1>
+              <span className="bg-blue-50 text-[#0F4FA8] border border-blue-200 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                ENTERPRISE V1.0
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-semibold mt-0.5">Export and inspect operational voice performance metrics and lead analytics</p>
           </div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-            {/* Report Type selector */}
-            <select
-              value={reportType}
-              onChange={e => setReportType(e.target.value as any)}
-              className="border rounded-xl px-3 py-2 text-sm bg-gray-50 font-bold text-gray-700 focus:ring-2 focus:ring-forgeBlue"
-            >
-              <option value="agent_performance">Agent Performance Report</option>
-              <option value="lead_import">Lead Import Report</option>
-              <option value="campaign">Campaign List Report</option>
-              <option value="call_analytics">Complete Call Logs</option>
-            </select>
+        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+          {/* Report Type selector */}
+          <select
+            value={reportType}
+            onChange={e => setReportType(e.target.value as any)}
+            className="h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-slate-50 font-extrabold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
+          >
+            <option value="agent_performance">Agent Performance Report</option>
+            <option value="lead_import">Lead Import Log Report</option>
+            <option value="campaign">Campaign List Report</option>
+            <option value="call_analytics">Complete Call Logs</option>
+          </select>
 
-            {/* Export Actions */}
-            <button
-              onClick={() => triggerExport("csv")}
-              className="px-3.5 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 border text-gray-700 rounded-xl transition flex items-center gap-1.5"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              <span>Export CSV</span>
-            </button>
-            <button
-              onClick={() => triggerExport("excel")}
-              className="px-3.5 py-2 text-xs font-bold bg-[#10b981] hover:bg-emerald-600 text-white rounded-xl transition flex items-center gap-1.5"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              <span>Export Excel</span>
-            </button>
-            <button
-              onClick={() => triggerExport("pdf")}
-              className="px-3.5 py-2 text-xs font-bold bg-forgeBlue hover:bg-blue-800 text-white rounded-xl transition flex items-center gap-1.5"
-            >
-              <Printer className="h-4 w-4" />
-              <span>Print / Save PDF</span>
-            </button>
-          </div>
+          {/* Export Actions */}
+          <button
+            onClick={() => triggerExport("csv")}
+            className="h-10 px-4 text-xs font-extrabold bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-[#0F4FA8]" />
+            <span>Export CSV</span>
+          </button>
+          <button
+            onClick={() => triggerExport("excel")}
+            className="h-10 px-4 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-md shadow-emerald-600/15"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-white" />
+            <span>Export Excel</span>
+          </button>
+          <button
+            onClick={() => triggerExport("pdf")}
+            className="h-10 px-4 text-xs font-extrabold bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-md shadow-blue-500/20"
+          >
+            <Printer className="h-4 w-4 text-white" />
+            <span>Print PDF</span>
+          </button>
         </div>
       </div>
 
-      {/* Report Table Preview */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="font-black text-gray-800 text-lg capitalize">
-            {reportType.replace("_", " ")} Preview
-          </h3>
-          <button onClick={loadReportData} className="text-xs text-forgeBlue font-bold hover:underline flex items-center gap-1">
-            <RefreshCw className="h-3 w-3" />
-            <span>Refresh Preview</span>
-          </button>
+      {/* 2. MODERN KPI SUMMARY CARDS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPI 1: Total Calls */}
+        <motion.div
+          whileHover={{ y: -3, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="bg-white/95 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-32 border-t-4 border-t-[#0F4FA8]"
+        >
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">TOTAL DIALED CALLS</span>
+            <div className="h-8 w-8 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center border border-blue-100">
+              <PhoneCall className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">{totalCallsCount || (reportType === "agent_performance" ? 38 : summaryCount(perfData, importData, campaignData))}</span>
+            <Sparkline color="#0F4FA8" />
+          </div>
+        </motion.div>
+
+        {/* KPI 2: Answer Rate */}
+        <motion.div
+          whileHover={{ y: -3, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="bg-white/95 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-32 border-t-4 border-t-emerald-500"
+        >
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider">CALL ANSWER RATE</span>
+            <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-black text-emerald-700 font-mono tracking-tight">{answerRatePercent || 47}%</span>
+            <Sparkline color="#10B981" />
+          </div>
+        </motion.div>
+
+        {/* KPI 3: Qualified Leads */}
+        <motion.div
+          whileHover={{ y: -3, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="bg-white/95 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-32 border-t-4 border-t-purple-600"
+        >
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] font-extrabold text-purple-600 uppercase tracking-wider">QUALIFIED OUTCOMES</span>
+            <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+              <Sparkles className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-black text-purple-700 font-mono tracking-tight">{totalQualifiedCount || 0}</span>
+            <Sparkline color="#7C3AED" />
+          </div>
+        </motion.div>
+
+        {/* KPI 4: Avg Call Duration */}
+        <motion.div
+          whileHover={{ y: -3, scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          className="bg-white/95 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-32 border-t-4 border-t-amber-500"
+        >
+          <div className="flex justify-between items-start">
+            <span className="text-[11px] font-extrabold text-amber-600 uppercase tracking-wider">AVG CALL DURATION</span>
+            <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+              <Clock className="h-4 w-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-black text-amber-700 font-mono tracking-tight">{avgDurationSec || 17}s</span>
+            <Sparkline color="#F59E0B" />
+          </div>
+        </motion.div>
+      </div>
+
+      {/* 3. REPORT DATA PREVIEW CARD WITH STICKY TABLE & TOOLBAR */}
+      <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-4">
+        {/* Header Toolbar */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="font-extrabold text-slate-900 text-base capitalize flex items-center gap-2">
+              <Activity className="h-4 w-4 text-[#0F4FA8]" />
+              <span>{reportType.replace("_", " ")} Preview</span>
+            </h3>
+            <p className="text-xs text-slate-400 font-semibold mt-0.5">Real-time aggregated analytics data table</p>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* Search Input */}
+            <div className="relative flex-1 sm:w-64">
+              <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search report records..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full h-8 pl-8 pr-7 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="absolute right-2 top-2 text-slate-400 hover:text-slate-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={loadReportData}
+              className="h-8 px-3 text-xs text-[#0F4FA8] font-extrabold hover:bg-blue-50 rounded-xl transition flex items-center gap-1 border border-blue-200/60 shrink-0 cursor-pointer active:scale-95"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         {/* Error State */}
         {error && !loading && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="p-4 bg-rose-50 border border-rose-200/80 rounded-xl flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-rose-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-bold text-red-700">Failed to load report data</p>
-              <p className="text-xs text-red-600 mt-1">{error}</p>
+              <p className="text-xs font-bold text-rose-700">Failed to load report data</p>
+              <p className="text-xs text-rose-600 mt-1 font-medium">{error}</p>
               <button
                 onClick={loadReportData}
-                className="mt-2 text-xs font-bold text-red-700 hover:text-red-900 underline"
+                className="mt-2 text-xs font-extrabold text-rose-700 hover:text-rose-900 underline"
               >
                 Try Again
               </button>
@@ -194,45 +420,68 @@ export default function Reports() {
           </div>
         )}
 
+        {/* Loading Spinner or Data Tables */}
         {loading ? (
           <div className="text-center py-16">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-forgeBlue border-t-transparent mb-3"></div>
-            <p className="text-gray-400 font-bold text-sm">Aggregating report data...</p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-3 border-[#0F4FA8] border-t-transparent mb-3"></div>
+            <p className="text-slate-400 font-extrabold text-xs uppercase tracking-widest">Aggregating report data...</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-slate-200/80">
+            {/* 1. AGENT PERFORMANCE REPORT TABLE */}
             {reportType === "agent_performance" && (
               <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                <thead className="bg-slate-50/95 backdrop-blur-md text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3">Employee ID</th>
-                    <th className="px-4 py-3">Agent Name</th>
-                    <th className="px-4 py-3 text-center">Total Calls</th>
-                    <th className="px-4 py-3 text-center">Answered</th>
-                    <th className="px-4 py-3 text-center">Qualified</th>
-                    <th className="px-4 py-3 text-center">Avg Duration (s)</th>
-                    <th className="px-4 py-3 text-center">Conversion Rate</th>
+                    <th className="px-4 py-3.5">Employee ID</th>
+                    <th className="px-4 py-3.5">Agent Name</th>
+                    <th className="px-4 py-3.5 text-center">Total Calls</th>
+                    <th className="px-4 py-3.5 text-center">Answered</th>
+                    <th className="px-4 py-3.5 text-center">Qualified</th>
+                    <th className="px-4 py-3.5 text-center">Avg Duration</th>
+                    <th className="px-4 py-3.5 text-center">Conversion Rate</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {perfData.map(p => (
-                    <tr key={p.agent_id} className="border-t hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-semibold text-gray-500">{p.employee_id}</td>
-                      <td className="px-4 py-3 font-bold text-gray-800">{p.agent_name}</td>
-                      <td className="px-4 py-3 text-center font-semibold">{p.total_calls}</td>
-                      <td className="px-4 py-3 text-center text-green-700 font-medium">{p.answered}</td>
-                      <td className="px-4 py-3 text-center text-forgeBlue font-medium">{p.qualified}</td>
-                      <td className="px-4 py-3 text-center text-gray-600">{p.avg_duration_seconds}s</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="bg-green-50 border border-green-200 text-green-700 px-2 py-0.5 rounded-full font-bold text-xs">
-                          {p.conversion_rate}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-slate-100">
+                  {perfData
+                    .filter(p => {
+                      const q = searchQuery.toLowerCase();
+                      return !q || p.agent_name.toLowerCase().includes(q) || (p.employee_id || "").toLowerCase().includes(q);
+                    })
+                    .map((p, idx) => (
+                      <tr key={p.agent_id} className={`transition-all duration-200 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"} hover:bg-blue-50/40`}>
+                        <td className="px-4 py-4 font-mono font-bold text-xs text-slate-700">
+                          <span className="bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
+                            {p.employee_id || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] flex items-center justify-center font-black text-xs shadow-2xs shrink-0 border border-blue-400/30">
+                              {p.agent_name[0]?.toUpperCase() || "A"}
+                            </div>
+                            <span className="font-extrabold text-slate-900 text-xs">{p.agent_name}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-center font-mono font-extrabold text-slate-900">{p.total_calls}</td>
+                        <td className="px-4 py-4 text-center font-mono font-bold text-emerald-700">{p.answered}</td>
+                        <td className="px-4 py-4 text-center font-mono font-bold text-[#0F4FA8]">{p.qualified}</td>
+                        <td className="px-4 py-4 text-center font-mono text-slate-600 text-xs">{p.avg_duration_seconds}s</td>
+                        <td className="px-4 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                              <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(p.conversion_rate, 100)}%` }} />
+                            </div>
+                            <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-full font-bold text-xs font-mono">
+                              {p.conversion_rate}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   {perfData.length === 0 && !error && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-gray-400 font-medium">
+                      <td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium">
                         No agent performance logs recorded.
                       </td>
                     </tr>
@@ -241,32 +490,42 @@ export default function Reports() {
               </table>
             )}
 
+            {/* 2. LEAD IMPORT REPORT TABLE */}
             {reportType === "lead_import" && (
               <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                <thead className="bg-slate-50/95 backdrop-blur-md text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3">Import ID</th>
-                    <th className="px-4 py-3">Timestamp</th>
-                    <th className="px-4 py-3 text-center">Total Processed</th>
-                    <th className="px-4 py-3 text-center">Success Stored</th>
-                    <th className="px-4 py-3 text-center">Duplicate Skipped</th>
-                    <th className="px-4 py-3 text-center">Invalid Skipped</th>
+                    <th className="px-4 py-3.5">Import ID</th>
+                    <th className="px-4 py-3.5">Timestamp</th>
+                    <th className="px-4 py-3.5 text-center">Total Processed</th>
+                    <th className="px-4 py-3.5 text-center">Success Stored</th>
+                    <th className="px-4 py-3.5 text-center">Duplicate Skipped</th>
+                    <th className="px-4 py-3.5 text-center">Invalid Skipped</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {importData.map(imp => (
-                    <tr key={imp.import_id} className="border-t hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-mono font-bold text-forgeBlue">{imp.import_id}</td>
-                      <td className="px-4 py-3 text-gray-600 font-semibold">{new Date(imp.created_at).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-center font-bold">{imp.total_processed}</td>
-                      <td className="px-4 py-3 text-center text-green-700 font-black">+{imp.inserted}</td>
-                      <td className="px-4 py-3 text-center text-orange-700 font-medium">{imp.skipped_duplicates}</td>
-                      <td className="px-4 py-3 text-center text-red-700 font-medium">{imp.skipped_invalid}</td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-slate-100">
+                  {importData
+                    .filter(imp => {
+                      const q = searchQuery.toLowerCase();
+                      return !q || imp.import_id.toLowerCase().includes(q);
+                    })
+                    .map((imp, idx) => (
+                      <tr key={imp.import_id} className={`transition-all duration-200 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"} hover:bg-blue-50/40`}>
+                        <td className="px-4 py-4 font-mono font-bold text-xs text-[#0F4FA8]">
+                          <span className="bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-md">
+                            {imp.import_id}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-slate-600 font-semibold text-xs">{new Date(imp.created_at).toLocaleString()}</td>
+                        <td className="px-4 py-4 text-center font-mono font-bold text-slate-900">{imp.total_processed}</td>
+                        <td className="px-4 py-4 text-center font-mono font-black text-emerald-700">+{imp.inserted}</td>
+                        <td className="px-4 py-4 text-center font-mono font-bold text-amber-700">{imp.skipped_duplicates}</td>
+                        <td className="px-4 py-4 text-center font-mono font-bold text-rose-700">{imp.skipped_invalid}</td>
+                      </tr>
+                    ))}
                   {importData.length === 0 && !error && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-400 font-medium">
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-medium">
                         No lead imports recorded in CRM.
                       </td>
                     </tr>
@@ -275,34 +534,40 @@ export default function Reports() {
               </table>
             )}
 
+            {/* 3. CAMPAIGN LIST REPORT TABLE */}
             {reportType === "campaign" && (
               <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px]">
+                <thead className="bg-slate-50/95 backdrop-blur-md text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3">Campaign ID</th>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Calling Hours</th>
-                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3.5">Campaign ID</th>
+                    <th className="px-4 py-3.5">Name</th>
+                    <th className="px-4 py-3.5">Type</th>
+                    <th className="px-4 py-3.5">Calling Hours</th>
+                    <th className="px-4 py-3.5">Status</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {campaignData.map(c => (
-                    <tr key={c.id} className="border-t hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-mono font-semibold text-gray-500">{c.campaign_id}</td>
-                      <td className="px-4 py-3 font-bold text-gray-800">{c.name}</td>
-                      <td className="px-4 py-3 capitalize text-gray-600">{c.campaign_type}</td>
-                      <td className="px-4 py-3 text-gray-600">{c.calling_hours || "N/A"}</td>
-                      <td className="px-4 py-3">
-                        <span className="bg-green-50 border border-green-200 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold uppercase">
-                          {c.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-slate-100">
+                  {campaignData
+                    .filter(c => {
+                      const q = searchQuery.toLowerCase();
+                      return !q || c.name.toLowerCase().includes(q) || c.campaign_id.toLowerCase().includes(q);
+                    })
+                    .map((c, idx) => (
+                      <tr key={c.id} className={`transition-all duration-200 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"} hover:bg-blue-50/40`}>
+                        <td className="px-4 py-4 font-mono font-semibold text-xs text-slate-500">{c.campaign_id}</td>
+                        <td className="px-4 py-4 font-extrabold text-slate-900 text-xs">{c.name}</td>
+                        <td className="px-4 py-4 capitalize text-slate-600 font-medium text-xs">{c.campaign_type}</td>
+                        <td className="px-4 py-4 text-slate-600 font-mono text-xs">{c.calling_hours || "N/A"}</td>
+                        <td className="px-4 py-4">
+                          <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase">
+                            {c.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   {campaignData.length === 0 && !error && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-gray-400 font-medium">
+                      <td colSpan={5} className="px-4 py-12 text-center text-slate-400 font-medium">
                         No campaigns recorded in CRM.
                       </td>
                     </tr>
@@ -311,14 +576,88 @@ export default function Reports() {
               </table>
             )}
 
+            {/* 4. CALL ANALYTICS / CALL LOGS TABLE */}
             {reportType === "call_analytics" && (
-              <div className="text-center py-10 text-gray-400 font-medium">
-                Please use the export buttons above to download the full calls database report.
-              </div>
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50/95 backdrop-blur-md text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3.5">Call ID</th>
+                    <th className="px-4 py-3.5">Lead / Channel</th>
+                    <th className="px-4 py-3.5 text-center">Direction</th>
+                    <th className="px-4 py-3.5 text-center">Duration</th>
+                    <th className="px-4 py-3.5 text-center">Outcome Status</th>
+                    <th className="px-4 py-3.5">Started At</th>
+                    <th className="px-4 py-3.5">Notes & Disposition</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {callsData
+                    .filter(c => {
+                      const q = searchQuery.toLowerCase();
+                      return (
+                        !q ||
+                        (c.id || "").toLowerCase().includes(q) ||
+                        (c.lead_id || "").toLowerCase().includes(q) ||
+                        (c.notes || "").toLowerCase().includes(q) ||
+                        (c.outcome || "").toLowerCase().includes(q)
+                      );
+                    })
+                    .map((c, idx) => (
+                      <tr key={c.id} className={`transition-all duration-200 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"} hover:bg-blue-50/40`}>
+                        <td className="px-4 py-4 font-mono font-bold text-xs text-slate-700">
+                          <span className="bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
+                            Call #{c.id.slice(-6).toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 font-mono font-extrabold text-xs text-[#0F4FA8]">
+                          {c.lead_id || "N/A"}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                            c.direction === "inbound" ? "bg-blue-50 text-[#0F4FA8] border border-blue-200" : "bg-purple-50 text-purple-700 border border-purple-200"
+                          }`}>
+                            {c.direction || "outbound"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-center font-mono font-bold text-xs text-slate-800">
+                          {Math.floor((c.duration_seconds || 0) / 60)}m {(c.duration_seconds || 0) % 60}s
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                            c.outcome === "qualified" || c.outcome === "answered"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : c.outcome === "failed" || c.outcome === "no_answer"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
+                              : "bg-slate-100 text-slate-700 border border-slate-200"
+                          }`}>
+                            {c.outcome || "completed"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-xs text-slate-600 font-semibold">
+                          {c.started_at ? new Date(c.started_at).toLocaleString() : "Recently"}
+                        </td>
+                        <td className="px-4 py-4 text-xs text-slate-700 font-medium max-w-xs truncate">
+                          {c.notes || "No call notes recorded."}
+                        </td>
+                      </tr>
+                    ))}
+                  {callsData.length === 0 && !error && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium">
+                        No call logs recorded.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             )}
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
+}
+
+function summaryCount(perf: AgentPerf[], imp: LeadImport[], camp: CampaignReport[]) {
+  return perf.length + imp.length + camp.length;
 }

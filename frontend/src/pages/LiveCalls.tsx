@@ -82,8 +82,6 @@ export type LiveCall = {
   transcript?: { speaker: string; text: string; time: string }[];
 };
 
-
-
 // Circular Call Duration Timer
 function CircularTimer({ seconds }: { seconds: number }) {
   const mins = Math.floor(seconds / 60);
@@ -96,15 +94,15 @@ function CircularTimer({ seconds }: { seconds: number }) {
   const dashoffset = circumference - progress * circumference;
 
   return (
-    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-3 py-1 rounded-xl shadow-2xs">
-      <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
-        <svg className="w-6 h-6 -rotate-90 transform" viewBox="0 0 36 36">
+    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-xl shadow-2xs">
+      <div className="relative w-5 h-5 flex items-center justify-center shrink-0">
+        <svg className="w-5 h-5 -rotate-90 transform" viewBox="0 0 36 36">
           <circle cx="18" cy="18" r={radius} className="text-slate-200" strokeWidth="3" stroke="currentColor" fill="none" />
           <circle
             cx="18"
             cy="18"
             r={radius}
-            className="text-[#1E5EFF] transition-all duration-500 ease-linear"
+            className="text-[#0F4FA8] transition-all duration-500 ease-linear"
             strokeWidth="3"
             strokeDasharray={circumference}
             strokeDashoffset={dashoffset}
@@ -113,7 +111,7 @@ function CircularTimer({ seconds }: { seconds: number }) {
             fill="none"
           />
         </svg>
-        <Clock className="h-2.5 w-2.5 text-[#1E5EFF] absolute" />
+        <Clock className="h-2.5 w-2.5 text-[#0F4FA8] absolute" />
       </div>
       <span className="font-mono font-black text-slate-900 text-xs tracking-tight">
         {formattedMins}:{secs}
@@ -124,24 +122,24 @@ function CircularTimer({ seconds }: { seconds: number }) {
 
 // AI Sentiment Gauge Ring
 function SentimentGauge({ score }: { score: number }) {
-  const radius = 22;
+  const radius = 20;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
-  let strokeColor = "text-[#10B981]";
-  if (score < 60) strokeColor = "text-[#EF4444]";
-  else if (score < 80) strokeColor = "text-[#F59E0B]";
+  let strokeColor = "text-emerald-500";
+  if (score < 60) strokeColor = "text-rose-500";
+  else if (score < 80) strokeColor = "text-amber-500";
 
   return (
-    <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
-      <svg className="w-14 h-14 -rotate-90 transform" viewBox="0 0 52 52">
-        <circle cx="26" cy="26" r={radius} className="text-slate-100" strokeWidth="4" stroke="currentColor" fill="none" />
+    <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
+      <svg className="w-12 h-12 -rotate-90 transform" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r={radius} className="text-slate-100" strokeWidth="3.5" stroke="currentColor" fill="none" />
         <circle
-          cx="26"
-          cy="26"
+          cx="24"
+          cy="24"
           r={radius}
           className={`${strokeColor} transition-all duration-700 ease-out`}
-          strokeWidth="4"
+          strokeWidth="3.5"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
@@ -149,21 +147,77 @@ function SentimentGauge({ score }: { score: number }) {
           fill="none"
         />
       </svg>
-      <span className="absolute font-black text-xs text-slate-900 font-mono">{score}%</span>
+      <span className="absolute font-black text-[11px] text-slate-900 font-mono">{score}%</span>
     </div>
   );
 }
 
 // Sound Equalizer Waveform Animation
 function VoiceWaveform({ speaker = "customer" }: { speaker?: string }) {
-  const color = speaker === "agent" ? "bg-[#1E5EFF]" : speaker === "ai" ? "bg-[#0D9488]" : "bg-[#10B981]";
+  const color = speaker === "agent" ? "bg-[#0F4FA8]" : speaker === "ai" ? "bg-teal-600" : "bg-emerald-500";
   return (
-    <div className="flex items-center gap-0.5 h-5 px-2 py-1 bg-slate-100/90 border border-slate-200/80 rounded-lg">
-      <span className={`w-0.5 ${color} rounded-full h-2 animate-[equalizer_0.8s_ease-in-out_infinite]`} />
-      <span className={`w-0.5 ${color} rounded-full h-4 animate-[equalizer_1.1s_ease-in-out_infinite_0.2s]`} />
-      <span className={`w-0.5 ${color} rounded-full h-2.5 animate-[equalizer_0.9s_ease-in-out_infinite_0.4s]`} />
-      <span className={`w-0.5 ${color} rounded-full h-3.5 animate-[equalizer_1.3s_ease-in-out_infinite_0.1s]`} />
-      <span className={`w-0.5 ${color} rounded-full h-2 animate-[equalizer_1.0s_ease-in-out_infinite_0.3s]`} />
+    <div className="flex items-center gap-0.5 h-4 px-1.5 py-0.5 bg-slate-100/90 border border-slate-200/80 rounded-md">
+      <span className={`w-0.5 ${color} rounded-full h-1.5 animate-[equalizer_0.8s_ease-in-out_infinite]`} />
+      <span className={`w-0.5 ${color} rounded-full h-3.5 animate-[equalizer_1.1s_ease-in-out_infinite_0.2s]`} />
+      <span className={`w-0.5 ${color} rounded-full h-2 animate-[equalizer_0.9s_ease-in-out_infinite_0.4s]`} />
+      <span className={`w-0.5 ${color} rounded-full h-3 animate-[equalizer_1.3s_ease-in-out_infinite_0.1s]`} />
+      <span className={`w-0.5 ${color} rounded-full h-1.5 animate-[equalizer_1.0s_ease-in-out_infinite_0.3s]`} />
+    </div>
+  );
+}
+
+// Skeleton Loader Component
+function LiveCallsSkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white rounded-[18px] border border-slate-200/80 p-4 animate-pulse space-y-3">
+          <div className="grid grid-cols-12 gap-4 items-center">
+            <div className="col-span-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-slate-200" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-4 bg-slate-200 rounded w-3/4" />
+                  <div className="h-3 bg-slate-200 rounded w-1/2" />
+                </div>
+              </div>
+            </div>
+            <div className="col-span-5 space-y-2">
+              <div className="h-9 bg-slate-100 rounded-xl" />
+              <div className="h-4 bg-slate-100 rounded w-2/3" />
+            </div>
+            <div className="col-span-3 flex items-center justify-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-slate-200" />
+              <div className="h-8 bg-slate-100 rounded w-16" />
+            </div>
+          </div>
+          <div className="h-9 bg-slate-100 rounded-xl" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Empty State Component
+function LiveCallsEmptyState({ onReset }: { onReset: () => void }) {
+  return (
+    <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-200/80 p-12 text-center space-y-4 shadow-sm my-4">
+      <div className="h-16 w-16 rounded-2xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center mx-auto border border-blue-100">
+        <Radio className="h-8 w-8 text-[#0F4FA8] animate-pulse" />
+      </div>
+      <div>
+        <h3 className="text-lg font-black text-slate-900">No Active Live Calls</h3>
+        <p className="text-xs text-slate-500 font-semibold mt-1 max-w-sm mx-auto">
+          No live channels currently match your search query or filter criteria.
+        </p>
+      </div>
+      <button
+        onClick={onReset}
+        className="px-4 py-2 bg-[#0F4FA8] hover:bg-[#0B3C80] text-white rounded-xl text-xs font-extrabold transition shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-2"
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+        <span>Reset Filters</span>
+      </button>
     </div>
   );
 }
@@ -303,51 +357,51 @@ export default function LiveCalls() {
   return (
     <div className="space-y-5 max-w-7xl mx-auto w-full font-sans pb-16">
       
-      {/* 1. COMPACT ENTERPRISE HEADER (REDUCED HEIGHT BY 20%) */}
+      {/* 1. COMPACT ENTERPRISE HEADER */}
       <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-4 border border-slate-200/80 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#1E5EFF]/10 text-[#1E5EFF] rounded-xl border border-[#1E5EFF]/20">
+          <div className="p-2.5 bg-[#0F4FA8]/10 text-[#0F4FA8] rounded-xl border border-[#0F4FA8]/20">
             <Radio className="h-5 w-5 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-[22px] font-black text-[#0F172A] tracking-tight leading-none">Live Call Console</h1>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">Live Call Console</h1>
               <span className="text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#10B981] animate-ping" />
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
                 ONLINE (300ms)
               </span>
             </div>
-            <p className="text-[13px] font-semibold text-slate-400 mt-1">Real-time contact center channels & AI telemetry</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Real-time contact center channels & AI telemetry</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2.5 w-full md:w-auto justify-end">
-          <span className="text-[13px] font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+          <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
             Showing <strong className="text-slate-900">{filteredCalls.length}</strong> of {calls.length} Active Calls
           </span>
           <button
             onClick={fetchLiveCalls}
             className="h-9 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 shadow-2xs active:scale-95 cursor-pointer"
           >
-            <RotateCcw className="h-3.5 w-3.5 text-[#1E5EFF]" />
+            <RotateCcw className="h-3.5 w-3.5 text-[#0F4FA8]" />
             <span>Sync</span>
           </button>
         </div>
       </div>
 
-      {/* 2. FILTER TOOLBAR PANEL (NORMAL PAGE FLOW) */}
+      {/* 2. FILTER TOOLBAR PANEL */}
       <div className="w-full">
         <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-3.5 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
           
-          {/* LEFT: FIXED WIDTH SEARCH INPUT (NEVER EXCEEDS 420px) */}
+          {/* SEARCH INPUT */}
           <div className="relative w-full sm:w-[320px] lg:w-[380px] max-w-[420px] shrink-0">
-            <Search className="h-4 w-4 text-[#1E5EFF] absolute left-3.5 top-3.5 pointer-events-none" />
+            <Search className="h-4 w-4 text-[#0F4FA8] absolute left-3.5 top-3.5 pointer-events-none" />
             <input
               type="text"
               placeholder="Search leads, calls, phone, agent..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full h-[44px] pl-10 pr-9 border border-slate-200 rounded-[16px] text-xs bg-slate-50/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E5EFF] font-semibold text-slate-800 transition"
+              className="w-full h-[42px] pl-10 pr-9 border border-slate-200 rounded-[16px] text-xs bg-slate-50/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-semibold text-slate-800 transition"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery("")} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -356,21 +410,18 @@ export default function LiveCalls() {
             )}
           </div>
 
-          {/* RIGHT: HORIZONTALLY SCROLLABLE FILTER CHIPS CONTAINER */}
+          {/* SCROLLABLE FILTER CHIPS */}
           <div className="relative flex-1 min-w-0 flex items-center gap-2 w-full sm:w-auto">
-            
-            {/* Left Scroll Arrow */}
             {showScrollLeft && (
               <button
                 onClick={() => handleScrollTabs("left")}
-                className="h-[38px] w-[38px] rounded-xl bg-white hover:bg-[#1E5EFF] hover:text-white text-slate-700 transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 active:scale-95 z-20"
+                className="h-[38px] w-[38px] rounded-xl bg-white hover:bg-[#0F4FA8] hover:text-white text-slate-700 transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 active:scale-95 z-20"
                 title="Scroll Left"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
             )}
 
-            {/* Scrollable Chips */}
             <div
               ref={tabsRef}
               onWheel={handleWheelTabs}
@@ -389,9 +440,9 @@ export default function LiveCalls() {
                   key={chip.id}
                   data-active={chipFilter === chip.id}
                   onClick={() => setChipFilter(chip.id)}
-                  className={`h-[42px] px-4 rounded-[16px] text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 shadow-2xs active:scale-95 flex items-center justify-center ${
+                  className={`h-[40px] px-4 rounded-[16px] text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 shadow-2xs active:scale-95 flex items-center justify-center ${
                     chipFilter === chip.id
-                      ? "bg-[#1E5EFF] text-white shadow-md shadow-blue-900/15"
+                      ? "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] text-white shadow-md shadow-blue-900/15"
                       : "bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
                   }`}
                 >
@@ -400,271 +451,271 @@ export default function LiveCalls() {
               ))}
             </div>
 
-            {/* Right Scroll Arrow */}
             {showScrollRight && (
               <button
                 onClick={() => handleScrollTabs("right")}
-                className="h-[38px] w-[38px] rounded-xl bg-white hover:bg-[#1E5EFF] hover:text-white text-slate-700 transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 active:scale-95 z-20"
+                className="h-[38px] w-[38px] rounded-xl bg-white hover:bg-[#0F4FA8] hover:text-white text-slate-700 transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 active:scale-95 z-20"
                 title="Scroll Right"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             )}
 
-            {/* Clear Button */}
             {(searchQuery || chipFilter !== "all") && (
               <button
                 onClick={() => { setSearchQuery(""); setChipFilter("all"); }}
-                className="h-[42px] px-3.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-[16px] text-xs font-bold transition hover:bg-rose-100 shrink-0 cursor-pointer flex items-center justify-center gap-1"
+                className="h-[40px] px-3.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-[16px] text-xs font-bold transition hover:bg-rose-100 shrink-0 cursor-pointer flex items-center justify-center gap-1"
               >
                 <X className="h-3.5 w-3.5" />
                 <span>Clear</span>
               </button>
             )}
-
           </div>
 
         </div>
       </div>
 
-      {/* 3. MAIN CONTENT: 3-COLUMN LIVE CALL CARDS & SLIDE-OUT AI INSIGHTS DRAWER */}
+      {/* 3. MAIN CONTENT: COMPACT 3-COLUMN LIVE CALL CARDS & DRAWER */}
       <div className="grid grid-cols-12 gap-5">
         
-        {/* CARDS LIST CONTAINER (8/12 OR 12/12) */}
-        <div className={`col-span-12 ${selectedDrawerCall ? "lg:col-span-7" : "lg:col-span-12"} space-y-4 transition-all duration-300`}>
-          {filteredCalls.map((call) => {
-            const isUrgent = call.priority === "urgent";
-            const isHigh = call.priority === "high";
+        {/* CARDS LIST CONTAINER */}
+        <div className={`col-span-12 ${selectedDrawerCall ? "lg:col-span-7" : "lg:col-span-12"} space-y-3.5 transition-all duration-300`}>
+          {loading ? (
+            <LiveCallsSkeleton />
+          ) : filteredCalls.length === 0 ? (
+            <LiveCallsEmptyState onReset={() => { setSearchQuery(""); setChipFilter("all"); }} />
+          ) : (
+            filteredCalls.map((call) => {
+              const isUrgent = call.priority === "urgent";
+              const isHigh = call.priority === "high";
 
-            const priorityBadge = isUrgent
-              ? "bg-[#F59E0B]/20 text-[#F59E0B] border-[#F59E0B]/40"
-              : isHigh
-              ? "bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/30"
-              : "bg-slate-100 text-slate-600 border-slate-200";
+              const priorityBadge = isUrgent
+                ? "bg-amber-50 text-amber-700 border-amber-200 font-extrabold"
+                : isHigh
+                ? "bg-amber-50 text-amber-700 border-amber-200"
+                : "bg-slate-100 text-slate-600 border-slate-200";
 
-            const directionBadge = call.direction === "inbound"
-              ? "bg-[#1E5EFF] text-white"
-              : "bg-[#7C3AED] text-white";
+              const directionBadge = call.direction === "inbound"
+                ? "bg-[#0F4FA8] text-white"
+                : "bg-purple-600 text-white";
 
-            const borderAccent = call.direction === "inbound"
-              ? "border-l-[#1E5EFF]"
-              : "border-l-[#7C3AED]";
+              const borderAccent = call.direction === "inbound"
+                ? "border-l-[#0F4FA8]"
+                : "border-l-purple-600";
 
-            const customerInitial = call.customer_name[0]?.toUpperCase() || "C";
-            const agentInitial = call.agent_name ? call.agent_name.split(" ")[1]?.[0] || "A" : "A";
+              const customerInitial = call.customer_name?.[0]?.toUpperCase() || "C";
+              const agentInitial = call.agent_name ? call.agent_name.split(" ")[1]?.[0] || call.agent_name[0]?.toUpperCase() || "A" : "A";
 
-            return (
-              <motion.div
-                key={call.id}
-                layout
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                whileHover={{ scale: 1.01 }}
-                className={`bg-white rounded-[18px] border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-250 p-5 space-y-4 border-l-[6px] ${borderAccent}`}
-              >
-                {/* 3-COLUMN LAYOUT */}
-                <div className="grid grid-cols-12 gap-4 items-center">
-                  
-                  {/* LEFT COLUMN (4 COLS): CUSTOMER PROFILE */}
-                  <div className="col-span-12 lg:col-span-4 space-y-2 border-b lg:border-b-0 lg:border-r border-slate-100 pb-3 lg:pb-0 lg:pr-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative shrink-0">
-                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#1E5EFF] to-blue-500 text-white flex items-center justify-center font-black text-sm shadow-md">
-                          {customerInitial}
+              return (
+                <motion.div
+                  key={call.id}
+                  layout
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  whileHover={{ y: -2 }}
+                  className={`bg-white/95 backdrop-blur-md rounded-[18px] border border-slate-200/80 shadow-md hover:shadow-xl transition-all duration-200 p-3.5 sm:p-4 space-y-3 border-l-[6px] ${borderAccent}`}
+                >
+                  {/* 3-COLUMN LAYOUT (COMPACT 20-30% HEIGHT REDUCTION) */}
+                  <div className="grid grid-cols-12 gap-3 items-center">
+                    
+                    {/* LEFT COLUMN (4 COLS): CUSTOMER DETAILS */}
+                    <div className="col-span-12 lg:col-span-4 space-y-2 border-b lg:border-b-0 lg:border-r border-slate-100 pb-2.5 lg:pb-0 lg:pr-3">
+                      <div className="flex items-center gap-3">
+                        <div className="relative shrink-0">
+                          <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-white flex items-center justify-center font-black text-xs shadow-md">
+                            {customerInitial}
+                          </div>
+                          <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white" />
                         </div>
-                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-[#10B981] border-2 border-white" />
-                      </div>
 
-                      <div className="min-w-0">
-                        <h3 className="font-black text-[#0F172A] text-[20px] tracking-tight truncate leading-tight">
-                          {call.customer_name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="font-mono text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md">
-                            {call.formatted_lead_id}
-                          </span>
-                          {call.is_vip && (
-                            <span className="text-[10px] font-black bg-[#F5B301]/20 text-[#D4AF37] border border-[#F5B301]/40 px-2 py-0.5 rounded-md uppercase">
-                              VIP
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 justify-between">
+                            <h3 className="font-black text-slate-900 text-base tracking-tight truncate leading-tight">
+                              {call.customer_name}
+                            </h3>
+                            <span className="font-mono text-[10px] font-black text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-md shrink-0">
+                              {call.formatted_lead_id}
                             </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                          </div>
 
-                    <div className="space-y-1 text-[13px] pt-1">
-                      <div className="flex items-center gap-2 text-slate-700 font-bold">
-                        <Phone className="h-3.5 w-3.5 text-[#1E5EFF]" />
-                        <span>{call.phone_number}</span>
-                      </div>
-                      {call.location && (
-                        <div className="flex items-center gap-2 text-slate-500 font-medium">
-                          <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                          <span>{call.location}</span>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap text-xs">
+                            <span className="font-extrabold text-slate-800 flex items-center gap-1">
+                              <Phone className="h-3 w-3 text-[#0F4FA8]" />
+                              {call.phone_number}
+                            </span>
+                            {call.location && (
+                              <span className="text-slate-400 font-medium flex items-center gap-0.5 text-[11px]">
+                                <MapPin className="h-3 w-3" />
+                                {call.location}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                        <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${directionBadge}`}>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${directionBadge}`}>
                           {call.direction}
                         </span>
-                        <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                        <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
                           {call.language}
                         </span>
-                        <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${priorityBadge}`}>
+                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${priorityBadge}`}>
                           {call.priority || "Medium"}
                         </span>
+                        {call.is_vip && (
+                          <span className="text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full uppercase">
+                            ★ VIP
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* CENTER COLUMN (5 COLS): AGENT, POOL, TIMER & WAVEFORM */}
-                  <div className="col-span-12 lg:col-span-5 space-y-3 border-b lg:border-b-0 lg:border-r border-slate-100 pb-3 lg:pb-0 lg:px-2">
-                    
-                    {/* Agent Card */}
-                    <div className="bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-xl bg-[#0F172A] text-[#F5B301] font-extrabold text-xs flex items-center justify-center shrink-0">
-                          {agentInitial}
+                    {/* CENTER COLUMN (5 COLS): ASSIGNED AGENT & QUEUE & TIMER */}
+                    <div className="col-span-12 lg:col-span-5 space-y-2.5 border-b lg:border-b-0 lg:border-r border-slate-100 pb-2.5 lg:pb-0 lg:px-3">
+                      {/* Agent Info Pill */}
+                      <div className="bg-slate-50/90 p-2 rounded-xl border border-slate-100 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="h-8 w-8 rounded-xl bg-[#0F172A] text-[#FFC107] font-black text-xs flex items-center justify-center shrink-0 border border-slate-700">
+                            {agentInitial}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-extrabold text-slate-900 text-xs truncate">{call.agent_name}</div>
+                            <div className="text-[10px] text-slate-400 font-semibold truncate">{call.agent_role || "Voice Specialist"}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-extrabold text-slate-900 text-[13px] truncate">{call.agent_name}</div>
-                          <div className="text-[11px] text-slate-400 font-semibold truncate">{call.agent_role || "Voice Specialist"}</div>
+                        <VoiceWaveform speaker={call.speaker_active} />
+                      </div>
+
+                      {/* Queue Chips & Timer */}
+                      <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-extrabold px-2 py-0.5 rounded-lg flex items-center gap-1">
+                            <Megaphone className="h-3 w-3" /> {call.pool_name}
+                          </span>
+                          <span className="bg-blue-50 text-[#0F4FA8] border border-blue-200 text-[10px] font-extrabold px-2 py-0.5 rounded-lg flex items-center gap-1">
+                            <Layers className="h-3 w-3" /> {call.queue_name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <CircularTimer seconds={call.timer_seconds} />
+                          <span className="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-600 text-[10px] font-extrabold rounded-lg flex items-center gap-1 animate-pulse">
+                            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> REC
+                          </span>
                         </div>
                       </div>
-                      <VoiceWaveform speaker={call.speaker_active} />
                     </div>
 
-                    {/* Department Pool, Queue & Timer */}
-                    <div className="flex items-center justify-between gap-2 flex-wrap text-[13px]">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="bg-purple-50 text-[#7C3AED] border border-purple-200 text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
-                          <Megaphone className="h-3 w-3" /> {call.pool_name}
-                        </span>
-                        <span className="bg-blue-50 text-[#1E5EFF] border border-blue-200 text-[11px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
-                          <Layers className="h-3 w-3" /> {call.queue_name}
-                        </span>
+                    {/* RIGHT COLUMN (3 COLS): AI ANALYTICS */}
+                    <div className="col-span-12 lg:col-span-3 space-y-2 flex flex-col items-center justify-center text-center">
+                      <div className="flex items-center gap-3">
+                        <SentimentGauge score={call.sentiment_score} />
+                        <div className="text-left">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">AI Sentiment</span>
+                          <span className="text-sm font-black text-slate-900 capitalize">{call.sentiment || "Positive"}</span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <CircularTimer seconds={call.timer_seconds} />
-                        <span className="px-2 py-1 bg-[#EF4444]/10 border border-[#EF4444]/30 text-[#EF4444] text-[10px] font-extrabold rounded-lg flex items-center gap-1 animate-pulse">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#EF4444]" /> REC
+                      <div className="grid grid-cols-2 gap-1.5 w-full">
+                        <div className="bg-slate-50/80 p-1.5 rounded-xl border border-slate-100 text-center">
+                          <span className="text-[9px] font-extrabold text-slate-400 uppercase block">AI Conf</span>
+                          <span className="text-xs font-black text-emerald-600">{call.ai_confidence || "98.5%"}</span>
+                        </div>
+                        <div className="bg-slate-50/80 p-1.5 rounded-xl border border-slate-100 text-center">
+                          <span className="text-[9px] font-extrabold text-slate-400 uppercase block">Win Prob</span>
+                          <span className="text-xs font-black text-[#0F4FA8]">{call.win_probability || "92%"}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-2 text-[10px] font-bold font-mono">
+                        <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          {call.mos_score || "MOS 4.6"}
+                        </span>
+                        <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                          {call.latency_ms || "18ms"}
                         </span>
                       </div>
                     </div>
 
                   </div>
 
-                  {/* RIGHT COLUMN (3 COLS): AI SENTIMENT, MOS & LATENCY */}
-                  <div className="col-span-12 lg:col-span-3 space-y-2 flex flex-col items-center justify-center text-center">
-                    <div className="flex items-center gap-3">
-                      <SentimentGauge score={call.sentiment_score} />
-                      <div className="text-left">
-                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">AI Sentiment</span>
-                        <span className="text-[15px] font-black text-slate-900">{call.sentiment}</span>
-                      </div>
-                    </div>
+                  {/* UNIFIED ACTION TOOLBAR */}
+                  <div className="pt-2.5 border-t border-slate-100">
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 w-full">
+                      <button
+                        onClick={() => handleControlAction(call.id, "listen")}
+                        className="h-9 px-2 bg-blue-50/80 hover:bg-[#0F4FA8] text-[#0F4FA8] hover:text-white rounded-xl text-xs font-extrabold transition-all border border-blue-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs hover:shadow-md"
+                      >
+                        <Headphones className="h-3.5 w-3.5" />
+                        <span>Listen</span>
+                      </button>
 
-                    <div className="grid grid-cols-2 gap-1.5 w-full pt-1">
-                      <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-100 text-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">AI Conf</span>
-                        <span className="text-[13px] font-black text-[#10B981]">{call.ai_confidence || "98.5%"}</span>
-                      </div>
-                      <div className="bg-slate-50 p-1.5 rounded-xl border border-slate-100 text-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Win Prob</span>
-                        <span className="text-[13px] font-black text-[#1E5EFF]">{call.win_probability || "92%"}</span>
-                      </div>
-                    </div>
+                      <button
+                        onClick={() => handleControlAction(call.id, "whisper")}
+                        className="h-9 px-2 bg-emerald-50/80 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-xl text-xs font-extrabold transition-all border border-emerald-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs hover:shadow-md"
+                      >
+                        <Volume2 className="h-3.5 w-3.5" />
+                        <span>Whisper</span>
+                      </button>
 
-                    <div className="flex items-center justify-center gap-2 text-[11px] font-bold font-mono pt-1">
-                      <span className="text-[#10B981] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                        {call.mos_score || "MOS 4.6"}
-                      </span>
-                      <span className="text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                        {call.latency_ms || "18ms"}
-                      </span>
+                      <button
+                        onClick={() => handleControlAction(call.id, "barge")}
+                        className="h-9 px-2 bg-amber-50/80 hover:bg-amber-500 text-amber-600 hover:text-white rounded-xl text-xs font-extrabold transition-all border border-amber-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs hover:shadow-md"
+                      >
+                        <Mic className="h-3.5 w-3.5" />
+                        <span>Barge</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleControlAction(call.id, "transfer")}
+                        className="h-9 px-2 bg-purple-50/80 hover:bg-purple-600 text-purple-600 hover:text-white rounded-xl text-xs font-extrabold transition-all border border-purple-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs hover:shadow-md"
+                      >
+                        <PhoneForwarded className="h-3.5 w-3.5" />
+                        <span>Transfer</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleControlAction(call.id, "hold")}
+                        className="h-9 px-2 bg-slate-100/80 hover:bg-slate-800 text-slate-700 hover:text-white rounded-xl text-xs font-extrabold transition-all border border-slate-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs hover:shadow-md"
+                      >
+                        <Pause className="h-3.5 w-3.5" />
+                        <span>Hold</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleControlAction(call.id, "mute")}
+                        className="h-9 px-2 bg-slate-100/80 hover:bg-slate-800 text-slate-700 hover:text-white rounded-xl text-xs font-extrabold transition-all border border-slate-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs hover:shadow-md"
+                      >
+                        <MicOff className="h-3.5 w-3.5" />
+                        <span>Mute</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleControlAction(call.id, "crm")}
+                        className="h-9 px-2 bg-slate-900 hover:bg-slate-800 text-[#FFC107] rounded-xl text-xs font-extrabold transition-all border border-slate-800 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-sm hover:shadow-md"
+                      >
+                        <Brain className="h-3.5 w-3.5 text-[#FFC107]" />
+                        <span>AI Insights</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleControlAction(call.id, "end")}
+                        className="h-9 px-2 bg-rose-50/80 hover:bg-rose-600 text-rose-600 hover:text-white rounded-xl text-xs font-extrabold transition-all border border-rose-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs hover:shadow-md"
+                      >
+                        <PhoneOff className="h-3.5 w-3.5" />
+                        <span>End Call</span>
+                      </button>
                     </div>
                   </div>
-
-                </div>
-
-                {/* BOTTOM ACTION BAR (EQUAL BUTTON SIZES WITH ENTERPRISE COLORS) */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                  <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 w-full">
-                    
-                    <button
-                      onClick={() => handleControlAction(call.id, "listen")}
-                      className="py-2 px-2 bg-blue-50 hover:bg-[#1E5EFF] text-[#1E5EFF] hover:text-white rounded-xl text-[13px] font-extrabold transition border border-blue-200/80 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <Headphones className="h-3.5 w-3.5" />
-                      <span>Listen</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleControlAction(call.id, "whisper")}
-                      className="py-2 px-2 bg-emerald-50 hover:bg-[#10B981] text-[#10B981] hover:text-white rounded-xl text-[13px] font-extrabold transition border border-emerald-200/80 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <Volume2 className="h-3.5 w-3.5" />
-                      <span>Whisper</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleControlAction(call.id, "barge")}
-                      className="py-2 px-2 bg-amber-50 hover:bg-[#F59E0B] text-[#F59E0B] hover:text-white rounded-xl text-[13px] font-extrabold transition border border-amber-200/80 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <Mic className="h-3.5 w-3.5" />
-                      <span>Barge</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleControlAction(call.id, "transfer")}
-                      className="py-2 px-2 bg-purple-50 hover:bg-[#7C3AED] text-[#7C3AED] hover:text-white rounded-xl text-[13px] font-extrabold transition border border-purple-200/80 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <PhoneForwarded className="h-3.5 w-3.5" />
-                      <span>Transfer</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleControlAction(call.id, "hold")}
-                      className="py-2 px-2 bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white rounded-xl text-[13px] font-extrabold transition border border-slate-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <Pause className="h-3.5 w-3.5" />
-                      <span>Hold</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleControlAction(call.id, "mute")}
-                      className="py-2 px-2 bg-slate-100 hover:bg-slate-700 text-slate-700 hover:text-white rounded-xl text-[13px] font-extrabold transition border border-slate-200 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <MicOff className="h-3.5 w-3.5" />
-                      <span>Mute</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleControlAction(call.id, "crm")}
-                      className="py-2 px-2 bg-[#0F172A] hover:bg-slate-800 text-[#F5B301] rounded-xl text-[13px] font-extrabold transition border border-slate-800 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <Brain className="h-3.5 w-3.5 text-[#F5B301]" />
-                      <span>AI Insights</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleControlAction(call.id, "end")}
-                      className="py-2 px-2 bg-[#EF4444]/10 hover:bg-[#EF4444] text-[#EF4444] hover:text-white rounded-xl text-[13px] font-extrabold transition border border-[#EF4444]/30 flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
-                    >
-                      <PhoneOff className="h-3.5 w-3.5" />
-                      <span>End Call</span>
-                    </button>
-
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })
+          )}
         </div>
 
-        {/* SLIDE-OUT AI INSIGHTS RIGHT DRAWER (5/12) */}
+        {/* SLIDE-OUT AI INSIGHTS RIGHT DRAWER */}
         {selectedDrawerCall && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
@@ -674,7 +725,7 @@ export default function LiveCalls() {
           >
             <div className="flex justify-between items-start border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-[#0F172A] text-[#F5B301] rounded-xl border border-slate-800">
+                <div className="p-2 bg-[#0F172A] text-[#FFC107] rounded-xl border border-slate-800">
                   <Brain className="h-5 w-5" />
                 </div>
                 <div>
@@ -684,7 +735,7 @@ export default function LiveCalls() {
               </div>
               <button
                 onClick={() => setSelectedDrawerCall(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -692,16 +743,16 @@ export default function LiveCalls() {
 
             {/* Customer Intent & Risk Level */}
             <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1">
-              <div className="text-[11px] font-extrabold text-[#1E5EFF] uppercase tracking-wider flex items-center gap-1">
+              <div className="text-[11px] font-extrabold text-[#0F4FA8] uppercase tracking-wider flex items-center gap-1">
                 <Sparkles className="h-3.5 w-3.5" /> Customer Intent Detected
               </div>
-              <p className="text-[13px] font-bold text-slate-800">{selectedDrawerCall.intent || "Product limit inquiry & rate negotiation"}</p>
+              <p className="text-xs font-bold text-slate-800">{selectedDrawerCall.intent || "Product limit inquiry & rate negotiation"}</p>
             </div>
 
             {/* AI Suggested Prompts */}
             <div className="space-y-2">
-              <div className="text-[13px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <Bot className="h-4 w-4 text-[#10B981]" />
+              <div className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Bot className="h-4 w-4 text-emerald-600" />
                 <span>Next Best Action Prompts</span>
               </div>
               <div className="space-y-1.5">
@@ -709,8 +760,8 @@ export default function LiveCalls() {
                   "Offer first-year annual fee waiver",
                   "Mention 100% digital e-KYC approval link"
                 ]).map((sug, i) => (
-                  <div key={i} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-semibold text-slate-700 flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-[#10B981] shrink-0 mt-0.5" />
+                  <div key={i} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
                     <span>{sug}</span>
                   </div>
                 ))}
@@ -720,13 +771,13 @@ export default function LiveCalls() {
             {/* Knowledge Base Recommendations */}
             {selectedDrawerCall.knowledge_base && (
               <div className="space-y-2">
-                <div className="text-[13px] font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <BookOpen className="h-4 w-4 text-[#7C3AED]" />
+                <div className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <BookOpen className="h-4 w-4 text-purple-600" />
                   <span>Knowledge Base Solutions</span>
                 </div>
                 <div className="space-y-1">
                   {selectedDrawerCall.knowledge_base.map((kb, idx) => (
-                    <div key={idx} className="p-2 bg-purple-50/60 border border-purple-200/80 rounded-lg text-[12px] font-bold text-[#7C3AED]">
+                    <div key={idx} className="p-2 bg-purple-50/60 border border-purple-200/80 rounded-lg text-xs font-bold text-purple-700">
                       {kb}
                     </div>
                   ))}
@@ -736,12 +787,12 @@ export default function LiveCalls() {
 
             {/* Live Transcript Stream */}
             <div className="space-y-2">
-              <div className="text-[13px] font-black text-slate-800 uppercase tracking-wider flex items-center justify-between">
+              <div className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <FileText className="h-4 w-4 text-[#1E5EFF]" />
+                  <FileText className="h-4 w-4 text-[#0F4FA8]" />
                   <span>Live Transcript Stream</span>
                 </span>
-                <span className="text-[10px] font-bold text-[#10B981] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                   Real-time
                 </span>
               </div>
@@ -750,12 +801,12 @@ export default function LiveCalls() {
                 {(selectedDrawerCall.transcript || []).map((t, idx) => (
                   <div key={idx} className="space-y-0.5">
                     <div className="flex justify-between text-[10px] text-slate-400 font-bold">
-                      <span className={t.speaker.includes("AI") ? "text-[#F5B301]" : t.speaker.includes("Agent") ? "text-blue-400" : "text-[#10B981]"}>
+                      <span className={t.speaker.includes("AI") ? "text-[#FFC107]" : t.speaker.includes("Agent") ? "text-blue-400" : "text-emerald-400"}>
                         [{t.speaker}]
                       </span>
                       <span>{t.time}</span>
                     </div>
-                    <p className="text-slate-100 font-sans text-[13px]">{t.text}</p>
+                    <p className="text-slate-100 font-sans text-xs">{t.text}</p>
                   </div>
                 ))}
               </div>

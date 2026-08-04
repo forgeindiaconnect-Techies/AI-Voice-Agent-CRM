@@ -1,11 +1,9 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+﻿import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { api, BASE_URL } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { PhoneInput } from "../components/PhoneInput";
-import LeadDetailsDrawer from "../components/LeadDetailsDrawer";
 import {
   Plus,
   X,
@@ -115,40 +113,8 @@ function Sparkline({ color = "#0F4FA8" }: { color?: string }) {
   );
 }
 
-// Indeterminate Checkbox Component for Table Header
-function IndeterminateCheckbox({
-  checked,
-  indeterminate,
-  onChange,
-  className = ""
-}: {
-  checked: boolean;
-  indeterminate: boolean;
-  onChange: () => void;
-  className?: string;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.indeterminate = indeterminate;
-    }
-  }, [indeterminate]);
-
-  return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      className={className}
-    />
-  );
-}
-
 export default function Leads() {
   const { user } = useAuth();
-  const isManager = user?.role === "admin" || user?.role === "team_leader";
   const { showToast } = useToast();
   const navigate = useNavigate();
   
@@ -243,33 +209,10 @@ export default function Leads() {
   });
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
+  // Bulk Actions
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [assignAgentId, setAssignAgentId] = useState("");
   const [bulkStatus, setBulkStatus] = useState("");
-
-  // Drawer Disposition State
-  const [drawerStatus, setDrawerStatus] = useState("");
-  const [drawerNotes, setDrawerNotes] = useState("");
-  const [isUpdatingDisposition, setIsUpdatingDisposition] = useState(false);
-
-  async function handleSaveDrawerDisposition() {
-    if (!drawerLead) return;
-    const targetStatus = drawerStatus || drawerLead.status;
-    setIsUpdatingDisposition(true);
-    try {
-      await api.patch(`/api/leads/${drawerLead.id || drawerLead.lead_id}/disposition`, {
-        status: targetStatus,
-        notes: drawerNotes
-      });
-      showToast("Lead status and call notes updated.", "success");
-      setDrawerNotes("");
-      loadData();
-    } catch (err: any) {
-      showToast(err.message || "Failed to update disposition.", "error");
-    } finally {
-      setIsUpdatingDisposition(false);
-    }
-  }
 
   const loadData = useCallback(async () => {
     try {
@@ -478,16 +421,12 @@ export default function Leads() {
 
   async function handleBulkAssignAgent() {
     if (selectedLeadIds.length === 0 || !assignAgentId) return;
-    const selectedAgentObj = users.find(u => u.id === assignAgentId || u.employee_id === assignAgentId);
-    const agentName = selectedAgentObj?.name || "Agent";
-    const leadCount = selectedLeadIds.length;
-
     try {
       await api.patch("/api/leads/bulk-assign", {
         lead_ids: selectedLeadIds,
         agent_id: assignAgentId
       });
-      showToast(`${leadCount} lead${leadCount === 1 ? "" : "s"} assigned successfully to ${agentName}.`, "success");
+      showToast(`Assigned ${selectedLeadIds.length} lead(s) to agent.`, "success");
       setSelectedLeadIds([]);
       setAssignAgentId("");
       setShowBulkMenu(false);
@@ -514,7 +453,13 @@ export default function Leads() {
     }
   }
 
-
+  const toggleSelectAll = () => {
+    if (selectedLeadIds.length === paginatedLeads.length) {
+      setSelectedLeadIds([]);
+    } else {
+      setSelectedLeadIds(paginatedLeads.map(l => l.id));
+    }
+  };
 
   const toggleSelectLead = (leadId: string) => {
     setSelectedLeadIds(prev =>
@@ -567,25 +512,6 @@ export default function Leads() {
     const start = (currentPage - 1) * pageSize;
     return filteredLeads.slice(start, start + pageSize);
   }, [filteredLeads, currentPage]);
-
-  const allPaginatedSelected = useMemo(() => {
-    return paginatedLeads.length > 0 && paginatedLeads.every(l => selectedLeadIds.includes(l.id));
-  }, [paginatedLeads, selectedLeadIds]);
-
-  const isIndeterminate = useMemo(() => {
-    const paginatedIds = paginatedLeads.map(l => l.id);
-    const selectedCountOnPage = paginatedIds.filter(id => selectedLeadIds.includes(id)).length;
-    return selectedCountOnPage > 0 && selectedCountOnPage < paginatedLeads.length;
-  }, [paginatedLeads, selectedLeadIds]);
-
-  const toggleSelectAll = () => {
-    const paginatedIds = paginatedLeads.map(l => l.id);
-    if (allPaginatedSelected) {
-      setSelectedLeadIds(prev => prev.filter(id => !paginatedIds.includes(id)));
-    } else {
-      setSelectedLeadIds(prev => Array.from(new Set([...prev, ...paginatedIds])));
-    }
-  };
 
   const agentsList = users.filter(u => u.role === "agent");
 
@@ -663,25 +589,13 @@ export default function Leads() {
                 <RotateCcw className="h-4 w-4" />
               </button>
 
-              {isManager && (
-                <>
-                  <button
-                    onClick={() => setShowImportSection(!showImportSection)}
-                    className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
-                  >
-                    <UploadCloud className="h-4 w-4 text-[#0F4FA8]" />
-                    <span>Import CSV</span>
-                  </button>
-
-                  <button
-                    onClick={() => setShowManualModal(true)}
-                    className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-blue-500/25 active:scale-95 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Lead</span>
-                  </button>
-                </>
-              )}
+              <button
+                onClick={() => setShowImportSection(!showImportSection)}
+                className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
+              >
+                <UploadCloud className="h-4 w-4 text-[#0F4FA8]" />
+                <span>Import CSV</span>
+              </button>
 
               <button
                 onClick={() => showToast("Exporting leads database CSV...", "info")}
@@ -689,6 +603,14 @@ export default function Leads() {
               >
                 <Download className="h-4 w-4 text-emerald-600" />
                 <span>Export CSV</span>
+              </button>
+
+              <button
+                onClick={() => setShowManualModal(true)}
+                className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-blue-500/25 active:scale-95 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Lead</span>
               </button>
             </div>
 
@@ -879,18 +801,16 @@ export default function Leads() {
                 ))}
               </select>
 
-              {isManager && (
-                <select
-                  value={agentFilter}
-                  onChange={e => setAgentFilter(e.target.value)}
-                  className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-                >
-                  <option value="">All Agents</option>
-                  {agentsList.map(a => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-              )}
+              <select
+                value={agentFilter}
+                onChange={e => setAgentFilter(e.target.value)}
+                className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
+              >
+                <option value="">All Agents</option>
+                {agentsList.map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
 
               <select
                 value={priorityFilter}
@@ -972,63 +892,43 @@ export default function Leads() {
             )}
           </div>
 
-          {/* Bulk Selected Toolbar (Admin & TL / Supervisor only) */}
-          {isManager && (
+          {/* Bulk Selected Toolbar */}
+          {selectedLeadIds.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`p-3.5 rounded-2xl transition-all duration-300 flex items-center justify-between flex-wrap gap-3 border ${
-                selectedLeadIds.length > 0
-                  ? "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] text-white shadow-lg border-blue-400/30"
-                  : "bg-slate-100/90 text-slate-500 border-slate-200"
-              }`}
+              className="p-3 bg-[#0F4FA8] text-white rounded-xl flex items-center justify-between flex-wrap gap-3 shadow-md"
             >
-              <div className="flex items-center gap-2.5">
-                <div className={`p-2 rounded-xl ${selectedLeadIds.length > 0 ? "bg-white/10 text-[#FFC107]" : "bg-slate-200 text-slate-500"}`}>
-                  <CheckSquare className="h-4 w-4" />
-                </div>
-                <div>
-                  <span className={`text-xs font-black tracking-tight ${selectedLeadIds.length > 0 ? "text-white" : "text-slate-600"}`}>
-                    {selectedLeadIds.length > 0
-                      ? `${selectedLeadIds.length} Lead${selectedLeadIds.length === 1 ? "" : "s"} Selected`
-                      : "Select one or more leads to assign"}
-                  </span>
-                  {selectedLeadIds.length > 0 && (
-                    <span className="block text-[10px] text-blue-200 font-semibold">Choose an agent below to execute bulk routing</span>
-                  )}
-                </div>
-              </div>
+              <span className="text-xs font-extrabold flex items-center gap-2">
+                <CheckSquare className="h-4 w-4 text-[#FFC107]" />
+                <span>{selectedLeadIds.length} Lead(s) Selected</span>
+              </span>
 
-              <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-3">
                 <select
-                  disabled={selectedLeadIds.length === 0}
                   value={assignAgentId}
                   onChange={e => setAssignAgentId(e.target.value)}
-                  className="h-9 px-3.5 border rounded-xl text-xs font-extrabold bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FFC107] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-800 focus:outline-none"
                 >
-                  <option value="">-- Choose Target Agent --</option>
+                  <option value="">-- Assign Agent --</option>
                   {agentsList.map(a => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.employee_id || "Agent"})</option>
+                    <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
                 </select>
 
                 <button
-                  disabled={selectedLeadIds.length === 0 || !assignAgentId}
                   onClick={handleBulkAssignAgent}
-                  className="h-9 px-4 bg-[#FFC107] hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
+                  className="px-3 py-1.5 bg-[#FFC107] hover:bg-amber-400 text-slate-900 font-extrabold text-xs rounded-lg transition cursor-pointer"
                 >
-                  <UserCheck className="h-4 w-4 text-slate-950" />
-                  <span>Bulk Assign</span>
+                  Bulk Assign
                 </button>
 
-                {selectedLeadIds.length > 0 && (
-                  <button
-                    onClick={() => setSelectedLeadIds([])}
-                    className="h-9 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition cursor-pointer"
-                  >
-                    Deselect All
-                  </button>
-                )}
+                <button
+                  onClick={() => setSelectedLeadIds([])}
+                  className="text-xs font-extrabold hover:underline"
+                >
+                  Deselect All
+                </button>
               </div>
             </motion.div>
           )}
@@ -1040,16 +940,14 @@ export default function Leads() {
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
-                  {isManager && (
-                    <th className="px-4 py-3.5 w-10">
-                      <IndeterminateCheckbox
-                        checked={allPaginatedSelected}
-                        indeterminate={isIndeterminate}
-                        onChange={toggleSelectAll}
-                        className="h-4 w-4 text-[#0F4FA8] focus:ring-[#0F4FA8] border-slate-300 rounded cursor-pointer"
-                      />
-                    </th>
-                  )}
+                  <th className="px-4 py-3.5 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedLeadIds.length === paginatedLeads.length && paginatedLeads.length > 0}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
+                    />
+                  </th>
                   <th className="px-4 py-3.5">Lead ID</th>
                   <th className="px-4 py-3.5">Customer & AI Score</th>
                   <th className="px-4 py-3.5">Phone & Location</th>
@@ -1070,9 +968,9 @@ export default function Leads() {
                     </tr>
                   ))
                 ) : paginatedLeads.map((l, idx) => {
-                  const isSelected = selectedLeadIds.includes(l.id) || (l.lead_id ? selectedLeadIds.includes(l.lead_id) : false);
-                  const assignedAgent = l.assigned_agent_id ? users.find(u => u.id === l.assigned_agent_id || u.employee_id === l.assigned_agent_id) : undefined;
-                  const poolObj = pools.find(p => p.id === l.pool_id || p.name === l.pool_id);
+                  const isSelected = selectedLeadIds.includes(l.id);
+                  const assignedAgent = users.find(u => u.id === l.assigned_agent_id);
+                  const poolObj = pools.find(p => p.id === l.pool_id);
 
                   return (
                     <tr
@@ -1081,17 +979,15 @@ export default function Leads() {
                         idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
                       } ${isSelected ? "bg-blue-50/80 font-medium" : "hover:bg-blue-50/40"}`}
                     >
-                      {/* Checkbox (Admin & TL / Supervisor only) */}
-                      {isManager && (
-                        <td className="px-4 py-3.5">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelectLead(l.id)}
-                            className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
-                          />
-                        </td>
-                      )}
+                      {/* Checkbox */}
+                      <td className="px-4 py-3.5">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectLead(l.id)}
+                          className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
+                        />
+                      </td>
 
                       {/* Lead ID */}
                       <td className="px-4 py-3.5">
@@ -1200,15 +1096,13 @@ export default function Leads() {
                             <MessageSquare className="h-4 w-4" />
                           </button>
 
-                          {isManager && (
-                            <button
-                              onClick={() => setLeadToDelete(l)}
-                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                              title="Delete Lead"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => setLeadToDelete(l)}
+                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            title="Delete Lead"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1249,22 +1143,85 @@ export default function Leads() {
       </div>
 
       {/* 5. RIGHT SLIDE-OVER PROFILE DRAWER */}
-      <LeadDetailsDrawer
-        lead={drawerLead}
-        onClose={() => setDrawerLead(null)}
-        onUpdateDisposition={async (leadId, status, notes, followUpDate) => {
-          await api.patch(`/api/leads/${leadId}/status`, {
-            status,
-            notes,
-            follow_up_date: followUpDate || null
-          });
-          loadData();
-        }}
-        users={users}
-        pools={pools}
-        onCall={(l) => handleCallCustomer(l)}
-        showToast={showToast}
-      />
+      <AnimatePresence>
+        {drawerLead && (
+          <div className="fixed inset-0 z-50 overflow-hidden font-sans">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDrawerLead(null)}
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"
+            />
+
+            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+              <motion.div
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 250 }}
+                className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-slate-200 overflow-hidden"
+              >
+                <div className="p-6 bg-slate-50 border-b border-slate-200 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] flex items-center justify-center font-black text-lg shadow-md">
+                        {drawerLead.name[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-black text-slate-900">{drawerLead.name}</h2>
+                        <span className="text-xs font-mono font-bold text-slate-400">{drawerLead.lead_id}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setDrawerLead(null)} className="p-1.5 text-slate-400 hover:text-slate-700">
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
+                    <button
+                      onClick={() => handleCallCustomer(drawerLead)}
+                      className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-extrabold flex flex-col items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Phone className="h-4 w-4" />
+                      <span>Call</span>
+                    </button>
+                    <button
+                      onClick={() => showToast(`Opening WhatsApp chat with ${drawerLead.phone}...`, "info")}
+                      className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl font-extrabold flex flex-col items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      <span>WhatsApp</span>
+                    </button>
+                    <button
+                      onClick={() => showToast(`Sending email to ${drawerLead.email || drawerLead.name}...`, "info")}
+                      className="p-2.5 bg-blue-50 hover:bg-blue-100 text-[#0F4FA8] border border-blue-200 rounded-xl font-extrabold flex flex-col items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <Mail className="h-4 w-4" />
+                      <span>Email</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 flex-1 overflow-y-auto space-y-4 text-xs font-semibold">
+                  <div className="p-3 bg-slate-50 border rounded-xl space-y-1">
+                    <div className="text-[10px] text-slate-400 uppercase font-bold">Contact Details</div>
+                    <div className="text-slate-800">Phone: {drawerLead.phone}</div>
+                    <div className="text-slate-800">Email: {drawerLead.email || "N/A"}</div>
+                    <div className="text-slate-800">Location: {drawerLead.location || "N/A"}</div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 border rounded-xl space-y-1">
+                    <div className="text-[10px] text-slate-400 uppercase font-bold">AI Telemetry & Intent</div>
+                    <div className="text-slate-800">AI Lead Score: <strong>{drawerLead.ai_score || 88}%</strong></div>
+                    <div className="text-slate-800">Last Contact: <strong>{drawerLead.last_contact_at || "Today"}</strong></div>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* MANUAL LEAD ENTRY MODAL */}
       {showManualModal && (
@@ -1293,12 +1250,16 @@ export default function Leads() {
                   />
                 </div>
 
-                <PhoneInput
-                  required
-                  value={manualForm.phone}
-                  onChange={(fullVal) => setManualForm({ ...manualForm, phone: fullVal })}
-                  label="Phone Number"
-                />
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Phone Number</label>
+                  <input
+                    required
+                    placeholder="+919876543210"
+                    value={manualForm.phone}
+                    onChange={e => setManualForm({ ...manualForm, phone: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
+                  />
+                </div>
               </div>
 
 

@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
+import { PhoneInput } from "../components/PhoneInput";
 import PortalHeader from "../components/PortalHeader";
 import RegisterUserModal from "../components/RegisterUserModal";
 import ConfirmModal from "../components/ConfirmModal";
@@ -36,7 +38,10 @@ import {
   Users as UsersIcon,
   Crown,
   Activity,
-  Check
+  Check,
+  UserCheck,
+  Building2,
+  Briefcase
 } from "lucide-react";
 
 type UserRow = {
@@ -77,12 +82,55 @@ type TransferRequest = {
   created_at: string;
 };
 
+// Skeleton Loader Component for Users Page
+function UsersSkeleton() {
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto w-full font-sans animate-pulse">
+      {/* Header Skeleton */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-[16px] p-6 border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="h-12 w-12 rounded-[16px] bg-slate-200 shrink-0" />
+          <div className="space-y-2 w-48">
+            <div className="h-5 bg-slate-200 rounded-md w-full" />
+            <div className="h-3 bg-slate-200 rounded-md w-3/4" />
+          </div>
+        </div>
+        <div className="h-10 w-36 bg-slate-200 rounded-xl" />
+      </div>
+
+      {/* KPI Chips Skeleton */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="bg-white/80 backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 h-24 flex items-center justify-between">
+            <div className="space-y-2 w-2/3">
+              <div className="h-3 bg-slate-200 rounded w-16" />
+              <div className="h-6 bg-slate-200 rounded w-12" />
+            </div>
+            <div className="h-9 w-9 bg-slate-200 rounded-xl" />
+          </div>
+        ))}
+      </div>
+
+      {/* Table Card Skeleton */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-[16px] p-6 border border-slate-200/80 space-y-4">
+        <div className="h-10 bg-slate-200 rounded-xl w-full" />
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="h-12 bg-slate-100 rounded-xl w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Users() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<"accounts" | "pools" | "assignments">("accounts");
   const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
   const [newlyCreatedUserId, setNewlyCreatedUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   
   // State lists
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -161,55 +209,14 @@ export default function Users() {
       }
     } catch (err: any) {
       showToast(err.message || "Failed to load management lists.", "error");
+    } finally {
+      setLoading(false);
     }
   }, [showToast, user]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  // Create User (Admin only)
-  async function handleCreateUser(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const payload = {
-        name: form.name,
-        email: form.email,
-        password: form.password,
-        role: form.role,
-        phone: form.phone || undefined,
-        pool_id: form.pool_id || undefined,
-        supervisor_id: form.role === "agent" && form.supervisor_id ? form.supervisor_id : undefined,
-        department: form.role === "team_leader" ? form.department : undefined,
-        language: form.language,
-        shift: form.shift,
-        skills: form.skillsString ? form.skillsString.split(",").map(s => s.trim()) : [],
-        voice_model: form.voice_model,
-        ai_configuration: form.ai_config_prompt ? { system_prompt: form.ai_config_prompt } : {},
-      };
-
-      await api.post("/api/users", payload);
-      showToast("User account registered successfully.", "success");
-      setForm({
-        name: "",
-        email: "",
-        password: "",
-        role: "agent",
-        phone: "",
-        pool_id: "",
-        supervisor_id: "",
-        department: "",
-        language: "English",
-        shift: "Day",
-        skillsString: "",
-        voice_model: "Neural-Male-US",
-        ai_config_prompt: "You are a customer assistant...",
-      });
-      loadData();
-    } catch (err: any) {
-      showToast(err.message || "Failed to register user.", "error");
-    }
-  }
 
   // Custom Confirm Modal State
   const [confirmModalConfig, setConfirmModalConfig] = useState<{
@@ -449,15 +456,24 @@ export default function Users() {
     break: selectedSupervisorAgents.filter(a => a.status === "break").length,
   };
 
+  if (loading) {
+    return <UsersSkeleton />;
+  }
+
   // --- TEAM LEADER VIEW ---
   if (user?.role === "team_leader") {
     const myAgents = users.filter(u => u.role === "agent");
 
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="space-y-6 max-w-7xl mx-auto font-sans"
+      >
         {/* Portal Header */}
         <PortalHeader
-          icon={<User className="h-5 w-5 text-[#0F4C9A]" />}
+          icon={<User className="h-5 w-5 text-[#0F4FA8]" />}
           title="Team Agent Directory"
           subtitle="Monitor active workloads, agent status, and submit transfer requests"
           badgeText={`${myAgents.length} MAPPED AGENTS`}
@@ -465,63 +481,90 @@ export default function Users() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* My Team Members Table (2 columns) */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-2">
-            <h2 className="text-lg font-black text-gray-800 mb-4">Assigned Agents</h2>
-            <div className="overflow-x-auto">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 lg:col-span-2 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+                <UsersIcon className="h-4.5 w-4.5 text-[#0F4FA8]" />
+                <span>Assigned Team Personnel</span>
+              </h2>
+              <span className="text-xs font-mono font-extrabold bg-blue-50 text-[#0F4FA8] px-2.5 py-0.5 rounded-full border border-blue-200">
+                {myAgents.length} Agents
+              </span>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-slate-200/80">
               <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider text-[10px] border-b">
+                <thead className="bg-slate-50/95 backdrop-blur-md text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3">Employee ID</th>
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Pool / Shift</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Workload (Leads)</th>
-                    <th className="px-4 py-3">Actions</th>
+                    <th className="px-4 py-3.5">Employee ID</th>
+                    <th className="px-4 py-3.5">Personnel Name</th>
+                    <th className="px-4 py-3.5">Pool / Shift</th>
+                    <th className="px-4 py-3.5">Live Status</th>
+                    <th className="px-4 py-3.5">Workload</th>
+                    <th className="px-4 py-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {myAgents.map(a => (
-                    <tr key={a.id} className="border-t hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-semibold text-gray-500">{a.employee_id}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-gray-800">{a.name}</div>
-                        <div className="text-xs text-gray-400">{a.email}</div>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-600">
-                        <span className="block text-xs font-bold text-forgeBlue">
-                          {pools.find(p => p.id === a.pool_id)?.name.replace("_", " ").toUpperCase() || "General"}
+                <tbody className="divide-y divide-slate-100">
+                  {myAgents.map((a, idx) => (
+                    <tr
+                      key={a.id}
+                      className={`transition-all duration-200 ${
+                        idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
+                      } hover:bg-blue-50/40`}
+                    >
+                      <td className="px-4 py-4 font-mono font-bold text-xs text-slate-700">
+                        <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                          {a.employee_id}
                         </span>
-                        <span className="block text-[10px] text-gray-400 mt-0.5">{a.shift || "Day Shift"}</span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] flex items-center justify-center font-black text-xs shadow-2xs shrink-0 border border-blue-400/30">
+                            {a.name[0]?.toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-extrabold text-slate-900 text-xs">{a.name}</div>
+                            <div className="text-[11px] text-slate-400 font-medium">{a.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 font-semibold text-slate-600">
+                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-[#0F4FA8] bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
+                          <Layers className="h-3 w-3" />
+                          <span>{pools.find(p => p.id === a.pool_id)?.name.replace("_", " ").toUpperCase() || "GENERAL"}</span>
+                        </span>
+                        <span className="block text-[10px] text-slate-400 mt-1 font-mono">{a.shift || "Day Shift"}</span>
+                      </td>
+                      <td className="px-4 py-4">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold capitalize ${
                             a.status === "online"
-                              ? "bg-green-50 border border-green-200 text-green-700"
+                              ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
                               : a.status === "busy"
-                              ? "bg-red-50 border border-red-200 text-red-700 animate-pulse"
+                              ? "bg-rose-50 border border-rose-200 text-rose-700 animate-pulse"
                               : a.status === "break"
-                              ? "bg-orange-50 border border-orange-200 text-orange-700"
-                              : "bg-gray-100 text-gray-400"
+                              ? "bg-amber-50 border border-amber-200 text-amber-700"
+                              : "bg-slate-100 text-slate-500 border border-slate-200"
                           }`}
                         >
-                          {a.status || "offline"}
+                          <span className={`h-1.5 w-1.5 rounded-full ${a.status === "online" ? "bg-emerald-500 animate-ping" : "bg-slate-400"}`} />
+                          <span>{a.status || "offline"}</span>
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="font-extrabold text-gray-700 text-sm">
+                      <td className="px-4 py-4">
+                        <div className="font-mono font-black text-slate-800 text-xs">
                           {getAgentLeadsCount(a.id)} leads
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-4 text-right">
                         <button
                           onClick={() => {
                             setTransferAgentId(a.id);
                             setIsTransferModalOpen(true);
                           }}
-                          className="bg-slate-100 hover:bg-slate-200 border text-gray-700 text-xs px-2.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1"
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-[#0F4FA8] text-slate-700 hover:text-white border border-slate-200 hover:border-[#0F4FA8] text-xs rounded-xl font-extrabold transition shadow-2xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
                         >
-                          <Send className="h-3 w-3 text-forgeBlue" />
+                          <Send className="h-3.5 w-3.5" />
                           <span>Request Transfer</span>
                         </button>
                       </td>
@@ -529,7 +572,7 @@ export default function Users() {
                   ))}
                   {myAgents.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-gray-400 font-medium">
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-medium">
                         No agents assigned to your team portfolio.
                       </td>
                     </tr>
@@ -542,42 +585,45 @@ export default function Users() {
           {/* Transfer Requests Tracker & Team summary */}
           <div className="space-y-6 lg:col-span-1">
             {/* Team quick summary */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-base font-black text-gray-800 mb-3">Live Team Status</h2>
+            <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 space-y-3">
+              <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[#0F4FA8]" />
+                <span>Live Team Telemetry</span>
+              </h2>
               <div className="grid grid-cols-2 gap-3 text-center">
-                <div className="bg-slate-50 border p-3 rounded-xl">
-                  <div className="text-lg font-black text-forgeBlue">{myAgents.length}</div>
-                  <div className="text-[9px] text-gray-400 font-extrabold uppercase mt-0.5">Total Assigned</div>
+                <div className="bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
+                  <div className="text-xl font-black text-[#0F4FA8] font-mono">{myAgents.length}</div>
+                  <div className="text-[10px] text-slate-400 font-extrabold uppercase mt-0.5">Assigned</div>
                 </div>
-                <div className="bg-green-50 border border-green-200 p-3 rounded-xl">
-                  <div className="text-lg font-black text-green-700">
+                <div className="bg-emerald-50/80 border border-emerald-200/80 p-3 rounded-xl">
+                  <div className="text-xl font-black text-emerald-700 font-mono">
                     {myAgents.filter(a => ["online", "busy", "break"].includes(a.status || "")).length}
                   </div>
-                  <div className="text-[9px] text-green-600 font-extrabold uppercase mt-0.5">Active Online</div>
+                  <div className="text-[10px] text-emerald-600 font-extrabold uppercase mt-0.5">Active Online</div>
                 </div>
               </div>
             </div>
 
             {/* Transfer requests history list */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-base font-black text-gray-800 mb-4 flex items-center gap-1.5">
-                <Clock className="h-4 w-4 text-forgeBlue" />
-                <span>My Transfer Requests</span>
+            <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 space-y-4">
+              <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-[#0F4FA8]" />
+                <span>Transfer Requests Tracker</span>
               </h2>
               <div className="space-y-3 overflow-y-auto max-h-[350px] pr-1">
                 {transferRequests.map(r => (
-                  <div key={r.id} className="p-3 bg-gray-50 border rounded-xl space-y-2">
+                  <div key={r.id} className="p-3 bg-slate-50/80 border border-slate-200/80 rounded-xl space-y-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <div className="font-bold text-gray-800 text-xs">{r.agent_name}</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">To: {r.target_pool_name}</div>
+                        <div className="font-extrabold text-slate-900 text-xs">{r.agent_name}</div>
+                        <div className="text-[10px] text-slate-400 font-semibold mt-0.5">Target: {r.target_pool_name}</div>
                       </div>
                       <span
-                        className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                        className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
                           r.status === "approved"
-                            ? "bg-green-50 border border-green-200 text-green-700"
+                            ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
                             : r.status === "rejected"
-                            ? "bg-red-50 border border-red-200 text-red-700"
+                            ? "bg-rose-50 border border-rose-200 text-rose-700"
                             : "bg-amber-50 border border-amber-200 text-amber-700"
                         }`}
                       >
@@ -585,19 +631,19 @@ export default function Users() {
                       </span>
                     </div>
                     {r.reason && (
-                      <p className="text-[11px] text-gray-500 font-medium italic bg-white p-2 rounded-lg border border-gray-100">
+                      <p className="text-[11px] text-slate-600 font-medium italic bg-white p-2 rounded-lg border border-slate-200/60">
                         "{r.reason}"
                       </p>
                     )}
                     {r.remarks && (
-                      <p className="text-[10px] text-red-700 font-bold bg-red-50 p-2 rounded-lg border border-red-100">
+                      <p className="text-[10px] text-rose-700 font-bold bg-rose-50 p-2 rounded-lg border border-rose-100">
                         Admin Note: {r.remarks}
                       </p>
                     )}
                   </div>
                 ))}
                 {transferRequests.length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-8 font-medium">No transfer requests submitted yet.</p>
+                  <p className="text-xs text-slate-400 text-center py-8 font-medium">No transfer requests submitted yet.</p>
                 )}
               </div>
             </div>
@@ -606,36 +652,39 @@ export default function Users() {
 
         {/* Request Pool Transfer Modal Form */}
         {isTransferModalOpen && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scale-in space-y-4 border border-gray-100">
-              <div className="flex justify-between items-center">
-                <h3 className="font-black text-gray-800 text-lg">Agent Transfer Request</h3>
-                <button onClick={() => setIsTransferModalOpen(false)} className="p-1.5 hover:bg-slate-100 rounded-lg">
-                  <X className="h-5 w-5 text-gray-400" />
+          <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200 font-sans">
+              <div className="flex justify-between items-center border-b pb-3">
+                <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                  <Send className="h-5 w-5 text-[#0F4FA8]" />
+                  <span>Agent Pool Transfer Request</span>
+                </h3>
+                <button onClick={() => setIsTransferModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-              <form onSubmit={handleCreateTransferRequest} className="space-y-4">
+              <form onSubmit={handleCreateTransferRequest} className="space-y-4 text-xs font-semibold">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Target Pool</label>
+                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Target Pool</label>
                   <select
                     value={transferTargetPoolId}
                     onChange={e => setTransferTargetPoolId(e.target.value)}
-                    className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-bold text-slate-800"
                     required
                   >
                     <option value="">-- Choose Target Pool --</option>
                     {pools.map(p => (
-                      <option key={p.id} value={p.id}>{p.name.replace("_", " ")}</option>
+                      <option key={p.id} value={p.id}>{p.name.replace("_", " ").toUpperCase()}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">Justification Reason</label>
+                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Justification Reason</label>
                   <textarea
-                    placeholder="Provide details on why this pool reassignment is required for the agent..."
+                    placeholder="Provide details on why this pool reassignment is required..."
                     value={transferReason}
                     onChange={e => setTransferReason(e.target.value)}
-                    className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 h-28 focus:ring-2 focus:ring-forgeBlue"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 h-28 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] text-slate-800"
                     required
                   />
                 </div>
@@ -643,13 +692,13 @@ export default function Users() {
                   <button
                     type="button"
                     onClick={() => setIsTransferModalOpen(false)}
-                    className="px-4 py-2 border rounded-xl text-gray-600 hover:bg-slate-50 transition text-sm font-bold"
+                    className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition text-xs font-extrabold cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-forgeBlue hover:bg-blue-800 text-white rounded-xl transition text-sm font-bold"
+                    className="px-5 py-2 bg-[#0F4FA8] hover:bg-blue-800 text-white rounded-xl transition text-xs font-extrabold shadow-md cursor-pointer"
                   >
                     Submit Request
                   </button>
@@ -658,16 +707,21 @@ export default function Users() {
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     );
   }
 
   // --- ADMIN VIEW (Standard Organization Workspace) ---
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="space-y-6 max-w-7xl mx-auto font-sans"
+    >
       {/* Portal Header */}
       <PortalHeader
-        icon={<User className="h-5 w-5 text-[#0F4C9A]" />}
+        icon={<User className="h-5 w-5 text-[#0F4FA8]" />}
         title="Organization Workspace"
         subtitle="Manage Pools, Supervisors, and Agents"
         badgeText={`${users.length} PERSONNEL`}
@@ -680,58 +734,106 @@ export default function Users() {
         onTabChange={(tabId) => setActiveTab(tabId as any)}
       />
 
+      {/* Modern KPI Chips Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-white/95 backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 shadow-2xs hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">TOTAL PERSONNEL</span>
+            <span className="text-2xl font-black text-slate-900 font-mono leading-none mt-1 block">{users.length}</span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center border border-blue-100">
+            <UsersIcon className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="bg-white/95 backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 shadow-2xs hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider block">ACTIVE ACCOUNTS</span>
+            <span className="text-2xl font-black text-emerald-700 font-mono leading-none mt-1 block">{users.filter(u => u.is_active).length}</span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+            <UserCheck className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="bg-white/95 backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 shadow-2xs hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-extrabold text-purple-600 uppercase tracking-wider block">TEAM LEADERS</span>
+            <span className="text-2xl font-black text-purple-700 font-mono leading-none mt-1 block">{users.filter(u => u.role === "team_leader").length}</span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+            <Crown className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="bg-white/95 backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 shadow-2xs hover:shadow-md transition-all flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider block">ACTIVE AGENTS</span>
+            <span className="text-2xl font-black text-amber-700 font-mono leading-none mt-1 block">{users.filter(u => u.role === "agent").length}</span>
+          </div>
+          <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+        </div>
+      </div>
+
       {/* Tab Contents: User Accounts */}
       {activeTab === "accounts" && (
         <div className="space-y-6">
           {/* User List Table (Full Width) */}
-          <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-200/90 space-y-4">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 space-y-5">
             
             {/* Header Toolbar */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-black text-slate-900 tracking-tight">Registered Personnel</h2>
-                  <span className="text-[11px] font-extrabold bg-[#0F4C9A]/10 text-[#0F4C9A] border border-[#0F4C9A]/20 px-2.5 py-0.5 rounded-full">
-                    {users.filter(u => u.is_active).length} Active Personnel
-                  </span>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center border border-blue-100 shadow-2xs">
+                  <UsersIcon className="h-5 w-5 text-[#0F4FA8]" />
                 </div>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">Manage team directory, roles, pool assignments, and security accounts</p>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-lg font-black text-slate-900 tracking-tight">Registered Personnel</h2>
+                    <span className="text-[11px] font-extrabold bg-[#0F4FA8]/10 text-[#0F4FA8] border border-[#0F4FA8]/20 px-3 py-0.5 rounded-full">
+                      {users.filter(u => u.is_active).length} Active Personnel
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">Manage team directory, roles, pool assignments, and security accounts</p>
+                </div>
               </div>
 
               <button
                 onClick={() => setIsCreateUserModalOpen(true)}
-                className="px-4.5 py-2.5 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer shrink-0"
+                className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white rounded-xl text-xs font-extrabold transition flex items-center gap-2 shadow-md hover:shadow-blue-500/25 cursor-pointer shrink-0 active:scale-95"
               >
                 <UserPlus className="h-4 w-4" />
                 <span>+ Add User</span>
               </button>
             </div>
 
-            {/* Filter & Search Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-xl border border-slate-200/70">
+            {/* Filter & Search Toolbar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/80 p-3 rounded-xl border border-slate-200/80">
               {/* Search input */}
-              <div className="relative w-full sm:w-72">
-                <Search className="h-4 w-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+              <div className="relative w-full sm:w-80">
+                <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
                 <input
                   type="text"
                   value={userSearch}
                   onChange={e => setUserSearch(e.target.value)}
                   placeholder="Search by name, email, ID..."
-                  className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition"
+                  className="w-full h-10 pl-10 pr-8 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] transition"
                 />
                 {userSearch && (
-                  <button onClick={() => setUserSearch("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
+                  <button onClick={() => setUserSearch("")} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
 
               {/* Role & Pool Filters */}
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
                 <select
                   value={userRoleFilter}
                   onChange={e => setUserRoleFilter(e.target.value)}
-                  className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 cursor-pointer"
+                  className="h-10 px-3.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
                 >
                   <option value="all">All Roles</option>
                   <option value="admin">Admins</option>
@@ -742,7 +844,7 @@ export default function Users() {
                 <select
                   value={userPoolFilter}
                   onChange={e => setUserPoolFilter(e.target.value)}
-                  className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 cursor-pointer"
+                  className="h-10 px-3.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
                 >
                   <option value="all">All Pools</option>
                   <option value="none">No Pool</option>
@@ -753,10 +855,10 @@ export default function Users() {
               </div>
             </div>
 
-            {/* Table */}
+            {/* Table Container */}
             <div className="overflow-x-auto rounded-xl border border-slate-200/80">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                <thead className="bg-slate-50/95 backdrop-blur-md text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3.5">Employee ID</th>
                     <th className="px-4 py-3.5">Personnel Name</th>
@@ -781,7 +883,7 @@ export default function Users() {
                         (userPoolFilter === "none" ? !u.pool_id : u.pool_id === userPoolFilter);
                       return matchesSearch && matchesRole && matchesPool;
                     })
-                    .map(u => {
+                    .map((u, idx) => {
                       const isNewlyCreated = newlyCreatedUserId === u.id || newlyCreatedUserId === (u as any)._id;
                       const poolObj = pools.find(p => p.id === u.pool_id);
                       const initials = u.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -789,23 +891,25 @@ export default function Users() {
                       return (
                         <tr
                           key={u.id}
-                          className={`transition-all duration-300 ${
+                          className={`transition-all duration-200 ${
                             isNewlyCreated
                               ? "bg-emerald-50/90 font-semibold shadow-2xs"
-                              : "hover:bg-slate-50/70"
-                          }`}
+                              : idx % 2 === 0
+                              ? "bg-white"
+                              : "bg-slate-50/40"
+                          } hover:bg-blue-50/40`}
                         >
                           {/* Employee ID */}
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-4">
                             <span className="inline-flex items-center gap-1 font-mono font-bold text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200/80">
                               {u.employee_id || "N/A"}
                             </span>
                           </td>
 
                           {/* Name & Email with Avatar */}
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4C9A] to-blue-600 flex items-center justify-center text-white font-black text-xs shadow-2xs shrink-0">
+                              <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] flex items-center justify-center font-black text-xs shadow-2xs shrink-0 border border-blue-400/30">
                                 {initials}
                               </div>
                               <div>
@@ -816,23 +920,23 @@ export default function Users() {
                           </td>
 
                           {/* Role Badge */}
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-4">
                             <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase ${
                                 u.role === "admin"
                                   ? "bg-purple-50 text-purple-700 border border-purple-200"
                                   : u.role === "team_leader"
-                                  ? "bg-blue-50 text-[#0F4C9A] border border-blue-200"
+                                  ? "bg-blue-50 text-[#0F4FA8] border border-blue-200"
                                   : "bg-slate-100 text-slate-700 border border-slate-200"
                               }`}
                             >
-                              <Shield className="h-3 w-3" />
+                              {u.role === "team_leader" ? <Crown className="h-3 w-3 text-[#0F4FA8]" /> : <Shield className="h-3 w-3" />}
                               <span>{u.role === "team_leader" ? "TL" : (u.role || "agent").replace(/_/g, " ")}</span>
                             </span>
                           </td>
 
                           {/* Pool Pill */}
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-4">
                             {poolObj ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase">
                                 <Layers className="h-3 w-3" />
@@ -844,27 +948,27 @@ export default function Users() {
                           </td>
 
                           {/* Status */}
-                          <td className="px-4 py-3.5">
+                          <td className="px-4 py-4">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
                                 u.is_active
                                   ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
                                   : "bg-slate-100 border border-slate-200 text-slate-500"
                               }`}
                             >
-                              <span className={`h-1.5 w-1.5 rounded-full ${u.is_active ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+                              <span className={`h-1.5 w-1.5 rounded-full ${u.is_active ? "bg-emerald-500 animate-ping" : "bg-slate-400"}`} />
                               <span>{u.is_active ? "Active" : "Suspended"}</span>
                             </span>
                           </td>
 
                           {/* Actions */}
-                          <td className="px-4 py-3.5 text-right">
+                          <td className="px-4 py-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               {/* Edit Button */}
                               <button
                                 onClick={() => openEditModal(u)}
-                                className="px-2.5 py-1 bg-white hover:bg-blue-50 text-[#0F4C9A] border border-slate-200 hover:border-blue-200 text-xs rounded-lg font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer"
-                                title="Edit User"
+                                className="px-3 py-1 bg-white hover:bg-blue-50 text-[#0F4FA8] border border-slate-200 hover:border-blue-200 text-xs rounded-xl font-extrabold transition shadow-2xs flex items-center gap-1 cursor-pointer active:scale-95"
+                                title="Edit User Account"
                               >
                                 <Edit className="h-3.5 w-3.5" />
                                 <span>Edit</span>
@@ -874,7 +978,7 @@ export default function Users() {
                               {u.is_active && (
                                 <button
                                   onClick={() => handleDeactivateUser(u.id || (u as any)._id || "", u.name)}
-                                  className="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-600 hover:text-amber-700 border border-slate-200 hover:border-amber-200 text-xs rounded-lg font-bold transition shadow-2xs cursor-pointer"
+                                  className="px-3 py-1 bg-white hover:bg-amber-50 text-amber-600 hover:text-amber-700 border border-slate-200 hover:border-amber-200 text-xs rounded-xl font-extrabold transition shadow-2xs cursor-pointer active:scale-95"
                                   title="Deactivate Account"
                                 >
                                   Deactivate
@@ -884,7 +988,7 @@ export default function Users() {
                               {/* Delete Button */}
                               <button
                                 onClick={() => handleDeleteUser(u.id || (u as any)._id || "", u.name)}
-                                className="p-1.5 bg-white hover:bg-rose-50 text-rose-500 hover:text-rose-700 border border-slate-200 hover:border-rose-200 text-xs rounded-lg font-bold transition shadow-2xs cursor-pointer"
+                                className="p-1.5 bg-white hover:bg-rose-50 text-rose-500 hover:text-rose-700 border border-slate-200 hover:border-rose-200 text-xs rounded-xl font-extrabold transition shadow-2xs cursor-pointer active:scale-95"
                                 title="Delete User Account"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -896,7 +1000,7 @@ export default function Users() {
                     })}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-10 text-center text-slate-400 font-medium">
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-medium">
                         No registered personnel accounts found. Click "+ Add User" to register team members.
                       </td>
                     </tr>
@@ -910,16 +1014,19 @@ export default function Users() {
 
       {/* Tab Contents: Pool Management */}
       {activeTab === "pools" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 h-fit lg:col-span-1">
-            <h2 className="text-lg font-black text-gray-800 mb-4">Create Call Pool</h2>
-            <form onSubmit={handleCreatePool} className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 h-fit lg:col-span-1 space-y-4">
+            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <Folder className="h-4.5 w-4.5 text-[#0F4FA8]" />
+              <span>Create Call Pool</span>
+            </h2>
+            <form onSubmit={handleCreatePool} className="space-y-4 text-xs font-semibold">
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">Permitted pool name</label>
+                <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Permitted Pool Name</label>
                 <select
                   value={poolName}
                   onChange={e => setPoolName(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-2 focus:ring-forgeBlue"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-bold text-slate-800 cursor-pointer"
                 >
                   <option value="recruitment">Recruitment Pool (HR Hiring)</option>
                   <option value="credit_card_sales">Credit Card Sales Pool (Banking)</option>
@@ -927,42 +1034,45 @@ export default function Users() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">Description</label>
+                <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Description</label>
                 <textarea
                   placeholder="Pool description details..."
                   value={poolDesc}
                   onChange={e => setPoolDesc(e.target.value)}
-                  className="w-full border rounded-xl px-3 py-2 text-sm bg-gray-50 h-24"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 h-24 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] text-slate-800"
                 />
               </div>
               <button
                 type="submit"
-                className="w-full bg-forgeBlue text-white text-sm py-2.5 rounded-xl font-bold hover:bg-blue-800 transition"
+                className="w-full bg-[#0F4FA8] text-white text-xs py-2.5 rounded-xl font-extrabold hover:bg-blue-900 transition shadow-md cursor-pointer active:scale-95"
               >
                 Create Pool
               </button>
             </form>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-2">
-            <h2 className="text-lg font-black text-gray-800 mb-4">Active System Pools</h2>
+          <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 lg:col-span-2 space-y-4">
+            <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <Layers className="h-4.5 w-4.5 text-[#0F4FA8]" />
+              <span>Active System Pools</span>
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {pools.map(p => (
-                <div key={p.id} className="p-5 border rounded-2xl bg-white flex justify-between items-start shadow-xs">
+                <div key={p.id} className="p-5 border border-slate-200/80 rounded-[16px] bg-slate-50/60 flex justify-between items-start shadow-2xs hover:shadow-md transition">
                   <div>
-                    <h4 className="font-extrabold text-gray-800 text-sm capitalize">{p.name.replace("_", " ")}</h4>
-                    <p className="text-xs text-gray-400 mt-1 leading-relaxed font-medium">{p.description}</p>
-                    <span className="mt-3 block text-[10px] text-forgeBlue font-bold tracking-wide font-mono uppercase bg-blue-50 w-fit px-2 py-0.5 rounded border border-blue-100">
+                    <h4 className="font-extrabold text-slate-900 text-sm capitalize">{p.name.replace("_", " ")}</h4>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed font-medium">{p.description}</p>
+                    <span className="mt-3 block text-[10px] text-[#0F4FA8] font-black tracking-wide font-mono uppercase bg-blue-50 w-fit px-2.5 py-0.5 rounded border border-blue-100">
                       ID: {p.id}
                     </span>
                   </div>
-                  <button onClick={() => handleDeletePool(p.id, p.name)} className="text-gray-400 hover:text-red-500 p-1">
+                  <button onClick={() => handleDeletePool(p.id, p.name)} className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition cursor-pointer">
                     <Trash2 className="h-4.5 w-4.5" />
                   </button>
                 </div>
               ))}
               {pools.length === 0 && (
-                <p className="text-gray-400 text-center py-8 font-medium col-span-2">No active pools registered.</p>
+                <p className="text-slate-400 text-center py-8 font-medium col-span-2">No active pools registered.</p>
               )}
             </div>
           </div>
@@ -971,91 +1081,96 @@ export default function Users() {
 
       {/* Tab Contents: Supervisor mapping */}
       {activeTab === "assignments" && (
-        <div className="space-y-5 font-sans">
-          
-          {/* 1. BLUE-TO-GOLD GRADIENT HERO HEADER WITH LIVE STATISTICS */}
-          <div className="relative overflow-hidden bg-gradient-to-r from-[#0F172A] via-[#1E5EFF] to-[#0F172A] p-6 rounded-[20px] shadow-lg border border-slate-800/80 text-white space-y-4">
-            <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-[#F5B301]/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-1/3 -mb-12 w-48 h-48 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
-
-            <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 text-[#F5B301]">
-                  <Crown className="h-6 w-6" />
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-6 font-sans"
+        >
+          {/* 1. COMPACT PAGE HEADER & LIVE KPI GRID (REPLACING BULKY DARK BANNER) */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-5 shadow-sm border border-slate-200/80 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] flex items-center justify-center font-black shadow-md shrink-0 border border-blue-400/30">
+                  <Crown className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2.5">
-                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">Supervisor Management Dashboard</h2>
-                    <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-black text-slate-900 tracking-tight">Supervisor Mapping Console</h2>
+                    <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
                       LIVE TELEMETRY
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">
-                    Enterprise hierarchy mapping, status tracking, and agent allocation engine
-                  </p>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">Hierarchy mapping, agent workload allocation, and team leader monitoring</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <button
-                  onClick={loadData}
-                  className="h-9 px-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 border border-white/20 cursor-pointer active:scale-95"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 text-[#F5B301]" />
-                  <span>Sync Workload</span>
-                </button>
-              </div>
+              <button
+                onClick={loadData}
+                className="h-9 px-4 bg-slate-100 hover:bg-[#0F4FA8] text-slate-700 hover:text-white border border-slate-200 hover:border-[#0F4FA8] rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs shrink-0"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Sync Workload</span>
+              </button>
             </div>
 
-            {/* Live Stats Pills */}
-            <div className="relative grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-semibold">
-              <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center justify-between">
+            {/* Compact Live KPI Statistic Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs hover:shadow-md transition">
                 <div>
-                  <span className="text-slate-300 text-[10px] uppercase font-bold block">Active Supervisors</span>
-                  <span className="text-lg font-black text-white leading-tight">{supervisorsList.length} TLs</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ACTIVE SUPERVISORS</span>
+                  <span className="text-xl font-black text-slate-900 font-mono mt-0.5 block">{supervisorsList.length} TLs</span>
                 </div>
-                <UsersIcon className="h-5 w-5 text-[#F5B301]/90" />
+                <div className="h-9 w-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+                  <Crown className="h-4 w-4" />
+                </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center justify-between">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs hover:shadow-md transition">
                 <div>
-                  <span className="text-slate-300 text-[10px] uppercase font-bold block">Total Agents</span>
-                  <span className="text-lg font-black text-white leading-tight">{users.filter(u => u.role === "agent").length} Personnel</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">TOTAL AGENTS</span>
+                  <span className="text-xl font-black text-slate-900 font-mono mt-0.5 block">{users.filter(u => u.role === "agent").length} Personnel</span>
                 </div>
-                <Layers className="h-5 w-5 text-blue-300" />
+                <div className="h-9 w-9 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center border border-blue-100">
+                  <Layers className="h-4 w-4" />
+                </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center justify-between">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs hover:shadow-md transition">
                 <div>
-                  <span className="text-slate-300 text-[10px] uppercase font-bold block">Mapped Agents</span>
-                  <span className="text-lg font-black text-emerald-300 leading-tight">
+                  <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider block">MAPPED AGENTS</span>
+                  <span className="text-xl font-black text-emerald-700 font-mono mt-0.5 block">
                     {users.filter(u => u.role === "agent" && u.supervisor_id).length} Mapped
                   </span>
                 </div>
-                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center justify-between">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs hover:shadow-md transition">
                 <div>
-                  <span className="text-slate-300 text-[10px] uppercase font-bold block">Unassigned Agents</span>
-                  <span className="text-lg font-black text-amber-300 leading-tight">
-                    {users.filter(u => u.role === "agent" && !u.supervisor_id).length} Available
+                  <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider block">UNASSIGNED AGENTS</span>
+                  <span className="text-xl font-black text-amber-700 font-mono mt-0.5 block">
+                    {unassignedAgents.length} Available
                   </span>
                 </div>
-                <ShieldCheck className="h-5 w-5 text-amber-400" />
+                <div className="h-9 w-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
               </div>
             </div>
           </div>
 
           {/* 2. SUPERVISOR SELECTOR & GLASSMORPHISM KPI CARDS */}
-          <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-4">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-5 shadow-sm border border-slate-200/80 space-y-4">
             <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-5 border-b border-slate-100 pb-4">
               
               {/* Supervisor Dropdown with Profile Preview */}
               <div className="flex-1 min-w-0">
                 <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Crown className="h-3.5 w-3.5 text-[#1E5EFF]" />
+                  <Crown className="h-3.5 w-3.5 text-[#0F4FA8]" />
                   <span>Select Active Supervisor / Team Leader</span>
                 </label>
 
@@ -1063,7 +1178,7 @@ export default function Users() {
                   <select
                     value={selectedSupervisorId}
                     onChange={e => setSelectedSupervisorId(e.target.value)}
-                    className="w-full h-[46px] pl-4 pr-10 border border-slate-200 rounded-[16px] text-xs font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1E5EFF] transition cursor-pointer"
+                    className="w-full h-[46px] pl-4 pr-10 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] transition cursor-pointer"
                   >
                     <option value="">-- Choose Supervisor / Team Lead --</option>
                     {supervisorsList.map(tl => (
@@ -1080,14 +1195,14 @@ export default function Users() {
                 const curSup = supervisorsList.find(s => s.id === selectedSupervisorId);
                 if (!curSup) return null;
                 return (
-                  <div className="bg-slate-50 p-3 rounded-[16px] border border-slate-200/80 flex items-center gap-3.5 min-w-[280px]">
-                    <div className="h-10 w-10 rounded-xl bg-[#0F172A] text-[#F5B301] font-black text-sm flex items-center justify-center shadow-xs shrink-0 border border-slate-800">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3.5 min-w-[280px]">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] font-black text-sm flex items-center justify-center shadow-xs shrink-0 border border-blue-400/30">
                       {curSup.name[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-slate-900 text-xs truncate">{curSup.name}</span>
-                        <span className="bg-blue-50 text-[#1E5EFF] border border-blue-200 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded">
+                        <span className="bg-blue-50 text-[#0F4FA8] border border-blue-200 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded">
                           {curSup.employee_id}
                         </span>
                       </div>
@@ -1106,28 +1221,28 @@ export default function Users() {
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
                 
                 {/* Total Agents KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">TOTAL AGENTS</span>
-                    <div className="h-7 w-7 rounded-lg bg-blue-50 text-[#1E5EFF] flex items-center justify-center">
+                    <div className="h-7 w-7 rounded-lg bg-blue-50 text-[#0F4FA8] flex items-center justify-center">
                       <UsersIcon className="h-3.5 w-3.5" />
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline justify-between font-mono">
                     <span className="text-2xl font-black text-slate-900 leading-none">{supervisorMetrics.total}</span>
                     <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">100%</span>
                   </div>
                 </div>
 
                 {/* Online KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-emerald-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-emerald-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider">ONLINE</span>
                     <div className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline justify-between font-mono">
                     <span className="text-2xl font-black text-emerald-700 leading-none">{supervisorMetrics.online}</span>
                     <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                       {supervisorMetrics.total ? Math.round((supervisorMetrics.online / supervisorMetrics.total) * 100) : 0}%
@@ -1136,14 +1251,14 @@ export default function Users() {
                 </div>
 
                 {/* Offline KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">OFFLINE</span>
                     <div className="h-7 w-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
                       <PowerOff className="h-3.5 w-3.5" />
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline justify-between font-mono">
                     <span className="text-2xl font-black text-slate-700 leading-none">{supervisorMetrics.offline}</span>
                     <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
                       {supervisorMetrics.total ? Math.round((supervisorMetrics.offline / supervisorMetrics.total) * 100) : 0}%
@@ -1152,28 +1267,28 @@ export default function Users() {
                 </div>
 
                 {/* Busy KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-rose-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-rose-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-rose-600 uppercase tracking-wider">ON CALL / BUSY</span>
                     <div className="h-7 w-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
                       <PhoneCall className="h-3.5 w-3.5" />
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline justify-between font-mono">
                     <span className="text-2xl font-black text-rose-700 leading-none">{supervisorMetrics.busy}</span>
                     <span className="text-[10px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded">Active</span>
                   </div>
                 </div>
 
                 {/* Break KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-amber-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-amber-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider">ON BREAK</span>
                     <div className="h-7 w-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
                       <Coffee className="h-3.5 w-3.5" />
                     </div>
                   </div>
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline justify-between font-mono">
                     <span className="text-2xl font-black text-amber-700 leading-none">{supervisorMetrics.break}</span>
                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">Paused</span>
                   </div>
@@ -1187,12 +1302,12 @@ export default function Users() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             
             {/* COLUMN 1: SUPERVISED AGENTS */}
-            <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-4 flex flex-col">
+            <div className="bg-white/95 backdrop-blur-xl rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-4 flex flex-col">
               
               {/* Header Title & Controls */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-xl bg-blue-50 text-[#1E5EFF] flex items-center justify-center font-bold">
+                  <div className="h-8 w-8 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center font-bold">
                     <UsersIcon className="h-4 w-4" />
                   </div>
                   <div>
@@ -1202,7 +1317,7 @@ export default function Users() {
                 </div>
 
                 {selectedSupervisorId && (
-                  <span className="bg-blue-50 text-[#1E5EFF] border border-blue-200 text-xs font-extrabold px-3 py-1 rounded-full shrink-0">
+                  <span className="bg-blue-50 text-[#0F4FA8] border border-blue-200 text-xs font-mono font-extrabold px-3 py-1 rounded-full shrink-0">
                     {selectedSupervisorAgents.length} Mapped
                   </span>
                 )}
@@ -1217,7 +1332,7 @@ export default function Users() {
                     placeholder="Search supervised agents..."
                     value={supervisedSearch}
                     onChange={e => setSupervisedSearch(e.target.value)}
-                    className="w-full h-9 pl-9 pr-7 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1E5EFF]"
+                    className="w-full h-9 pl-9 pr-7 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
                   />
                   {supervisedSearch && (
                     <button onClick={() => setSupervisedSearch("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
@@ -1253,12 +1368,14 @@ export default function Users() {
                     const isLoading = isActionLoading === agent.id;
 
                     return (
-                      <div
+                      <motion.div
                         key={agent.id}
-                        className={`p-3 rounded-[16px] border transition-all duration-200 flex items-center justify-between gap-3 ${
+                        whileHover={{ y: -2, scale: 1.005 }}
+                        transition={{ duration: 0.15 }}
+                        className={`p-3 rounded-xl border transition-all duration-200 flex items-center justify-between gap-3 ${
                           isSelected
-                            ? "bg-blue-50/70 border-blue-300 shadow-xs"
-                            : "bg-slate-50/50 hover:bg-white border-slate-200/80 hover:shadow-2xs"
+                            ? "bg-blue-50/80 border-blue-300 shadow-xs"
+                            : "bg-slate-50/60 hover:bg-white border-slate-200/80 hover:shadow-xs"
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -1266,11 +1383,11 @@ export default function Users() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelectAgent(agent.id)}
-                            className="h-4 w-4 text-[#1E5EFF] focus:ring-[#1E5EFF] border-slate-300 rounded cursor-pointer shrink-0"
+                            className="h-4 w-4 text-[#0F4FA8] focus:ring-[#0F4FA8] border-slate-300 rounded cursor-pointer shrink-0"
                           />
 
                           <div className="relative shrink-0">
-                            <div className="h-9 w-9 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
+                            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] font-black text-xs flex items-center justify-center shadow-2xs">
                               {agent.name[0].toUpperCase()}
                             </div>
                             <span
@@ -1288,7 +1405,7 @@ export default function Users() {
                               </span>
                             </div>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              <span className="text-[10px] font-semibold text-[#1E5EFF] bg-blue-50 border border-blue-100 px-1.5 py-0.2 rounded">
+                              <span className="text-[10px] font-semibold text-[#0F4FA8] bg-blue-50 border border-blue-100 px-1.5 py-0.2 rounded">
                                 {poolObj?.name.replace("_", " ").toUpperCase() || "NO POOL"}
                               </span>
                               <span className="text-[10px] font-medium text-slate-400">
@@ -1311,7 +1428,7 @@ export default function Users() {
                           )}
                           <span>Unmap</span>
                         </button>
-                      </div>
+                      </motion.div>
                     );
                   })}
 
@@ -1326,7 +1443,7 @@ export default function Users() {
             </div>
 
             {/* COLUMN 2: OTHER AGENTS (AVAILABLE FOR ASSIGNMENT) */}
-            <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-4 flex flex-col">
+            <div className="bg-white/95 backdrop-blur-xl rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-4 flex flex-col">
               
               {/* Header Title & Controls */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3">
@@ -1340,7 +1457,7 @@ export default function Users() {
                   </div>
                 </div>
 
-                <span className="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-extrabold px-3 py-1 rounded-full shrink-0">
+                <span className="bg-amber-50 text-amber-700 border border-amber-200 text-xs font-mono font-extrabold px-3 py-1 rounded-full shrink-0">
                   {unassignedAgents.length} Available
                 </span>
               </div>
@@ -1354,7 +1471,7 @@ export default function Users() {
                     placeholder="Search available agents..."
                     value={availableSearch}
                     onChange={e => setAvailableSearch(e.target.value)}
-                    className="w-full h-9 pl-9 pr-7 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#1E5EFF]"
+                    className="w-full h-9 pl-9 pr-7 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
                   />
                   {availableSearch && (
                     <button onClick={() => setAvailableSearch("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
@@ -1390,12 +1507,14 @@ export default function Users() {
                     const isLoading = isActionLoading === agent.id;
 
                     return (
-                      <div
+                      <motion.div
                         key={agent.id}
-                        className={`p-3 rounded-[16px] border transition-all duration-200 flex items-center justify-between gap-3 ${
+                        whileHover={{ y: -2, scale: 1.005 }}
+                        transition={{ duration: 0.15 }}
+                        className={`p-3 rounded-xl border transition-all duration-200 flex items-center justify-between gap-3 ${
                           isSelected
-                            ? "bg-blue-50/70 border-blue-300 shadow-xs"
-                            : "bg-slate-50/50 hover:bg-white border-slate-200/80 hover:shadow-2xs"
+                            ? "bg-blue-50/80 border-blue-300 shadow-xs"
+                            : "bg-slate-50/60 hover:bg-white border-slate-200/80 hover:shadow-xs"
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -1403,11 +1522,11 @@ export default function Users() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => toggleSelectAgent(agent.id)}
-                            className="h-4 w-4 text-[#1E5EFF] focus:ring-[#1E5EFF] border-slate-300 rounded cursor-pointer shrink-0"
+                            className="h-4 w-4 text-[#0F4FA8] focus:ring-[#0F4FA8] border-slate-300 rounded cursor-pointer shrink-0"
                           />
 
                           <div className="relative shrink-0">
-                            <div className="h-9 w-9 rounded-xl bg-slate-700 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
+                            <div className="h-9 w-9 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
                               {agent.name[0].toUpperCase()}
                             </div>
                             <span
@@ -1425,7 +1544,7 @@ export default function Users() {
                               </span>
                             </div>
                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              <span className="text-[10px] font-semibold text-[#1E5EFF] bg-blue-50 border border-blue-100 px-1.5 py-0.2 rounded">
+                              <span className="text-[10px] font-semibold text-[#0F4FA8] bg-blue-50 border border-blue-100 px-1.5 py-0.2 rounded">
                                 {poolObj?.name.replace("_", " ").toUpperCase() || "NO POOL"}
                               </span>
                               {agent.supervisor_id && (
@@ -1441,7 +1560,7 @@ export default function Users() {
                           <button
                             disabled={isLoading}
                             onClick={() => handleTransferAgent(agent.id, selectedSupervisorId)}
-                            className="h-8 px-3 bg-[#1E5EFF] hover:bg-blue-700 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1 shrink-0 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
+                            className="h-8 px-3 bg-[#0F4FA8] hover:bg-blue-900 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1 shrink-0 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
                           >
                             {isLoading ? (
                               <Clock className="h-3.5 w-3.5 animate-spin text-white" />
@@ -1451,7 +1570,7 @@ export default function Users() {
                             <span>Assign TL</span>
                           </button>
                         )}
-                      </div>
+                      </motion.div>
                     );
                   })}
 
@@ -1469,9 +1588,13 @@ export default function Users() {
 
           {/* 4. BULK SELECTION ACTION CONTROL BAR */}
           {selectedAgentIds.length > 0 && (
-            <div className="bg-[#0F172A] text-white p-4 rounded-[20px] shadow-xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-scale-in">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-slate-900 text-white p-4 rounded-2xl shadow-xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+            >
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-[#1E5EFF] text-[#F5B301] font-black text-sm flex items-center justify-center shrink-0 shadow-md">
+                <div className="h-9 w-9 rounded-xl bg-[#0F4FA8] text-[#FFC107] font-black text-sm flex items-center justify-center shrink-0 shadow-md">
                   {selectedAgentIds.length}
                 </div>
                 <div>
@@ -1490,15 +1613,15 @@ export default function Users() {
                   >
                     <option value="">-- Target Pool --</option>
                     {pools.map(p => (
-                      <option key={p.id} value={p.id}>{p.name.replace("_", " ")}</option>
+                      <option key={p.id} value={p.id}>{p.name.replace("_", " ").toUpperCase()}</option>
                     ))}
                   </select>
                   <button
                     disabled={!bulkTargetPoolId || isActionLoading === "bulk-pool"}
                     onClick={handleBulkAssignPool}
-                    className="h-10 px-4 bg-[#1E5EFF] hover:bg-blue-600 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+                    className="h-10 px-4 bg-[#0F4FA8] hover:bg-blue-600 text-white font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
                   >
-                    {isActionLoading === "bulk-pool" ? <Clock className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 text-[#F5B301]" />}
+                    {isActionLoading === "bulk-pool" ? <Clock className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 text-[#FFC107]" />}
                     <span>Assign Pool</span>
                   </button>
                 </div>
@@ -1518,7 +1641,7 @@ export default function Users() {
                   <button
                     disabled={!bulkTargetSupervisorId || isActionLoading === "bulk-sup"}
                     onClick={handleBulkAssignSupervisor}
-                    className="h-10 px-4 bg-[#F5B301] hover:bg-amber-500 text-slate-950 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+                    className="h-10 px-4 bg-[#FFC107] hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
                   >
                     {isActionLoading === "bulk-sup" ? <Clock className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5 text-slate-950" />}
                     <span>Map Supervisor</span>
@@ -1532,10 +1655,10 @@ export default function Users() {
                   Clear
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
 
-        </div>
+        </motion.div>
       )}
 
       {/* Register User Modal */}
@@ -1554,12 +1677,12 @@ export default function Users() {
       {/* Edit User Modal (Portal) */}
       {editingUser && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[9999] bg-slate-900/65 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-sans">
-          <div className="bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden transition-all duration-300 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden transition-all duration-300">
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 bg-white flex items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold border border-blue-100">
-                  <Edit className="h-5 w-5 text-[#0F4C9A]" />
+                <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center font-bold border border-blue-100">
+                  <Edit className="h-5 w-5 text-[#0F4FA8]" />
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900 tracking-tight">Edit Personnel Account</h2>
@@ -1585,7 +1708,7 @@ export default function Users() {
                     required
                     value={editForm.name}
                     onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition"
+                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 focus:border-[#0F4FA8] transition"
                   />
                 </div>
 
@@ -1597,7 +1720,7 @@ export default function Users() {
                     required
                     value={editForm.email}
                     onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition"
+                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 focus:border-[#0F4FA8] transition"
                   />
                 </div>
 
@@ -1607,7 +1730,7 @@ export default function Users() {
                   <select
                     value={editForm.role}
                     onChange={e => setEditForm({ ...editForm, role: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 cursor-pointer"
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 cursor-pointer"
                   >
                     <option value="agent">Agent (Telecaller)</option>
                     <option value="team_leader">Supervisor (Team Leader)</option>
@@ -1621,7 +1744,7 @@ export default function Users() {
                   <select
                     value={editForm.department}
                     onChange={e => setEditForm({ ...editForm, department: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 cursor-pointer"
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 cursor-pointer"
                   >
                     <option value="Sales">Sales & Outreach</option>
                     <option value="Service">Customer Support</option>
@@ -1636,7 +1759,7 @@ export default function Users() {
                   <select
                     value={editForm.pool_id}
                     onChange={e => setEditForm({ ...editForm, pool_id: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 cursor-pointer"
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 cursor-pointer"
                   >
                     <option value="">No Pool Assigned</option>
                     {pools.map(p => (
@@ -1652,20 +1775,16 @@ export default function Users() {
                     type="text"
                     value={editForm.employee_id}
                     onChange={e => setEditForm({ ...editForm, employee_id: e.target.value })}
-                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 transition"
+                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 transition"
                   />
                 </div>
 
                 {/* Phone Number */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Number</label>
-                  <input
-                    type="text"
-                    value={editForm.phone}
-                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 transition"
-                  />
-                </div>
+                <PhoneInput
+                  value={editForm.phone}
+                  onChange={(fullVal) => setEditForm({ ...editForm, phone: fullVal })}
+                  label="Phone Number"
+                />
 
                 {/* Shift Schedule */}
                 <div>
@@ -1673,7 +1792,7 @@ export default function Users() {
                   <select
                     value={editForm.shift}
                     onChange={e => setEditForm({ ...editForm, shift: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 cursor-pointer"
+                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 cursor-pointer"
                   >
                     <option value="Day">Day Shift (9 AM - 6 PM)</option>
                     <option value="Night">Night Shift (9 PM - 6 AM)</option>
@@ -1693,7 +1812,7 @@ export default function Users() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-5 py-2 bg-[#0F4FA8] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
                 >
                   Save Changes
                 </button>
@@ -1717,8 +1836,6 @@ export default function Users() {
           onClose={() => setConfirmModalConfig(null)}
         />
       )}
-    </div>
+    </motion.div>
   );
 }
-
-

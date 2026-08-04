@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -9,6 +10,7 @@ export type Toast = {
   message: string;
   type: ToastType;
   duration?: number;
+  title?: string;
 };
 
 type ToastContextType = {
@@ -46,16 +48,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ showToast, removeToast }}>
       {children}
 
-      {/* Render Toast Portal at top document.body with ultra-high z-index (999999) */}
+      {/* Render Toast Portal at top-right document.body with ultra-high z-index */}
       {typeof document !== "undefined" && createPortal(
         <div
-          className="fixed top-6 right-6 z-[999999] flex flex-col gap-3 pointer-events-none max-w-md w-full font-sans"
+          className="fixed top-6 right-6 z-[999999] flex flex-col gap-3 pointer-events-none max-w-sm w-full font-sans"
           aria-live="polite"
           aria-atomic="true"
         >
-          {toasts.map((t) => (
-            <ToastItem key={t.id} toast={t} onClose={() => removeToast(t.id)} />
-          ))}
+          <AnimatePresence mode="sync">
+            {toasts.map((t) => (
+              <ToastItem key={t.id} toast={t} onClose={() => removeToast(t.id)} />
+            ))}
+          </AnimatePresence>
         </div>,
         document.body
       )}
@@ -65,80 +69,99 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const [progress, setProgress] = useState(100);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const config = {
+    success: {
+      title: "Success",
+      titleColor: "text-emerald-600",
+      progressBg: "bg-emerald-500",
+      borderAccent: "border-l-4 border-l-emerald-500"
+    },
+    error: {
+      title: "Error Alert",
+      titleColor: "text-rose-600",
+      progressBg: "bg-rose-500",
+      borderAccent: "border-l-4 border-l-rose-500"
+    },
+    warning: {
+      title: "Warning",
+      titleColor: "text-amber-600",
+      progressBg: "bg-amber-500",
+      borderAccent: "border-l-4 border-l-amber-500"
+    },
+    info: {
+      title: "System Notice",
+      titleColor: "text-[#0F4FA8]",
+      progressBg: "bg-[#0F4FA8]",
+      borderAccent: "border-l-4 border-l-[#0F4FA8]"
+    }
+  }[toast.type || "success"];
 
   useEffect(() => {
+    if (isPaused) return;
+
     const duration = toast.duration || 4000;
-    const intervalTime = 40;
+    const intervalTime = 30;
     const step = (intervalTime / duration) * 100;
 
     const timer = setInterval(() => {
       setProgress((prev) => {
         const next = prev - step;
-        return next > 0 ? next : 0;
+        if (next <= 0) {
+          onClose();
+          return 0;
+        }
+        return next;
       });
     }, intervalTime);
 
-    const dismissTimeout = setTimeout(() => {
-      onClose();
-    }, duration);
-
     return () => {
       clearInterval(timer);
-      clearTimeout(dismissTimeout);
     };
-  }, [toast.duration, onClose]);
-
-  const styles = {
-    success: {
-      bg: "bg-emerald-600 text-white border-emerald-700 shadow-emerald-600/20",
-      icon: <CheckCircle2 className="h-5 w-5 text-white shrink-0" />,
-      progress: "bg-white/40"
-    },
-    error: {
-      bg: "bg-rose-600 text-white border-rose-700 shadow-rose-600/20",
-      icon: <AlertCircle className="h-5 w-5 text-white shrink-0" />,
-      progress: "bg-white/40"
-    },
-    warning: {
-      bg: "bg-amber-500 text-white border-amber-600 shadow-amber-500/20",
-      icon: <AlertTriangle className="h-5 w-5 text-white shrink-0" />,
-      progress: "bg-white/40"
-    },
-    info: {
-      bg: "bg-[#0F4C9A] text-white border-blue-800 shadow-[#0F4C9A]/20",
-      icon: <Info className="h-5 w-5 text-white shrink-0" />,
-      progress: "bg-white/40"
-    }
-  }[toast.type || "success"];
+  }, [toast.duration, onClose, isPaused]);
 
   return (
-    <div
-      className={`pointer-events-auto relative overflow-hidden rounded-2xl p-4 shadow-2xl border transition-all duration-300 transform animate-in slide-in-from-right-full fade-in flex items-start gap-3.5 ${styles.bg}`}
+    <motion.div
+      initial={{ opacity: 0, x: 50, scale: 0.95 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 40, scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onClick={onClose}
+      className={`pointer-events-auto relative overflow-hidden bg-white/95 backdrop-blur-xl border border-slate-200/90 ${config.borderAccent} rounded-[20px] p-4 shadow-xl shadow-slate-900/10 flex items-start justify-between gap-3 cursor-pointer select-none group hover:shadow-2xl transition-all`}
     >
-      {styles.icon}
-      
-      <div className="flex-1 min-w-0 pr-2">
-        <p className="text-xs font-semibold leading-relaxed tracking-tight break-words">
+      {/* Content Section (ALL LEADING ICONS / SVGS COMPLETELY REMOVED) */}
+      <div className="flex-1 min-w-0 pr-1">
+        <h4 className={`text-[11px] font-black uppercase tracking-wider ${config.titleColor}`}>
+          {toast.title || config.title}
+        </h4>
+        <p className="text-xs font-semibold text-slate-800 leading-relaxed mt-0.5 break-words">
           {toast.message}
         </p>
       </div>
 
+      {/* Dismiss Button */}
       <button
-        onClick={onClose}
-        className="text-white/70 hover:text-white p-1 rounded-lg hover:bg-white/20 transition cursor-pointer shrink-0"
-        title="Dismiss toast"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1 rounded-lg transition cursor-pointer shrink-0 -mr-1 -mt-0.5 active:scale-90"
+        title="Dismiss notification"
       >
-        <X className="h-4 w-4" />
+        <X className="h-4 w-4 stroke-[2]" />
       </button>
 
-      {/* Auto-dismiss progress bar */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/10">
+      {/* Thin Animated Auto-Dismiss Progress Bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-100/80 overflow-hidden rounded-b-[20px]">
         <div
-          className={`h-full transition-all ease-linear ${styles.progress}`}
+          className={`h-full transition-all ease-linear ${config.progressBg}`}
           style={{ width: `${progress}%` }}
         />
       </div>
-    </div>
+    </motion.div>
   );
 }
 

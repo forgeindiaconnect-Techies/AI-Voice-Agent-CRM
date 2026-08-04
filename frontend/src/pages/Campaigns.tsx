@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
+import { CustomPauseIcon } from "../components/CustomPauseIcon";
 import {
   Play,
   Pause,
@@ -878,8 +879,8 @@ export default function Campaigns() {
                     Paused Campaigns
                   </span>
                 </div>
-                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100 text-amber-600 group-hover:scale-105 transition-transform">
-                  <Pause className="h-5 w-5 fill-amber-600" />
+                <div className="p-1 rounded-2xl group-hover:scale-105 transition-transform">
+                  <CustomPauseIcon size={32} />
                 </div>
               </div>
               <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs">
@@ -1082,9 +1083,9 @@ export default function Campaigns() {
                           {c.status === "active" ? (
                             <button
                               onClick={() => handleUpdateStatus(c.id, "paused")}
-                              className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                             >
-                              <Pause className="h-3.5 w-3.5" />
+                              <CustomPauseIcon size={18} />
                               <span>Pause</span>
                             </button>
                           ) : (
