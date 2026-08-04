@@ -5,6 +5,7 @@ import { api, BASE_URL } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { PhoneInput } from "../components/PhoneInput";
+import LeadDetailsDrawer from "../components/LeadDetailsDrawer";
 import {
   Plus,
   X,
@@ -1248,128 +1249,22 @@ export default function Leads() {
       </div>
 
       {/* 5. RIGHT SLIDE-OVER PROFILE DRAWER */}
-      <AnimatePresence>
-        {drawerLead && (
-          <div className="fixed inset-0 z-50 overflow-hidden font-sans">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setDrawerLead(null)}
-              className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs"
-            />
-
-            <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-              <motion.div
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ type: "spring", damping: 25, stiffness: 250 }}
-                className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between border-l border-slate-200 overflow-hidden"
-              >
-                <div className="p-6 bg-slate-50 border-b border-slate-200 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] flex items-center justify-center font-black text-lg shadow-md">
-                        {drawerLead.name[0]?.toUpperCase()}
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-black text-slate-900">{drawerLead.name}</h2>
-                        <span className="text-xs font-mono font-bold text-slate-400">{drawerLead.lead_id}</span>
-                      </div>
-                    </div>
-                    <button onClick={() => setDrawerLead(null)} className="p-1.5 text-slate-400 hover:text-slate-700">
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
-                    <button
-                      onClick={() => handleCallCustomer(drawerLead)}
-                      className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-extrabold flex flex-col items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Phone className="h-4 w-4" />
-                      <span>Call</span>
-                    </button>
-                    <button
-                      onClick={() => showToast(`Opening WhatsApp chat with ${drawerLead.phone}...`, "info")}
-                      className="p-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl font-extrabold flex flex-col items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      <span>WhatsApp</span>
-                    </button>
-                    <button
-                      onClick={() => showToast(`Sending email to ${drawerLead.email || drawerLead.name}...`, "info")}
-                      className="p-2.5 bg-blue-50 hover:bg-blue-100 text-[#0F4FA8] border border-blue-200 rounded-xl font-extrabold flex flex-col items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Mail className="h-4 w-4" />
-                      <span>Email</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-6 flex-1 overflow-y-auto space-y-4 text-xs font-semibold">
-                  <div className="p-3 bg-slate-50 border rounded-xl space-y-1">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">Contact Details</div>
-                    <div className="text-slate-800">Phone: {drawerLead.phone}</div>
-                    <div className="text-slate-800">Email: {drawerLead.email || "N/A"}</div>
-                    <div className="text-slate-800">Location: {drawerLead.location || "N/A"}</div>
-                  </div>
-
-                  <div className="p-3 bg-slate-50 border rounded-xl space-y-1">
-                    <div className="text-[10px] text-slate-400 uppercase font-bold">AI Telemetry & Intent</div>
-                    <div className="text-slate-800">AI Lead Score: <strong>{drawerLead.ai_score || 88}%</strong></div>
-                    <div className="text-slate-800">Last Contact: <strong>{drawerLead.last_contact_at || "Today"}</strong></div>
-                  </div>
-
-                  {/* Lead Action & Disposition Update Section */}
-                  <div className="p-3.5 bg-[#F0F4FA] border border-blue-100 rounded-xl space-y-2.5">
-                    <div className="text-[10px] text-[#0F4FA8] uppercase font-bold tracking-wider">
-                      Update Lead Status & Notes
-                    </div>
-                    <div className="space-y-2">
-                      <div>
-                        <label className="block text-[10px] text-slate-500 font-bold mb-1">Status Disposition</label>
-                        <select
-                          value={drawerStatus || drawerLead.status}
-                          onChange={e => setDrawerStatus(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
-                        >
-                          <option value="new">New Lead</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="follow_up">Follow-up Needed</option>
-                          <option value="qualified">Qualified</option>
-                          <option value="not_interested">Not Interested</option>
-                          <option value="closed">Closed / Won</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] text-slate-500 font-bold mb-1">Call Notes / Follow-up Details</label>
-                        <textarea
-                          rows={3}
-                          placeholder="Type notes or customer follow-up response here..."
-                          value={drawerNotes}
-                          onChange={e => setDrawerNotes(e.target.value)}
-                          className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
-                        />
-                      </div>
-
-                      <button
-                        onClick={handleSaveDrawerDisposition}
-                        disabled={isUpdatingDisposition}
-                        className="w-full py-2 bg-[#0F4FA8] hover:bg-blue-800 text-white rounded-lg font-extrabold text-xs transition cursor-pointer disabled:opacity-50 shadow-sm"
-                      >
-                        {isUpdatingDisposition ? "Saving..." : "Save Disposition Update"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
+      <LeadDetailsDrawer
+        lead={drawerLead}
+        onClose={() => setDrawerLead(null)}
+        onUpdateDisposition={async (leadId, status, notes, followUpDate) => {
+          await api.patch(`/api/leads/${leadId}/status`, {
+            status,
+            notes,
+            follow_up_date: followUpDate || null
+          });
+          loadData();
+        }}
+        users={users}
+        pools={pools}
+        onCall={(l) => handleCallCustomer(l)}
+        showToast={showToast}
+      />
 
       {/* MANUAL LEAD ENTRY MODAL */}
       {showManualModal && (
