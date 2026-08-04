@@ -53,9 +53,11 @@ import {
 } from "lucide-react";
 
 type Lead = {
+  _id?: string;
   id: string;
-  lead_id: string;
+  lead_id?: string;
   name: string;
+  customer_name?: string;
   phone: string;
   email?: string;
   location?: string;
@@ -113,6 +115,7 @@ function Sparkline({ color = "#0F4FA8" }: { color?: string }) {
 
 export default function Leads() {
   const { user } = useAuth();
+  const isManager = user?.role === "admin" || user?.role === "team_leader";
   const { showToast } = useToast();
   const navigate = useNavigate();
   
@@ -207,10 +210,33 @@ export default function Leads() {
   });
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
-  // Bulk Actions
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [assignAgentId, setAssignAgentId] = useState("");
   const [bulkStatus, setBulkStatus] = useState("");
+
+  // Drawer Disposition State
+  const [drawerStatus, setDrawerStatus] = useState("");
+  const [drawerNotes, setDrawerNotes] = useState("");
+  const [isUpdatingDisposition, setIsUpdatingDisposition] = useState(false);
+
+  async function handleSaveDrawerDisposition() {
+    if (!drawerLead) return;
+    const targetStatus = drawerStatus || drawerLead.status;
+    setIsUpdatingDisposition(true);
+    try {
+      await api.patch(`/api/leads/${drawerLead.id || drawerLead.lead_id}/disposition`, {
+        status: targetStatus,
+        notes: drawerNotes
+      });
+      showToast("Lead status and call notes updated.", "success");
+      setDrawerNotes("");
+      loadData();
+    } catch (err: any) {
+      showToast(err.message || "Failed to update disposition.", "error");
+    } finally {
+      setIsUpdatingDisposition(false);
+    }
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -221,28 +247,42 @@ export default function Leads() {
       const queryString = queryParams.length ? `?${queryParams.join("&")}` : "";
 
       const leadsData = await api.get(`/api/leads${queryString}`);
+      const validLeads = Array.isArray(leadsData) ? leadsData : [];
       // Attach mock AI scores & dates for demo if missing
-      const enhancedLeads = leadsData.map((l: Lead, idx: number) => ({
+      const enhancedLeads = validLeads.map((l: Lead, idx: number) => ({
         ...l,
         ai_score: l.ai_score || Math.floor(75 + (idx * 7) % 24),
         last_contact_at: l.last_contact_at || "Today, 11:45 AM"
       }));
       setLeads(enhancedLeads);
 
-      const poolsData = await api.get("/api/pools");
-      setPools(poolsData);
+      try {
+        const poolsData = await api.get("/api/pools");
+        setPools(Array.isArray(poolsData) ? poolsData : []);
+      } catch {
+        setPools([]);
+      }
 
-      const campaignsData = await api.get("/api/campaigns");
-      setCampaigns(campaignsData);
+      try {
+        const campaignsData = await api.get("/api/campaigns");
+        setCampaigns(Array.isArray(campaignsData) ? campaignsData : []);
+      } catch {
+        setCampaigns([]);
+      }
 
-      const usersData = await api.get("/api/users");
-      setUsers(usersData);
+      try {
+        const usersData = await api.get("/api/users");
+        setUsers(Array.isArray(usersData) ? usersData : []);
+      } catch {
+        setUsers([]);
+      }
     } catch (err: any) {
-      showToast(err.message || "Failed to load CRM leads.", "error");
+      console.error("[Leads] Failed to load data:", err);
+      setLeads([]);
     } finally {
       setLoading(false);
     }
-  }, [showToast, poolFilter, statusFilter]);
+  }, [poolFilter, statusFilter]);
 
   useEffect(() => {
     loadData();
@@ -329,9 +369,15 @@ export default function Leads() {
     setIsSubmittingManual(true);
 
     try {
-      await api.post("/api/leads", manualForm);
+      const createdLead = await api.post("/api/leads", manualForm);
       showToast("New customer lead added successfully!", "success");
       setShowManualModal(false);
+      
+      // Reset search/chip filters so new lead is visible immediately
+      setSearchQuery("");
+      setQuickChipFilter("all");
+      setStatusFilter("");
+
       setManualForm({
         name: "",
         phone: "",
@@ -342,6 +388,10 @@ export default function Leads() {
         priority: "medium",
         source: "Manual"
       });
+
+      if (createdLead && typeof createdLead === "object") {
+        setLeads(prev => [createdLead, ...prev]);
+      }
       loadData();
     } catch (err: any) {
       showToast(err.message || "Failed to create lead.", "error");
@@ -445,26 +495,40 @@ export default function Leads() {
   const filteredLeads = useMemo(() => {
     return leads.filter(l => {
       const term = searchQuery.toLowerCase();
+      const nameStr = (l.name || l.customer_name || "").toLowerCase();
+      const phoneStr = (l.phone || "").toLowerCase();
+      const leadIdStr = (l.lead_id || l.id || l._id || "").toLowerCase();
+      const emailStr = (l.email || "").toLowerCase();
+
       const matchesSearch =
-        l.name.toLowerCase().includes(term) ||
-        l.phone.toLowerCase().includes(term) ||
-        l.lead_id.toLowerCase().includes(term) ||
-        (l.email && l.email.toLowerCase().includes(term));
+        nameStr.includes(term) ||
+        phoneStr.includes(term) ||
+        leadIdStr.includes(term) ||
+        emailStr.includes(term);
 
       let matchesQuickChip = true;
       if (quickChipFilter !== "all") {
-        matchesQuickChip = l.status === quickChipFilter;
+        if (quickChipFilter === "follow_up") {
+          matchesQuickChip = l.status === "follow_up" || l.status === "in_progress" || l.status === "follow_up_required";
+        } else {
+          matchesQuickChip = l.status === quickChipFilter;
+        }
       }
 
       const matchesStatus = statusFilter ? l.status === statusFilter : true;
-      const matchesPool = poolFilter ? l.pool_id === poolFilter : true;
+      
+      const poolObj = pools.find(p => p.id === l.pool_id || p.name === l.pool_id);
+      const matchesPool = poolFilter
+        ? (l.pool_id === poolFilter || (poolObj && (poolObj.id === poolFilter || poolObj.name === poolFilter)))
+        : true;
+
       const matchesCampaign = campaignFilter ? l.campaign_id === campaignFilter : true;
       const matchesAgent = agentFilter ? l.assigned_agent_id === agentFilter : true;
-      const matchesPriority = priorityFilter ? (l.priority || "medium") === priorityFilter : true;
+      const matchesPriority = priorityFilter ? (l.priority || "medium").toLowerCase() === priorityFilter.toLowerCase() : true;
 
       return matchesSearch && matchesQuickChip && matchesStatus && matchesPool && matchesCampaign && matchesAgent && matchesPriority;
     });
-  }, [leads, searchQuery, quickChipFilter, statusFilter, poolFilter, campaignFilter, agentFilter, priorityFilter]);
+  }, [leads, pools, searchQuery, quickChipFilter, statusFilter, poolFilter, campaignFilter, agentFilter, priorityFilter]);
 
   // Paginated Leads
   const totalPages = Math.ceil(filteredLeads.length / pageSize) || 1;
@@ -549,13 +613,25 @@ export default function Leads() {
                 <RotateCcw className="h-4 w-4" />
               </button>
 
-              <button
-                onClick={() => setShowImportSection(!showImportSection)}
-                className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
-              >
-                <UploadCloud className="h-4 w-4 text-[#0F4FA8]" />
-                <span>Import CSV</span>
-              </button>
+              {isManager && (
+                <>
+                  <button
+                    onClick={() => setShowImportSection(!showImportSection)}
+                    className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
+                  >
+                    <UploadCloud className="h-4 w-4 text-[#0F4FA8]" />
+                    <span>Import CSV</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowManualModal(true)}
+                    className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-blue-500/25 active:scale-95 cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Lead</span>
+                  </button>
+                </>
+              )}
 
               <button
                 onClick={() => showToast("Exporting leads database CSV...", "info")}
@@ -563,14 +639,6 @@ export default function Leads() {
               >
                 <Download className="h-4 w-4 text-emerald-600" />
                 <span>Export CSV</span>
-              </button>
-
-              <button
-                onClick={() => setShowManualModal(true)}
-                className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-blue-500/25 active:scale-95 cursor-pointer"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Lead</span>
               </button>
             </div>
 
@@ -761,16 +829,18 @@ export default function Leads() {
                 ))}
               </select>
 
-              <select
-                value={agentFilter}
-                onChange={e => setAgentFilter(e.target.value)}
-                className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-              >
-                <option value="">All Agents</option>
-                {agentsList.map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
+              {isManager && (
+                <select
+                  value={agentFilter}
+                  onChange={e => setAgentFilter(e.target.value)}
+                  className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
+                >
+                  <option value="">All Agents</option>
+                  {agentsList.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              )}
 
               <select
                 value={priorityFilter}
@@ -852,8 +922,8 @@ export default function Leads() {
             )}
           </div>
 
-          {/* Bulk Selected Toolbar */}
-          {selectedLeadIds.length > 0 && (
+          {/* Bulk Selected Toolbar (Admin & TL / Supervisor only) */}
+          {isManager && selectedLeadIds.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -900,14 +970,16 @@ export default function Leads() {
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3.5 w-10">
-                    <input
-                      type="checkbox"
-                      checked={selectedLeadIds.length === paginatedLeads.length && paginatedLeads.length > 0}
-                      onChange={toggleSelectAll}
-                      className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
-                    />
-                  </th>
+                  {isManager && (
+                    <th className="px-4 py-3.5 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedLeadIds.length === paginatedLeads.length && paginatedLeads.length > 0}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
+                      />
+                    </th>
+                  )}
                   <th className="px-4 py-3.5">Lead ID</th>
                   <th className="px-4 py-3.5">Customer & AI Score</th>
                   <th className="px-4 py-3.5">Phone & Location</th>
@@ -928,9 +1000,9 @@ export default function Leads() {
                     </tr>
                   ))
                 ) : paginatedLeads.map((l, idx) => {
-                  const isSelected = selectedLeadIds.includes(l.id);
-                  const assignedAgent = users.find(u => u.id === l.assigned_agent_id);
-                  const poolObj = pools.find(p => p.id === l.pool_id);
+                  const isSelected = selectedLeadIds.includes(l.id) || (l.lead_id ? selectedLeadIds.includes(l.lead_id) : false);
+                  const assignedAgent = l.assigned_agent_id ? users.find(u => u.id === l.assigned_agent_id || u.employee_id === l.assigned_agent_id) : undefined;
+                  const poolObj = pools.find(p => p.id === l.pool_id || p.name === l.pool_id);
 
                   return (
                     <tr
@@ -939,15 +1011,17 @@ export default function Leads() {
                         idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
                       } ${isSelected ? "bg-blue-50/80 font-medium" : "hover:bg-blue-50/40"}`}
                     >
-                      {/* Checkbox */}
-                      <td className="px-4 py-3.5">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectLead(l.id)}
-                          className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
-                        />
-                      </td>
+                      {/* Checkbox (Admin & TL / Supervisor only) */}
+                      {isManager && (
+                        <td className="px-4 py-3.5">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleSelectLead(l.id)}
+                            className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
+                          />
+                        </td>
+                      )}
 
                       {/* Lead ID */}
                       <td className="px-4 py-3.5">
@@ -1056,13 +1130,15 @@ export default function Leads() {
                             <MessageSquare className="h-4 w-4" />
                           </button>
 
-                          <button
-                            onClick={() => setLeadToDelete(l)}
-                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                            title="Delete Lead"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {isManager && (
+                            <button
+                              onClick={() => setLeadToDelete(l)}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              title="Delete Lead"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1175,6 +1251,49 @@ export default function Leads() {
                     <div className="text-[10px] text-slate-400 uppercase font-bold">AI Telemetry & Intent</div>
                     <div className="text-slate-800">AI Lead Score: <strong>{drawerLead.ai_score || 88}%</strong></div>
                     <div className="text-slate-800">Last Contact: <strong>{drawerLead.last_contact_at || "Today"}</strong></div>
+                  </div>
+
+                  {/* Lead Action & Disposition Update Section */}
+                  <div className="p-3.5 bg-[#F0F4FA] border border-blue-100 rounded-xl space-y-2.5">
+                    <div className="text-[10px] text-[#0F4FA8] uppercase font-bold tracking-wider">
+                      Update Lead Status & Notes
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-500 font-bold mb-1">Status Disposition</label>
+                        <select
+                          value={drawerStatus || drawerLead.status}
+                          onChange={e => setDrawerStatus(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
+                        >
+                          <option value="new">New Lead</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="follow_up">Follow-up Needed</option>
+                          <option value="qualified">Qualified</option>
+                          <option value="not_interested">Not Interested</option>
+                          <option value="closed">Closed / Won</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-slate-500 font-bold mb-1">Call Notes / Follow-up Details</label>
+                        <textarea
+                          rows={3}
+                          placeholder="Type notes or customer follow-up response here..."
+                          value={drawerNotes}
+                          onChange={e => setDrawerNotes(e.target.value)}
+                          className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleSaveDrawerDisposition}
+                        disabled={isUpdatingDisposition}
+                        className="w-full py-2 bg-[#0F4FA8] hover:bg-blue-800 text-white rounded-lg font-extrabold text-xs transition cursor-pointer disabled:opacity-50 shadow-sm"
+                      >
+                        {isUpdatingDisposition ? "Saving..." : "Save Disposition Update"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>

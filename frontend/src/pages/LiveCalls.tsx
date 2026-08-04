@@ -450,8 +450,8 @@ export default function LiveCalls() {
               ? "border-l-[#1E5EFF]"
               : "border-l-[#7C3AED]";
 
-            const customerInitial = call.customer_name[0]?.toUpperCase() || "C";
-            const agentInitial = call.agent_name ? call.agent_name.split(" ")[1]?.[0] || "A" : "A";
+            const customerInitial = call.customer_name?.[0]?.toUpperCase() || "C";
+            const agentInitial = call.agent_name ? call.agent_name.split(" ")[1]?.[0] || call.agent_name[0]?.toUpperCase() || "A" : "A";
 
             return (
               <motion.div

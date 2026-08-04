@@ -44,7 +44,7 @@ def is_valid_email(email_str: str) -> bool:
     return bool(re.match(pattern, email_str))
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user)):
     normalized = normalize_phone(payload.phone)
     if not normalized:
@@ -237,18 +237,48 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
     return oid_str(report_doc)
 
 
+class LeadBulkStatus(BaseModel):
+    lead_ids: list[str]
+    status: str
+
+
 @router.post("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.post("/bulk-assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.patch("/bulk-assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.patch("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_user)):
-    lead_object_ids = [ObjectId(i) for i in payload.lead_ids if ObjectId.is_valid(i)]
-    
-    agent = await users_col.find_one({"_id": ObjectId(payload.agent_id)}) if ObjectId.is_valid(payload.agent_id) else None
+    lead_ids = payload.lead_ids
+    if not lead_ids:
+        return {"assigned_count": 0}
+
+    # Locate assigned agent to derive supervisor_id & store correct ID reference
+    agent = None
+    if ObjectId.is_valid(payload.agent_id):
+        agent = await users_col.find_one({"_id": ObjectId(payload.agent_id)})
+    if not agent:
+        agent = (
+            await users_col.find_one({"_id": payload.agent_id})
+            or await users_col.find_one({"id": payload.agent_id})
+            or await users_col.find_one({"employee_id": payload.agent_id})
+        )
+
     supervisor_id = agent.get("supervisor_id") if agent else None
+    target_agent_id = str(agent["_id"]) if agent and "_id" in agent else (agent.get("id") if agent else payload.agent_id)
+
+    # Build robust query supporting ObjectId _id, string _id, string lead_id, or string id
+    or_conditions = []
+    oid_list = [ObjectId(i) for i in lead_ids if ObjectId.is_valid(i)]
+    if oid_list:
+        or_conditions.append({"_id": {"$in": oid_list}})
+    or_conditions.append({"_id": {"$in": lead_ids}})
+    or_conditions.append({"lead_id": {"$in": lead_ids}})
+    or_conditions.append({"id": {"$in": lead_ids}})
 
     result = await leads_col.update_many(
-        {"_id": {"$in": lead_object_ids}},
+        {"$or": or_conditions},
         {
             "$set": {
-                "assigned_agent_id": payload.agent_id,
+                "assigned_agent_id": target_agent_id,
                 "supervisor_id": supervisor_id,
                 "assigned_at": utcnow()
             }
@@ -258,13 +288,50 @@ async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_use
     await audit_logs_col.insert_one({
         "action": "assign_leads",
         "user_id": _uid(user),
-        "agent_id": payload.agent_id,
+        "agent_id": target_agent_id,
         "count": result.modified_count,
         "timestamp": utcnow()
     })
 
     await ws_manager.broadcast("global", {"event": "leads_updated"})
     return {"assigned_count": result.modified_count}
+
+
+@router.post("/bulk-status", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+@router.patch("/bulk-status", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+async def bulk_status_leads(payload: LeadBulkStatus, user: dict = Depends(get_current_user)):
+    lead_ids = payload.lead_ids
+    if not lead_ids:
+        return {"updated_count": 0}
+
+    or_conditions = []
+    oid_list = [ObjectId(i) for i in lead_ids if ObjectId.is_valid(i)]
+    if oid_list:
+        or_conditions.append({"_id": {"$in": oid_list}})
+    or_conditions.append({"_id": {"$in": lead_ids}})
+    or_conditions.append({"lead_id": {"$in": lead_ids}})
+    or_conditions.append({"id": {"$in": lead_ids}})
+
+    result = await leads_col.update_many(
+        {"$or": or_conditions},
+        {
+            "$set": {
+                "status": payload.status,
+                "updated_at": utcnow()
+            }
+        },
+    )
+
+    await audit_logs_col.insert_one({
+        "action": "bulk_status_leads",
+        "user_id": _uid(user),
+        "status": payload.status,
+        "count": result.modified_count,
+        "timestamp": utcnow()
+    })
+
+    await ws_manager.broadcast("global", {"event": "leads_updated"})
+    return {"updated_count": result.modified_count}
 
 
 @router.get("")
@@ -274,11 +341,9 @@ async def list_leads(user: dict = Depends(get_current_user), pool_id: str | None
     uid = _uid(user)
     
     if user["role"] == Role.AGENT:
-        query["assigned_agent_id"] = uid
-    elif user["role"] == Role.TEAM_LEADER:
         query["$or"] = [
-            {"supervisor_id": uid},
-            {"pool_id": user.get("pool_id")}
+            {"assigned_agent_id": uid},
+            {"created_by": uid}
         ]
         
     if pool_id:
