@@ -1,7 +1,21 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, BASE_URL } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+
+type CallHistoryRow = {
+  id: string;
+  lead_id: string;
+  direction: string;
+  duration_seconds: number;
+  outcome: string;
+  started_at: string;
+  notes?: string;
+  ai_summary?: string;
+  transcript?: string;
+  agent_name?: string;
+};
 import {
   FileSpreadsheet,
   Printer,
@@ -123,14 +137,18 @@ function ReportsSkeleton() {
 }
 
 export default function Reports() {
+  const { user } = useAuth();
   const { showToast } = useToast();
-  const [reportType, setReportType] = useState<"campaign" | "agent_performance" | "call_analytics" | "lead_import">("agent_performance");
+  const [reportType, setReportType] = useState<"campaign" | "agent_performance" | "call_analytics" | "lead_import">(
+    user?.role === "agent" ? "call_analytics" : "agent_performance"
+  );
   const [searchQuery, setSearchQuery] = useState("");
   
   // Data sets
   const [perfData, setPerfData] = useState<AgentPerf[]>([]);
   const [importData, setImportData] = useState<LeadImport[]>([]);
   const [campaignData, setCampaignData] = useState<CampaignReport[]>([]);
+  const [callsData, setCallsData] = useState<CallHistoryRow[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,13 +169,16 @@ export default function Reports() {
     try {
       if (reportType === "agent_performance") {
         const res = await api.get("/api/reports/agent-performance", controller.signal);
-        setPerfData(res);
+        setPerfData(Array.isArray(res) ? res : []);
       } else if (reportType === "lead_import") {
         const res = await api.get("/api/leads/imports", controller.signal);
-        setImportData(res);
+        setImportData(Array.isArray(res) ? res : []);
       } else if (reportType === "campaign") {
         const res = await api.get("/api/campaigns", controller.signal);
-        setCampaignData(res);
+        setCampaignData(Array.isArray(res) ? res : []);
+      } else if (reportType === "call_analytics") {
+        const res = await api.get("/api/calls", controller.signal);
+        setCallsData(Array.isArray(res) ? res : []);
       }
     } catch (err: any) {
       if (err.name === "AbortError") return;
@@ -555,13 +576,80 @@ export default function Reports() {
               </table>
             )}
 
-            {/* 4. CALL ANALYTICS PLACEHOLDER */}
+            {/* 4. CALL ANALYTICS / CALL LOGS TABLE */}
             {reportType === "call_analytics" && (
-              <div className="text-center py-14 text-slate-400 font-semibold text-xs space-y-2">
-                <FileSpreadsheet className="h-8 w-8 text-slate-300 mx-auto" />
-                <p className="font-extrabold text-slate-700">Complete Call Analytics Database</p>
-                <p>Please use the export buttons above to download the full call logs database report.</p>
-              </div>
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50/95 backdrop-blur-md text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3.5">Call ID</th>
+                    <th className="px-4 py-3.5">Lead / Channel</th>
+                    <th className="px-4 py-3.5 text-center">Direction</th>
+                    <th className="px-4 py-3.5 text-center">Duration</th>
+                    <th className="px-4 py-3.5 text-center">Outcome Status</th>
+                    <th className="px-4 py-3.5">Started At</th>
+                    <th className="px-4 py-3.5">Notes & Disposition</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {callsData
+                    .filter(c => {
+                      const q = searchQuery.toLowerCase();
+                      return (
+                        !q ||
+                        (c.id || "").toLowerCase().includes(q) ||
+                        (c.lead_id || "").toLowerCase().includes(q) ||
+                        (c.notes || "").toLowerCase().includes(q) ||
+                        (c.outcome || "").toLowerCase().includes(q)
+                      );
+                    })
+                    .map((c, idx) => (
+                      <tr key={c.id} className={`transition-all duration-200 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"} hover:bg-blue-50/40`}>
+                        <td className="px-4 py-4 font-mono font-bold text-xs text-slate-700">
+                          <span className="bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
+                            Call #{c.id.slice(-6).toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 font-mono font-extrabold text-xs text-[#0F4FA8]">
+                          {c.lead_id || "N/A"}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                            c.direction === "inbound" ? "bg-blue-50 text-[#0F4FA8] border border-blue-200" : "bg-purple-50 text-purple-700 border border-purple-200"
+                          }`}>
+                            {c.direction || "outbound"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-center font-mono font-bold text-xs text-slate-800">
+                          {Math.floor((c.duration_seconds || 0) / 60)}m {(c.duration_seconds || 0) % 60}s
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                            c.outcome === "qualified" || c.outcome === "answered"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : c.outcome === "failed" || c.outcome === "no_answer"
+                              ? "bg-rose-50 text-rose-700 border border-rose-200"
+                              : "bg-slate-100 text-slate-700 border border-slate-200"
+                          }`}>
+                            {c.outcome || "completed"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 text-xs text-slate-600 font-semibold">
+                          {c.started_at ? new Date(c.started_at).toLocaleString() : "Recently"}
+                        </td>
+                        <td className="px-4 py-4 text-xs text-slate-700 font-medium max-w-xs truncate">
+                          {c.notes || "No call notes recorded."}
+                        </td>
+                      </tr>
+                    ))}
+                  {callsData.length === 0 && !error && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-12 text-center text-slate-400 font-medium">
+                        No call logs recorded.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             )}
           </div>
         )}

@@ -374,7 +374,7 @@ export default function Dashboard() {
   });
 
   // --- AGENT WORKSPACE ---
-  if (user?.role === "agent" && summary) {
+  if (user?.role === "agent") {
     return (
       <motion.div
         initial={{ opacity: 0, y: 15 }}
@@ -382,6 +382,55 @@ export default function Dashboard() {
         transition={{ duration: 0.4 }}
         className="space-y-6 max-w-7xl mx-auto w-full font-sans"
       >
+        {/* AGENT KPI SUMMARY CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 p-4 rounded-[20px] shadow-sm flex items-center justify-between border-t-4 border-t-[#0F4FA8]">
+            <div>
+              <span className="text-2xl font-black text-slate-900 font-mono">{agentLeads.length}</span>
+              <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Assigned Leads</span>
+            </div>
+            <div className="p-2.5 bg-blue-50 text-[#0F4FA8] rounded-xl border border-blue-100">
+              <Users className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 p-4 rounded-[20px] shadow-sm flex items-center justify-between border-t-4 border-t-emerald-500">
+            <div>
+              <span className="text-2xl font-black text-slate-900 font-mono">{agentCallHistory.length}</span>
+              <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Shift Calls Made</span>
+            </div>
+            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+              <PhoneCall className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 p-4 rounded-[20px] shadow-sm flex items-center justify-between border-t-4 border-t-purple-600">
+            <div>
+              <span className="text-2xl font-black text-slate-900 font-mono">
+                {agentCallHistory.filter(c => c.outcome === "answered" || c.outcome === "qualified").length}
+              </span>
+              <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Connected Calls</span>
+            </div>
+            <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl border border-purple-100">
+              <Headphones className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 p-4 rounded-[20px] shadow-sm flex items-center justify-between border-t-4 border-t-amber-500">
+            <div>
+              <span className="text-2xl font-black text-slate-900 font-mono">
+                {agentCallHistory.length > 0
+                  ? `${Math.round((agentCallHistory.filter(c => c.outcome === "qualified" || c.outcome === "answered").length / agentCallHistory.length) * 100)}%`
+                  : "0%"}
+              </span>
+              <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Call Success Rate</span>
+            </div>
+            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100">
+              <Zap className="h-5 w-5" />
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-slate-200/80 lg:col-span-2 flex flex-col min-h-[460px]">
             <h2 className="text-base font-extrabold text-slate-900 mb-4 flex items-center gap-2">
