@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { CustomSelect } from "./CustomSelect";
 import {
   X,
   User,
@@ -53,6 +54,26 @@ type RegisterUserModalProps = {
   supervisors: UserRow[];
 };
 
+const DEPARTMENT_OPTIONS = [
+  { value: "Sales", label: "Sales & Outreach" },
+  { value: "Service", label: "Customer Support" },
+  { value: "HR", label: "HR & Recruitment" },
+  { value: "Operations", label: "Call Center Operations" }
+];
+
+const SHIFT_OPTIONS = [
+  { value: "Day", label: "Day Shift (9 AM - 6 PM)" },
+  { value: "Night", label: "Night Shift (9 PM - 6 AM)" },
+  { value: "Flexible", label: "Flexible Shift" }
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: "English", label: "English" },
+  { value: "Hindi", label: "Hindi" },
+  { value: "Tamil", label: "Tamil" },
+  { value: "Telugu", label: "Telugu" }
+];
+
 export default function RegisterUserModal({
   isOpen,
   onClose,
@@ -63,6 +84,29 @@ export default function RegisterUserModal({
   const { showToast } = useToast();
 
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+
+  // Manage body scroll locks, key triggers, and clearForm on modal open
+  useEffect(() => {
+    if (isOpen) {
+      clearForm();
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isOpen && e.key === "Escape") {
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
 
   // Accordion Expand/Collapse States
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -103,8 +147,6 @@ export default function RegisterUserModal({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isOpen || typeof document === "undefined") return null;
-
   const toggleSection = (sectionKey: string) => {
     setOpenSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
   };
@@ -131,6 +173,14 @@ export default function RegisterUserModal({
     clearForm();
     onClose();
   };
+
+  const supervisorOptions = useMemo(() => {
+    const list = supervisors.map(s => ({
+      value: s.id,
+      label: `${s.name} (${s.employee_id})`
+    }));
+    return [{ value: "", label: "Unassigned" }, ...list];
+  }, [supervisors]);
 
   // Auto Generate Employee ID
   const handleAutoGenerateEmpId = () => {
@@ -224,11 +274,13 @@ export default function RegisterUserModal({
     }
   };
 
+  if (!isOpen || typeof document === "undefined") return null;
+
   return createPortal(
     <div className="fixed inset-0 z-[9999] bg-slate-900/65 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-sans">
       
       {/* Enterprise SaaS CRM Dialog (Width 1150px / max-w-6xl) */}
-      <div className="bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 w-full max-w-6xl flex flex-col max-h-[88vh] overflow-hidden transition-all duration-300 animate-in fade-in zoom-in-95">
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 w-full max-w-6xl flex flex-col max-h-[88vh] overflow-hidden transition-all duration-300 animate-in fade-in zoom-in-95">
         
         {/* Sticky Header with Title, Subtitle, Stepper & Close Action */}
         <div className="px-8 py-5 border-b border-slate-100 bg-white flex flex-col lg:flex-row lg:items-center justify-between gap-5 shrink-0">
@@ -311,7 +363,7 @@ export default function RegisterUserModal({
         </div>
 
         {/* Scrollable Modal Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-8 py-7 space-y-6">
+        <div className="flex-1 overflow-y-auto px-8 py-7 space-y-6">
           
           {/* STEP 1: PROFILE & OPERATIONAL ROLES */}
           {currentStep === 1 && (
@@ -602,61 +654,46 @@ export default function RegisterUserModal({
                         {/* Department */}
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-2">Department</label>
-                          <select
+                          <CustomSelect
                             value={department}
-                            onChange={e => setDepartment(e.target.value)}
-                            className="w-full h-11 px-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] cursor-pointer transition shadow-2xs"
-                          >
-                            <option value="Sales">Sales & Outreach</option>
-                            <option value="Service">Customer Support</option>
-                            <option value="HR">HR & Recruitment</option>
-                            <option value="Operations">Call Center Operations</option>
-                          </select>
+                            onChange={setDepartment}
+                            options={DEPARTMENT_OPTIONS}
+                            placeholder="Select Department"
+                          />
                         </div>
 
                         {/* Supervisor Mapping */}
                         {role === "agent" && (
                           <div>
                             <label className="block text-xs font-semibold text-slate-700 mb-2">Supervisor Mapping</label>
-                            <select
+                            <CustomSelect
                               value={supervisorId}
-                              onChange={e => setSupervisorId(e.target.value)}
-                              className="w-full h-11 px-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] cursor-pointer transition shadow-2xs"
-                            >
-                              <option value="">Unassigned</option>
-                              {supervisors.map(s => (
-                                <option key={s.id} value={s.id}>{s.name} ({s.employee_id})</option>
-                              ))}
-                            </select>
+                              onChange={setSupervisorId}
+                              options={supervisorOptions}
+                              placeholder="Select Supervisor"
+                            />
                           </div>
                         )}
 
                         {/* Shift Schedule */}
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-2">Shift Schedule</label>
-                          <select
+                          <CustomSelect
                             value={shift}
-                            onChange={e => setShift(e.target.value)}
-                            className="w-full h-11 px-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] cursor-pointer transition shadow-2xs"
-                          >
-                            <option value="Day">Day Shift (9 AM - 6 PM)</option>
-                            <option value="Night">Night Shift (9 PM - 6 AM)</option>
-                            <option value="Flexible">Flexible Shift</option>
-                          </select>
+                            onChange={setShift}
+                            options={SHIFT_OPTIONS}
+                            placeholder="Select Shift"
+                          />
                         </div>
                         {/* Preferred Language */}
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 mb-2">Preferred Language</label>
-                        <select
-                          value={language}
-                          onChange={e => setLanguage(e.target.value)}
-                          className="w-full h-11 px-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] cursor-pointer transition shadow-2xs"
-                        >
-                          <option value="English">English</option>
-                          <option value="Hindi">Hindi</option>
-                          <option value="Tamil">Tamil</option>
-                          <option value="Telugu">Telugu</option>
-                        </select>
+                          <CustomSelect
+                            value={language}
+                            onChange={setLanguage}
+                            options={LANGUAGE_OPTIONS}
+                            placeholder="Select Language"
+                          />
                         <p className="text-[11px] text-slate-400 font-normal mt-1.5">Default telephony interaction language</p>
                       </div>
 
@@ -818,7 +855,7 @@ export default function RegisterUserModal({
             </div>
           )}
 
-        </form>
+        </div>
 
         {/* Sticky Footer with Aligned Actions */}
         <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
@@ -861,8 +898,7 @@ export default function RegisterUserModal({
                 </button>
 
                 <button
-                  type="button"
-                  onClick={handleSubmit}
+                  type="submit"
                   disabled={isSubmitting}
                   className="px-6 h-11 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
                 >
@@ -883,7 +919,7 @@ export default function RegisterUserModal({
           </div>
         </div>
 
-      </div>
+      </form>
     </div>,
     document.body
   );

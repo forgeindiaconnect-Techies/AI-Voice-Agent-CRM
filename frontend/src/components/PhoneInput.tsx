@@ -9,6 +9,7 @@ interface PhoneInputProps {
   placeholder?: string;
   error?: string;
   className?: string;
+  inputClassName?: string;
 }
 
 export function sanitizeIndianPhone(input: string): string {
@@ -38,7 +39,8 @@ export function PhoneInput({
   required = false,
   placeholder = "9876543210",
   error: externalError,
-  className = ""
+  className = "",
+  inputClassName = ""
 }: PhoneInputProps) {
   const countryCode = "+91";
   
@@ -100,9 +102,9 @@ export function PhoneInput({
   const displayError = externalError || (touched ? validationMessage : "");
 
   return (
-    <div className={`space-y-1.5 font-sans ${className}`}>
+    <div className={`space-y-1 font-sans ${className}`}>
       {label && (
-        <label className="block text-xs font-semibold text-slate-700">
+        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
       )}
@@ -127,7 +129,9 @@ export function PhoneInput({
           onPaste={handlePaste}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
-          className={`w-full h-11 pl-[76px] pr-10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border rounded-xl text-xs font-mono font-bold tracking-wider text-slate-900 focus:outline-none transition shadow-2xs ${
+          className={`w-full pl-[76px] pr-10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border rounded-xl text-xs font-mono font-bold tracking-wider text-slate-900 focus:outline-none transition shadow-2xs ${
+            inputClassName || "h-11"
+          } ${
             displayError
               ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
               : isValid

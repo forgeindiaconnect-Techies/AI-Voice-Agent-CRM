@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { CustomSelect } from "./CustomSelect";
 import { CustomPauseIcon } from "./CustomPauseIcon";
 import {
   Mic,
@@ -60,6 +61,14 @@ interface LiveCallModalProps {
   onEndCall: () => void;
   showToast: (msg: string, type?: "success" | "error" | "info") => void;
 }
+
+const LEAD_STATUS_TAG_OPTIONS = [
+  { value: "Qualified", label: "Qualified" },
+  { value: "Warm Lead", label: "Warm Lead" },
+  { value: "VIP Client", label: "VIP Client" },
+  { value: "Contacted", label: "Contacted" },
+  { value: "Follow-up", label: "Follow-up" }
+];
 
 export default function LiveCallModal({
   activeCall,
@@ -244,19 +253,15 @@ export default function LiveCallModal({
               </div>
 
               {/* Lead Status Tag Selector */}
-              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between gap-3">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lead Status</span>
-                <select
+                <CustomSelect
                   value={leadStatus}
-                  onChange={(e) => setLeadStatus(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="Qualified">Qualified</option>
-                  <option value="Warm Lead">Warm Lead</option>
-                  <option value="VIP Client">VIP Client</option>
-                  <option value="Contacted">Contacted</option>
-                  <option value="Follow-up">Follow-up</option>
-                </select>
+                  onChange={setLeadStatus}
+                  options={LEAD_STATUS_TAG_OPTIONS}
+                  placeholder="Select Status"
+                  className="w-32"
+                />
               </div>
             </div>
 

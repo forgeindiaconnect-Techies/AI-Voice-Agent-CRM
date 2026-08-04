@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { CustomSelect } from "./CustomSelect";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -63,6 +64,15 @@ const TEMPLATES = [
   { id: "intro", label: "Welcome & Intro", text: "Hello {name}, following up on your inquiry with Forge CRM. How can we assist you today?" },
   { id: "demo", label: "Schedule Demo", text: "Hi {name}, would you like to schedule a 15-minute live product demo of our AI Voice CRM?" },
   { id: "offer", label: "Special Plan Offer", text: "Hi {name}, we have an exclusive tier plan offer available for your team. Let's connect!" }
+];
+
+const DISPOSITION_STATUS_OPTIONS = [
+  { value: "new", label: "New Lead" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "follow_up", label: "Follow-up Needed" },
+  { value: "qualified", label: "Qualified" },
+  { value: "not_interested", label: "Not Interested" },
+  { value: "closed", label: "Closed / Won" }
 ];
 
 export default function LeadDetailsDrawer({
@@ -400,18 +410,12 @@ export default function LeadDetailsDrawer({
 
                     <div>
                       <label className="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Status Disposition</label>
-                      <select
+                      <CustomSelect
                         value={status}
-                        onChange={e => setStatus(e.target.value)}
-                        className="w-full h-8 bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-xs font-extrabold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-                      >
-                        <option value="new">New Lead</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="follow_up">Follow-up Needed</option>
-                        <option value="qualified">Qualified</option>
-                        <option value="not_interested">Not Interested</option>
-                        <option value="closed">Closed / Won</option>
-                      </select>
+                        onChange={setStatus}
+                        options={DISPOSITION_STATUS_OPTIONS}
+                        placeholder="Select Status"
+                      />
                     </div>
 
                     {(status === "follow_up" || status === "in_progress") && (

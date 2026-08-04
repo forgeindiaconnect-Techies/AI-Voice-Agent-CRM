@@ -5,6 +5,7 @@ import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Device } from "@twilio/voice-sdk";
 import { CustomPauseIcon } from "../components/CustomPauseIcon";
+import { CustomSelect } from "../components/CustomSelect";
 import {
   Phone,
   PhoneCall,
@@ -39,6 +40,24 @@ import {
 type CallStatus = "idle" | "ringing" | "connected" | "hold" | "ended";
 type Tab = "outbound" | "inbound" | "supervisor" | "history";
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "All", label: "All Statuses" },
+  { value: "new", label: "New" },
+  { value: "pending", label: "Pending" },
+  { value: "follow_up_required", label: "Follow Up Required" },
+  { value: "closed", label: "Closed" }
+];
+
+const OUTCOME_OPTIONS = [
+  { value: "answered", label: "Answered / Connected" },
+  { value: "no_answer", label: "No Answer" },
+  { value: "voicemail", label: "Voicemail" },
+  { value: "busy", label: "Busy / Rejected" },
+  { value: "not_interested", label: "Not Interested" },
+  { value: "qualified", label: "Qualified Lead" },
+  { value: "follow_up_required", label: "Follow Up Required" }
+];
+
 type ActiveCall = {
   _id: string;
   lead_name?: string;
@@ -65,6 +84,7 @@ type Lead = {
   created_at: string;
   assigned_agent_id?: string;
   supervisor_id?: string;
+  pool_id?: string;
 };
 
 export default function Dialer() {
@@ -76,6 +96,46 @@ export default function Dialer() {
   // OUTBOUND DIALER STATE
   const [outboundPhone, setOutboundPhone] = useState("");
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
+  const [isCreatingLead, setIsCreatingLead] = useState(false);
+
+  // Helper to sanitize incoming value (from input, paste, or quick call)
+  const sanitizeMobileNumber = useCallback((val: string): string => {
+    if (!val) return "";
+    let cleaned = val.trim();
+    // Strip leading +91 or variations
+    while (cleaned.startsWith("+91") || cleaned.startsWith("91 ") || cleaned.startsWith("+ 91")) {
+      if (cleaned.startsWith("+91")) cleaned = cleaned.slice(3);
+      else if (cleaned.startsWith("91 ")) cleaned = cleaned.slice(3);
+      else if (cleaned.startsWith("+ 91")) cleaned = cleaned.slice(4);
+      cleaned = cleaned.trim();
+    }
+    // Remove all non-digits
+    cleaned = cleaned.replace(/\D/g, "");
+    // If starting with 91 and has 12 digits total, it's likely a prefixed number
+    if (cleaned.length === 12 && cleaned.startsWith("91")) {
+      cleaned = cleaned.slice(2);
+    }
+    // Cap to 10 digits
+    return cleaned.slice(0, 10);
+  }, []);
+
+  const isValidMobile = useMemo(() => {
+    return /^[6-9]\d{9}$/.test(outboundPhone);
+  }, [outboundPhone]);
+
+  const validationMessage = useMemo(() => {
+    if (outboundPhone.length === 0) return "";
+    if (!/^[6-9]/.test(outboundPhone)) {
+      return "Enter a valid 10-digit Indian mobile number (must start with 6-9)";
+    }
+    if (outboundPhone.length < 10) {
+      return `Enter a valid 10-digit Indian mobile number (${outboundPhone.length}/10 digits)`;
+    }
+    if (!isValidMobile) {
+      return "Enter a valid 10-digit Indian mobile number";
+    }
+    return "";
+  }, [outboundPhone, isValidMobile]);
   const [currentCallId, setCurrentCallId] = useState<string | null>(null);
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
@@ -193,7 +253,9 @@ export default function Dialer() {
   // Handle Keypad Press
   const handleKeypadPress = async (digit: string) => {
     if (callStatus === "idle") {
-      setOutboundPhone(prev => prev + digit);
+      if (/^[0-9]$/.test(digit) && outboundPhone.length < 10) {
+        setOutboundPhone(prev => prev + digit);
+      }
     } else if (callStatus === "connected" && currentCallId) {
       try {
         await api.post(`/api/calls/${currentCallId}/dtmf`, { digit });
@@ -204,7 +266,56 @@ export default function Dialer() {
   };
 
   const handleDial = async () => {
-    if (!outboundPhone) return;
+    if (!isValidMobile) return;
+
+    setIsCreatingLead(true);
+    const fullPhoneNumber = `+91${outboundPhone}`;
+    let matchedLead = leads.find(l => {
+      const cleanL = l.phone.replace(/\D/g, "");
+      const cleanTarget = fullPhoneNumber.replace(/\D/g, "");
+      return cleanL === cleanTarget;
+    });
+
+    if (matchedLead) {
+      showToast("Existing lead loaded", "success");
+    } else {
+      try {
+        const res = await api.post("/api/leads", {
+          name: `Manual Lead - ${outboundPhone}`,
+          phone: fullPhoneNumber,
+          pool_id: user?.pool_id || leads[0]?.pool_id || "6a6b40b7841e208e1cb69469",
+          source: "Manual Dialer"
+        });
+        showToast("Lead created successfully", "success");
+        await fetchLeads();
+        matchedLead = res;
+      } catch (err: any) {
+        if (err.message?.includes("Duplicate") || err.message?.includes("already exists")) {
+          await fetchLeads();
+          matchedLead = leads.find(l => {
+            const cleanL = l.phone.replace(/\D/g, "");
+            const cleanTarget = fullPhoneNumber.replace(/\D/g, "");
+            return cleanL === cleanTarget;
+          });
+          if (matchedLead) {
+            showToast("Existing lead loaded", "success");
+          } else {
+            showToast("Existing lead loaded", "success");
+            matchedLead = {
+              phone: fullPhoneNumber,
+              name: `Manual Lead - ${outboundPhone}`,
+              source: "Manual Dialer",
+              status: "new",
+              created_at: new Date().toISOString()
+            };
+          }
+        } else {
+          showToast(err.message || "Failed to create lead", "error");
+          setIsCreatingLead(false);
+          return;
+        }
+      }
+    }
 
     setCallStatus("ringing");
     setCallDuration(0);
@@ -218,11 +329,12 @@ export default function Dialer() {
           } catch (micErr) {
             showToast("Microphone permission denied! Please allow microphone access to make calls.", "error");
             setCallStatus("ended");
+            setIsCreatingLead(false);
             return;
           }
 
           const twilioCall = await deviceRef.current.connect({
-            params: { To: outboundPhone }
+            params: { To: fullPhoneNumber }
           });
           callRef.current = twilioCall;
           twilioCall.on("accept", () => {
@@ -237,8 +349,8 @@ export default function Dialer() {
 
       // 2. Call CRM Backend Manual Dial API
       const res = await api.post("/api/calls/manual-dial", {
-        phone: outboundPhone,
-        pool_id: user?.pool_id || "general",
+        phone: fullPhoneNumber,
+        pool_id: matchedLead?.pool_id || user?.pool_id || "general",
         language: "english",
         agent_assign_mode: "manual",
         assigned_agent_id: user?.id,
@@ -256,6 +368,8 @@ export default function Dialer() {
     } catch (err: any) {
       setCallStatus("idle");
       showToast(err.message || "Dialing failed", "error");
+    } finally {
+      setIsCreatingLead(false);
     }
   };
 
@@ -296,16 +410,19 @@ export default function Dialer() {
   };
 
   const saveOutcome = async () => {
-    if (!currentCallId) return;
     setIsSavingOutcome(true);
     try {
-      await api.post(`/api/calls/${currentCallId}/manual-end`, {
-        call_id: currentCallId,
-        outcome,
-        duration_seconds: callDuration,
-        notes
-      });
-      showToast("Call details saved", "success");
+      if (currentCallId) {
+        await api.post(`/api/calls/${currentCallId}/manual-end`, {
+          call_id: currentCallId,
+          outcome,
+          duration_seconds: callDuration,
+          notes
+        });
+        showToast("Call details saved", "success");
+      } else {
+        showToast("Call details cleared", "success");
+      }
       setCallStatus("idle");
       setCurrentCallId(null);
       setOutboundPhone("");
@@ -319,9 +436,8 @@ export default function Dialer() {
   };
 
   const handleQuickCall = (phone: string) => {
-    setOutboundPhone(phone);
-    // User requested: "Quick Call button to auto-populate the dialer".
-    // Left it at auto-populate so the agent can review before hitting the big Call button.
+    const sanitized = sanitizeMobileNumber(phone);
+    setOutboundPhone(sanitized);
   };
 
   const formatTime = (secs: number) => {
@@ -409,21 +525,45 @@ export default function Dialer() {
                     {callStatus === "hold" && <span className="text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full flex items-center gap-1"><Pause className="h-3 w-3" /> On Hold {formatTime(callDuration)}</span>}
                   </div>
                   
-                  <div className="relative">
+                  <div className="relative w-full max-w-xs mx-auto mb-2">
                     <input
                       type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={10}
                       value={outboundPhone}
-                      onChange={e => setOutboundPhone(e.target.value)}
+                      onChange={e => {
+                        if (callStatus !== "idle") return;
+                        const sanitized = sanitizeMobileNumber(e.target.value);
+                        setOutboundPhone(sanitized);
+                      }}
+                      onPaste={e => {
+                        e.preventDefault();
+                        if (callStatus !== "idle") return;
+                        const pasted = e.clipboardData.getData("text");
+                        const sanitized = sanitizeMobileNumber(pasted);
+                        setOutboundPhone(sanitized);
+                      }}
                       readOnly={callStatus !== "idle"}
-                      placeholder="Enter phone number"
-                      className="w-full text-center text-3xl font-light text-slate-800 bg-transparent outline-none py-2"
+                      placeholder="Enter mobile number"
+                      className="w-full text-center text-3xl font-light tracking-wide text-slate-800 bg-transparent outline-none py-2"
                     />
                     {callStatus === "idle" && outboundPhone.length > 0 && (
-                      <button onClick={() => setOutboundPhone(prev => prev.slice(0, -1))} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600">
+                      <button 
+                        onClick={() => setOutboundPhone(prev => prev.slice(0, -1))} 
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
+                      >
                         <XCircle className="h-5 w-5" />
                       </button>
                     )}
                   </div>
+                  {/* Inline Validation Warning Message */}
+                  {validationMessage && (
+                    <div className="mt-1 mb-3 text-xs font-bold text-rose-500 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 justify-center w-full max-w-xs mx-auto animate-fadeIn">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
+                      <span>{validationMessage}</span>
+                    </div>
+                  )}
                 </div>
 
                 {callStatus === "idle" && renderKeypad()}
@@ -445,10 +585,18 @@ export default function Dialer() {
                   {callStatus === "idle" ? (
                     <button
                       onClick={handleDial}
-                      disabled={!outboundPhone}
+                      disabled={!isValidMobile || isCreatingLead}
                       className="w-full bg-[#10B981] hover:bg-emerald-600 text-white rounded-full py-4 font-bold text-lg shadow-lg shadow-emerald-500/30 transition disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
                     >
-                      <Phone className="h-5 w-5 fill-current" /> Call
+                      {isCreatingLead ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" /> Checking Lead...
+                        </>
+                      ) : (
+                        <>
+                          <Phone className="h-5 w-5 fill-current" /> Call
+                        </>
+                      )}
                     </button>
                   ) : callStatus === "ended" ? (
                     <div className="text-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
@@ -535,18 +683,14 @@ export default function Dialer() {
                         />
                       </div>
                       <div className="relative w-48">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <select
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
+                        <CustomSelect
                           value={statusFilter}
-                          onChange={e => setStatusFilter(e.target.value)}
-                          className="w-full pl-10 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 appearance-none focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20"
-                        >
-                          <option value="All">All Statuses</option>
-                          <option value="new">New</option>
-                          <option value="pending">Pending</option>
-                          <option value="follow_up_required">Follow Up Required</option>
-                          <option value="closed">Closed</option>
-                        </select>
+                          onChange={setStatusFilter}
+                          options={STATUS_FILTER_OPTIONS}
+                          placeholder="Select Status"
+                          triggerClassName="pl-10"
+                        />
                       </div>
                     </div>
 
@@ -567,7 +711,7 @@ export default function Dialer() {
                         filteredLeads.map((lead, idx) => (
                           <div 
                             key={lead._id || lead.id || lead.lead_id || `lead-${idx}`}
-                            className={`bg-white rounded-2xl border ${outboundPhone === lead.phone ? 'border-[#0F4FA8] ring-2 ring-[#0F4FA8]/10' : 'border-slate-200'} p-4 shadow-sm hover:shadow-md transition group`}
+                            className={`bg-white rounded-2xl border ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'border-[#0F4FA8] ring-2 ring-[#0F4FA8]/10' : 'border-slate-200'} p-4 shadow-sm hover:shadow-md transition group`}
                           >
                             <div className="flex justify-between items-start mb-3">
                               <div>
@@ -595,7 +739,7 @@ export default function Dialer() {
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleQuickCall(lead.phone)}
-                                className={`flex-1 py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition ${outboundPhone === lead.phone ? 'bg-[#0F4FA8] text-white' : 'bg-[#0F4FA8]/5 text-[#0F4FA8] hover:bg-[#0F4FA8]/10'}`}
+                                className={`flex-1 py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'bg-[#0F4FA8] text-white' : 'bg-[#0F4FA8]/5 text-[#0F4FA8] hover:bg-[#0F4FA8]/10'}`}
                               >
                                 <Phone className="h-4 w-4" /> Quick Call
                               </button>
@@ -630,19 +774,12 @@ export default function Dialer() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Call Outcome</label>
-                          <select
+                          <CustomSelect
                             value={outcome}
-                            onChange={e => setOutcome(e.target.value)}
-                            className="w-full border border-slate-200 rounded-xl px-3 py-3 bg-slate-50 font-bold text-sm"
-                          >
-                            <option value="answered">Answered / Connected</option>
-                            <option value="no_answer">No Answer</option>
-                            <option value="voicemail">Voicemail</option>
-                            <option value="busy">Busy / Rejected</option>
-                            <option value="not_interested">Not Interested</option>
-                            <option value="qualified">Qualified Lead</option>
-                            <option value="follow_up_required">Follow Up Required</option>
-                          </select>
+                            onChange={setOutcome}
+                            options={OUTCOME_OPTIONS}
+                            placeholder="Select Outcome"
+                          />
                         </div>
                         <div className="flex items-end">
                           <button

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api/client";
@@ -8,6 +8,7 @@ import { PhoneInput } from "../components/PhoneInput";
 import PortalHeader from "../components/PortalHeader";
 import RegisterUserModal from "../components/RegisterUserModal";
 import ConfirmModal from "../components/ConfirmModal";
+import { CustomSelect } from "../components/CustomSelect";
 import {
   User,
   Folder,
@@ -123,6 +124,38 @@ function UsersSkeleton() {
     </div>
   );
 }
+
+const ROLE_FILTER_OPTIONS = [
+  { value: "all", label: "All Roles" },
+  { value: "admin", label: "Admins" },
+  { value: "team_leader", label: "Team Leaders" },
+  { value: "agent", label: "Agents" }
+];
+
+const POOL_NAME_OPTIONS = [
+  { value: "recruitment", label: "Recruitment Pool (HR Hiring)" },
+  { value: "credit_card_sales", label: "Credit Card Sales Pool (Banking)" },
+  { value: "customer_support", label: "Customer Support Pool (Service)" }
+];
+
+const SYSTEM_ROLE_OPTIONS = [
+  { value: "agent", label: "Agent (Telecaller)" },
+  { value: "team_leader", label: "Supervisor (Team Leader)" },
+  { value: "admin", label: "Admin (Full Control)" }
+];
+
+const EDIT_DEPARTMENT_OPTIONS = [
+  { value: "Sales", label: "Sales & Outreach" },
+  { value: "Service", label: "Customer Support" },
+  { value: "HR", label: "HR & Recruitment" },
+  { value: "Operations", label: "Operations" }
+];
+
+const EDIT_SHIFT_OPTIONS = [
+  { value: "Day", label: "Day Shift (9 AM - 6 PM)" },
+  { value: "Night", label: "Night Shift (9 PM - 6 AM)" },
+  { value: "Flexible", label: "Flexible Shift" }
+];
 
 export default function Users() {
   const { user } = useAuth();
@@ -445,6 +478,95 @@ export default function Users() {
   };
 
   const supervisorsList = users.filter(u => u.role === "team_leader" && u.is_active);
+
+  const userPoolFilterOptions = useMemo(() => {
+    const list = pools.map(p => ({
+      value: p.id,
+      label: p.name.replace("_", " ").toUpperCase()
+    }));
+    return [
+      { value: "all", label: "All Pools" },
+      { value: "none", label: "No Pool" },
+      ...list
+    ];
+  }, [pools]);
+
+  const transferTargetPoolOptions = useMemo(() => {
+    const list = pools.map(p => ({
+      value: p.id,
+      label: p.name.replace("_", " ").toUpperCase()
+    }));
+    return [
+      { value: "", label: "-- Choose Target Pool --" },
+      ...list
+    ];
+  }, [pools]);
+
+  const supervisedPoolOptions = useMemo(() => {
+    const list = pools.map(p => ({
+      value: p.id,
+      label: p.name.replace("_", " ")
+    }));
+    return [
+      { value: "all", label: "All Pools" },
+      ...list
+    ];
+  }, [pools]);
+
+  const availablePoolOptions = useMemo(() => {
+    const list = pools.map(p => ({
+      value: p.id,
+      label: p.name.replace("_", " ")
+    }));
+    return [
+      { value: "all", label: "All Pools" },
+      ...list
+    ];
+  }, [pools]);
+
+  const bulkTargetPoolOptions = useMemo(() => {
+    const list = pools.map(p => ({
+      value: p.id,
+      label: p.name.replace("_", " ").toUpperCase()
+    }));
+    return [
+      { value: "", label: "-- Target Pool --" },
+      ...list
+    ];
+  }, [pools]);
+
+  const supervisorSelectOptions = useMemo(() => {
+    const list = supervisorsList.map(tl => ({
+      value: tl.id,
+      label: `${tl.name} (${tl.employee_id}) · ${tl.department || "Operations"}`
+    }));
+    return [
+      { value: "", label: "-- Choose Supervisor / Team Lead --" },
+      ...list
+    ];
+  }, [supervisorsList]);
+
+  const bulkSupervisorOptions = useMemo(() => {
+    const list = supervisorsList.map(tl => ({
+      value: tl.id,
+      label: tl.name
+    }));
+    return [
+      { value: "", label: "-- Target Supervisor --" },
+      ...list
+    ];
+  }, [supervisorsList]);
+
+  const editPoolOptions = useMemo(() => {
+    const list = pools.map(p => ({
+      value: p.id,
+      label: p.name.replace(/_/g, " ").toUpperCase()
+    }));
+    return [
+      { value: "", label: "No Pool Assigned" },
+      ...list
+    ];
+  }, [pools]);
   const selectedSupervisorAgents = users.filter(u => u.role === "agent" && u.supervisor_id === selectedSupervisorId);
   const unassignedAgents = users.filter(u => u.role === "agent" && u.is_active && u.supervisor_id !== selectedSupervisorId);
 
@@ -666,17 +788,12 @@ export default function Users() {
               <form onSubmit={handleCreateTransferRequest} className="space-y-4 text-xs font-semibold">
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Target Pool</label>
-                  <select
+                  <CustomSelect
                     value={transferTargetPoolId}
-                    onChange={e => setTransferTargetPoolId(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-bold text-slate-800"
-                    required
-                  >
-                    <option value="">-- Choose Target Pool --</option>
-                    {pools.map(p => (
-                      <option key={p.id} value={p.id}>{p.name.replace("_", " ").toUpperCase()}</option>
-                    ))}
-                  </select>
+                    onChange={setTransferTargetPoolId}
+                    options={transferTargetPoolOptions}
+                    placeholder="-- Choose Target Pool --"
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Justification Reason</label>
@@ -784,25 +901,25 @@ export default function Users() {
           <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 space-y-5">
             
             {/* Header Toolbar */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center border border-blue-100 shadow-2xs">
-                  <UsersIcon className="h-5 w-5 text-[#0F4FA8]" />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-5 border-b border-slate-100">
+              <div className="flex items-center gap-3.5">
+                <div className="h-12 w-12 rounded-[16px] bg-gradient-to-br from-blue-50 to-blue-100/50 text-[#0F4FA8] flex items-center justify-center border border-blue-200/60 shadow-2xs">
+                  <UsersIcon className="h-6 w-6 text-[#0F4FA8]" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2.5">
-                    <h2 className="text-lg font-black text-slate-900 tracking-tight">Registered Personnel</h2>
-                    <span className="text-[11px] font-extrabold bg-[#0F4FA8]/10 text-[#0F4FA8] border border-[#0F4FA8]/20 px-3 py-0.5 rounded-full">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-2xl font-black text-slate-950 tracking-tight leading-none">Registered Personnel</h2>
+                    <span className="text-[11px] font-extrabold bg-blue-50 text-[#0F4FA8] border border-blue-200 px-3 py-1 rounded-full uppercase tracking-wider">
                       {users.filter(u => u.is_active).length} Active Personnel
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 font-semibold mt-0.5">Manage team directory, roles, pool assignments, and security accounts</p>
+                  <p className="text-xs text-slate-500 font-semibold mt-1">Manage team directory, roles, pool assignments, and security accounts</p>
                 </div>
               </div>
 
               <button
                 onClick={() => setIsCreateUserModalOpen(true)}
-                className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white rounded-xl text-xs font-extrabold transition flex items-center gap-2 shadow-md hover:shadow-blue-500/25 cursor-pointer shrink-0 active:scale-95"
+                className="h-12 px-6 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white rounded-[16px] text-xs font-black transition-all duration-250 flex items-center gap-2 shadow-md hover:shadow-blue-500/25 cursor-pointer shrink-0 active:scale-95"
               >
                 <UserPlus className="h-4 w-4" />
                 <span>+ Add User</span>
@@ -810,48 +927,46 @@ export default function Users() {
             </div>
 
             {/* Filter & Search Toolbar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/80 p-3 rounded-xl border border-slate-200/80">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
               {/* Search input */}
-              <div className="relative w-full sm:w-80">
-                <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+              <div className="relative flex-1 w-full">
+                <Search className="h-5 w-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={userSearch}
                   onChange={e => setUserSearch(e.target.value)}
                   placeholder="Search by name, email, ID..."
-                  className="w-full h-10 pl-10 pr-8 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] transition"
+                  className="w-full h-12 pl-12 pr-10 border border-slate-200 rounded-[16px] text-xs bg-slate-50/50 backdrop-blur-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-[#0F4FA8] focus:ring-4 focus:ring-blue-500/10 shadow-sm"
                 />
                 {userSearch && (
-                  <button onClick={() => setUserSearch("")} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
-                    <X className="h-3.5 w-3.5" />
+                  <button
+                    onClick={() => setUserSearch("")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
 
               {/* Role & Pool Filters */}
-              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-                <select
+              <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
+                <CustomSelect
                   value={userRoleFilter}
-                  onChange={e => setUserRoleFilter(e.target.value)}
-                  className="h-10 px-3.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-                >
-                  <option value="all">All Roles</option>
-                  <option value="admin">Admins</option>
-                  <option value="team_leader">Team Leaders</option>
-                  <option value="agent">Agents</option>
-                </select>
+                  onChange={setUserRoleFilter}
+                  options={ROLE_FILTER_OPTIONS}
+                  placeholder="All Roles"
+                  className="w-full sm:w-36 shrink-0"
+                  triggerClassName="h-12 rounded-[16px] text-xs"
+                />
 
-                <select
+                <CustomSelect
                   value={userPoolFilter}
-                  onChange={e => setUserPoolFilter(e.target.value)}
-                  className="h-10 px-3.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-                >
-                  <option value="all">All Pools</option>
-                  <option value="none">No Pool</option>
-                  {pools.map(p => (
-                    <option key={p.id} value={p.id}>{p.name.replace("_", " ").toUpperCase()}</option>
-                  ))}
-                </select>
+                  onChange={setUserPoolFilter}
+                  options={userPoolFilterOptions}
+                  placeholder="All Pools"
+                  className="w-full sm:w-36 shrink-0"
+                  triggerClassName="h-12 rounded-[16px] text-xs"
+                />
               </div>
             </div>
 
@@ -1023,15 +1138,12 @@ export default function Users() {
             <form onSubmit={handleCreatePool} className="space-y-4 text-xs font-semibold">
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Permitted Pool Name</label>
-                <select
+                <CustomSelect
                   value={poolName}
-                  onChange={e => setPoolName(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-bold text-slate-800 cursor-pointer"
-                >
-                  <option value="recruitment">Recruitment Pool (HR Hiring)</option>
-                  <option value="credit_card_sales">Credit Card Sales Pool (Banking)</option>
-                  <option value="customer_support">Customer Support Pool (Service)</option>
-                </select>
+                  onChange={setPoolName}
+                  options={POOL_NAME_OPTIONS}
+                  placeholder="Select Pool Type"
+                />
               </div>
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Description</label>
@@ -1175,18 +1287,12 @@ export default function Users() {
                 </label>
 
                 <div className="relative">
-                  <select
+                  <CustomSelect
                     value={selectedSupervisorId}
-                    onChange={e => setSelectedSupervisorId(e.target.value)}
-                    className="w-full h-[46px] pl-4 pr-10 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] transition cursor-pointer"
-                  >
-                    <option value="">-- Choose Supervisor / Team Lead --</option>
-                    {supervisorsList.map(tl => (
-                      <option key={tl.id} value={tl.id}>
-                        {tl.name} ({tl.employee_id}) · {tl.department || "Operations"}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setSelectedSupervisorId}
+                    options={supervisorSelectOptions}
+                    placeholder="-- Choose Supervisor / Team Lead --"
+                  />
                 </div>
               </div>
 
@@ -1341,16 +1447,13 @@ export default function Users() {
                   )}
                 </div>
 
-                <select
+                <CustomSelect
                   value={supervisedPoolFilter}
-                  onChange={e => setSupervisedPoolFilter(e.target.value)}
-                  className="h-9 bg-slate-50 border border-slate-200 px-2.5 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="all">All Pools</option>
-                  {pools.map(p => (
-                    <option key={p.id} value={p.id}>{p.name.replace("_", " ")}</option>
-                  ))}
-                </select>
+                  onChange={setSupervisedPoolFilter}
+                  options={supervisedPoolOptions}
+                  placeholder="All Pools"
+                  className="w-32"
+                />
               </div>
 
               {/* Agents List */}
@@ -1480,16 +1583,13 @@ export default function Users() {
                   )}
                 </div>
 
-                <select
+                <CustomSelect
                   value={availablePoolFilter}
-                  onChange={e => setAvailablePoolFilter(e.target.value)}
-                  className="h-9 bg-slate-50 border border-slate-200 px-2.5 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
-                >
-                  <option value="all">All Pools</option>
-                  {pools.map(p => (
-                    <option key={p.id} value={p.id}>{p.name.replace("_", " ")}</option>
-                  ))}
-                </select>
+                  onChange={setAvailablePoolFilter}
+                  options={availablePoolOptions}
+                  placeholder="All Pools"
+                  className="w-32"
+                />
               </div>
 
               {/* Available Agents List */}
@@ -1606,16 +1706,13 @@ export default function Users() {
               <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
                 {/* Bulk Pool Select */}
                 <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                  <select
+                  <CustomSelect
                     value={bulkTargetPoolId}
-                    onChange={e => setBulkTargetPoolId(e.target.value)}
-                    className="h-10 border border-slate-700 rounded-xl px-3 text-xs text-slate-900 font-bold bg-white focus:outline-none w-full sm:w-44"
-                  >
-                    <option value="">-- Target Pool --</option>
-                    {pools.map(p => (
-                      <option key={p.id} value={p.id}>{p.name.replace("_", " ").toUpperCase()}</option>
-                    ))}
-                  </select>
+                    onChange={setBulkTargetPoolId}
+                    options={bulkTargetPoolOptions}
+                    placeholder="-- Target Pool --"
+                    className="w-full sm:w-44"
+                  />
                   <button
                     disabled={!bulkTargetPoolId || isActionLoading === "bulk-pool"}
                     onClick={handleBulkAssignPool}
@@ -1628,16 +1725,13 @@ export default function Users() {
 
                 {/* Bulk Supervisor Select */}
                 <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                  <select
+                  <CustomSelect
                     value={bulkTargetSupervisorId}
-                    onChange={e => setBulkTargetSupervisorId(e.target.value)}
-                    className="h-10 border border-slate-700 rounded-xl px-3 text-xs text-slate-900 font-bold bg-white focus:outline-none w-full sm:w-44"
-                  >
-                    <option value="">-- Target Supervisor --</option>
-                    {supervisorsList.map(tl => (
-                      <option key={tl.id} value={tl.id}>{tl.name}</option>
-                    ))}
-                  </select>
+                    onChange={setBulkTargetSupervisorId}
+                    options={bulkSupervisorOptions}
+                    placeholder="-- Target Supervisor --"
+                    className="w-full sm:w-44"
+                  />
                   <button
                     disabled={!bulkTargetSupervisorId || isActionLoading === "bulk-sup"}
                     onClick={handleBulkAssignSupervisor}
@@ -1727,45 +1821,34 @@ export default function Users() {
                 {/* System Role */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">System Role</label>
-                  <select
+                  <CustomSelect
                     value={editForm.role}
-                    onChange={e => setEditForm({ ...editForm, role: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 cursor-pointer"
-                  >
-                    <option value="agent">Agent (Telecaller)</option>
-                    <option value="team_leader">Supervisor (Team Leader)</option>
-                    <option value="admin">Admin (Full Control)</option>
-                  </select>
+                    onChange={val => setEditForm({ ...editForm, role: val })}
+                    options={SYSTEM_ROLE_OPTIONS}
+                    placeholder="Select Role"
+                  />
                 </div>
 
                 {/* Department */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Department</label>
-                  <select
+                  <CustomSelect
                     value={editForm.department}
-                    onChange={e => setEditForm({ ...editForm, department: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 cursor-pointer"
-                  >
-                    <option value="Sales">Sales & Outreach</option>
-                    <option value="Service">Customer Support</option>
-                    <option value="HR">HR & Recruitment</option>
-                    <option value="Operations">Operations</option>
-                  </select>
+                    onChange={val => setEditForm({ ...editForm, department: val })}
+                    options={EDIT_DEPARTMENT_OPTIONS}
+                    placeholder="Select Department"
+                  />
                 </div>
 
                 {/* Pool Assignment */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Pool Mapping</label>
-                  <select
+                  <CustomSelect
                     value={editForm.pool_id}
-                    onChange={e => setEditForm({ ...editForm, pool_id: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 cursor-pointer"
-                  >
-                    <option value="">No Pool Assigned</option>
-                    {pools.map(p => (
-                      <option key={p.id} value={p.id}>{p.name.replace(/_/g, " ").toUpperCase()}</option>
-                    ))}
-                  </select>
+                    onChange={val => setEditForm({ ...editForm, pool_id: val })}
+                    options={editPoolOptions}
+                    placeholder="Select Pool"
+                  />
                 </div>
 
                 {/* Employee ID */}
@@ -1789,15 +1872,12 @@ export default function Users() {
                 {/* Shift Schedule */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">Shift Schedule</label>
-                  <select
+                  <CustomSelect
                     value={editForm.shift}
-                    onChange={e => setEditForm({ ...editForm, shift: e.target.value })}
-                    className="w-full h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 cursor-pointer"
-                  >
-                    <option value="Day">Day Shift (9 AM - 6 PM)</option>
-                    <option value="Night">Night Shift (9 PM - 6 AM)</option>
-                    <option value="Flexible">Flexible Shift</option>
-                  </select>
+                    onChange={val => setEditForm({ ...editForm, shift: val })}
+                    options={EDIT_SHIFT_OPTIONS}
+                    placeholder="Select Shift"
+                  />
                 </div>
               </div>
 

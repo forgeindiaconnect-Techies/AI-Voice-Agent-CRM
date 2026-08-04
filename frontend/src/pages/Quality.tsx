@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
+import { CustomSelect } from "../components/CustomSelect";
 import {
   ShieldCheck,
   CheckSquare,
@@ -41,6 +42,12 @@ type CallLog = {
     evaluated_at: string;
   };
 };
+
+const SENTIMENT_OPTIONS = [
+  { value: "positive", label: "Positive (Satisfied, cooperative)" },
+  { value: "neutral", label: "Neutral (General business exchange)" },
+  { value: "negative", label: "Negative (Frustrated, argumentative)" }
+];
 
 export default function Quality() {
   const { showToast } = useToast();
@@ -328,15 +335,12 @@ export default function Quality() {
                   {/* Sentiment select */}
                   <div>
                     <label className="block text-xs font-bold text-gray-600 mb-1">Customer Sentiment Analysis</label>
-                    <select
+                    <CustomSelect
                       value={sentiment}
-                      onChange={e => setSentiment(e.target.value)}
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 font-bold text-gray-700"
-                    >
-                      <option value="positive">Positive (Satisfied, cooperative)</option>
-                      <option value="neutral">Neutral (General business exchange)</option>
-                      <option value="negative">Negative (Frustrated, argumentative)</option>
-                    </select>
+                      onChange={setSentiment}
+                      options={SENTIMENT_OPTIONS}
+                      placeholder="Select Sentiment"
+                    />
                   </div>
 
                   {/* Coaching notes */}

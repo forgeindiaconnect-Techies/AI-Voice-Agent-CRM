@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import { CustomPauseIcon } from "../components/CustomPauseIcon";
+import { CustomSelect } from "../components/CustomSelect";
 import {
   Play,
   Pause,
@@ -168,15 +169,20 @@ function HourlyCallVolumeChart() {
   const d = pathPoints.reduce((acc, point, i, a) => {
     if (i === 0) return `M ${point.x},${point.y}`;
     const prev = a[i - 1];
-    const cx1 = prev.x + (point.x - prev.x) / 2;
+    const dx = point.x - prev.x;
+    const tension = 0.3;
+    const cx1 = prev.x + dx * tension;
     const cy1 = prev.y;
-    const cx2 = prev.x + (point.x - prev.x) / 2;
+    const cx2 = point.x - dx * tension;
     const cy2 = point.y;
     return `${acc} C ${cx1},${cy1} ${cx2},${cy2} ${point.x},${point.y}`;
   }, "");
 
   const areaD = `${d} L ${pathPoints[pathPoints.length - 1].x},${height - paddingY} L ${pathPoints[0].x},${height - paddingY} Z`;
   const avgY = height - paddingY - (avgVal / maxVal) * (height - 2 * paddingY);
+
+  const peakVal = Math.max(...points.map(p => p.val));
+  const peakPoint = points.find(p => p.val === peakVal);
 
   return (
     <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-6 shadow-sm border border-slate-200/80 space-y-4 relative overflow-hidden group hover:shadow-md transition-all">
@@ -211,7 +217,7 @@ function HourlyCallVolumeChart() {
 
           <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-            Peak: 154 Calls/hr
+            Peak: {peakVal} Calls/{timeRange === "today" ? "hr" : timeRange === "week" ? "day" : "wk"}{peakPoint ? ` (${peakPoint.hour})` : ""}
           </span>
         </div>
       </div>
@@ -564,6 +570,24 @@ function RecentActivityFeed() {
   );
 }
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All Statuses (Active/Paused)" },
+  { value: "active", label: "Active Only" },
+  { value: "paused", label: "Paused Only" },
+  { value: "stopped", label: "Stopped Only" }
+];
+
+const SORT_BY_OPTIONS = [
+  { value: "name", label: "Sort by Name" },
+  { value: "status", label: "Sort by Status" }
+];
+
+const AI_VOICE_OPTIONS = [
+  { value: "Neural-Female-IN", label: "Neural-Female (Indian English)" },
+  { value: "Neural-Male-IN", label: "Neural-Male (Indian English)" },
+  { value: "Neural-Hindi-Female", label: "Neural-Female (Hindi)" }
+];
+
 // MAIN CAMPAIGNS DASHBOARD COMPONENT
 export default function Campaigns() {
   const { user } = useAuth();
@@ -585,6 +609,14 @@ export default function Campaigns() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "status">("name");
+
+  const poolFilterOptions = useMemo(() => {
+    const list = pools.map(p => ({
+      value: p.id,
+      label: p.name.replace(/_/g, " ").toUpperCase()
+    }));
+    return [{ value: "", label: "Select Pool" }, ...list];
+  }, [pools]);
 
   // Modals & Forms
   const [showLaunchModal, setShowLaunchModal] = useState(false);
@@ -998,28 +1030,24 @@ export default function Campaigns() {
             <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="h-4 w-4 text-slate-400" />
-                <select
+                <CustomSelect
                   value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer transition"
-                >
-                  <option value="">All Statuses (Active/Paused)</option>
-                  <option value="active">Active Only</option>
-                  <option value="paused">Paused Only</option>
-                  <option value="stopped">Stopped Only</option>
-                </select>
+                  onChange={statusFilter => setStatusFilter(statusFilter)}
+                  options={STATUS_FILTER_OPTIONS}
+                  placeholder="All Statuses"
+                  className="w-48"
+                />
               </div>
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-400 hidden sm:inline">Sort:</span>
-                <select
+                <CustomSelect
                   value={sortBy}
-                  onChange={e => setSortBy(e.target.value as any)}
-                  className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer transition"
-                >
-                  <option value="name">Sort by Name</option>
-                  <option value="status">Sort by Status</option>
-                </select>
+                  onChange={val => setSortBy(val as any)}
+                  options={SORT_BY_OPTIONS}
+                  placeholder="Sort by"
+                  className="w-36"
+                />
               </div>
 
               <button
@@ -1220,30 +1248,22 @@ export default function Campaigns() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Target Lead Pool</label>
-                  <select
-                    required
+                  <CustomSelect
                     value={form.pool_id}
-                    onChange={e => setForm({ ...form, pool_id: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 font-bold"
-                  >
-                    <option value="">Select Pool</option>
-                    {pools.map(p => (
-                      <option key={p.id} value={p.id}>{p.name.replace(/_/g, " ").toUpperCase()}</option>
-                    ))}
-                  </select>
+                    onChange={val => setForm({ ...form, pool_id: val })}
+                    options={poolFilterOptions}
+                    placeholder="Select Pool"
+                  />
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">AI Voice Model</label>
-                  <select
+                  <CustomSelect
                     value={form.ai_voice}
-                    onChange={e => setForm({ ...form, ai_voice: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 font-bold"
-                  >
-                    <option value="Neural-Female-IN">Neural-Female (Indian English)</option>
-                    <option value="Neural-Male-IN">Neural-Male (Indian English)</option>
-                    <option value="Neural-Hindi-Female">Neural-Female (Hindi)</option>
-                  </select>
+                    onChange={val => setForm({ ...form, ai_voice: val })}
+                    options={AI_VOICE_OPTIONS}
+                    placeholder="Select Voice"
+                  />
                 </div>
               </div>
 
