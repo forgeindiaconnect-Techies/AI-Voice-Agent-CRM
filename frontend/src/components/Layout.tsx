@@ -40,9 +40,22 @@ export default function Layout() {
     return saved ? JSON.parse(saved) : false;
   });
 
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem("darkMode");
+    return saved ? JSON.parse(saved) : false;
+  });
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("darkMode", JSON.stringify(true));
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("darkMode", JSON.stringify(false));
+    }
+  }, [darkMode]);
 
   // Ctrl + B keybinding to toggle sidebar expansion
   useEffect(() => {

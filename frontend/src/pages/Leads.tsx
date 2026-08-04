@@ -6,6 +6,9 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { PhoneInput } from "../components/PhoneInput";
 import LeadDetailsDrawer from "../components/LeadDetailsDrawer";
+import { CustomSelect } from "../components/CustomSelect";
+import { STATES_AND_UTS, getDistrictsOptions } from "../utils/indiaData";
+import { AlertCircle, FileText } from "lucide-react";
 import {
   Plus,
   X,
@@ -75,6 +78,7 @@ type Lead = {
   created_at?: string;
   ai_score?: number;
   last_contact_at?: string;
+  extra?: any;
 };
 
 type Pool = { id: string; name: string };
@@ -195,6 +199,30 @@ export default function Leads() {
   const [priorityFilter, setPriorityFilter] = useState("");
   const [quickChipFilter, setQuickChipFilter] = useState<string>("all");
   const [showAdvancedDrawer, setShowAdvancedDrawer] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const statusCounts = useMemo(() => {
+    return {
+      all: leads.length,
+      new: leads.filter(l => l.status === "new" || l.status === "New Lead").length,
+      qualified: leads.filter(l => l.status === "qualified" || l.status === "Qualified").length,
+      in_progress: leads.filter(l => l.status === "in_progress" || l.status === "In Progress").length,
+      follow_up: leads.filter(l => l.status === "follow_up" || l.status === "Follow-up Needed").length,
+      not_interested: leads.filter(l => l.status === "not_interested" || l.status === "Not Interested").length,
+      closed: leads.filter(l => l.status === "closed" || l.status === "Closed / Won").length
+    };
+  }, [leads]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -234,14 +262,120 @@ export default function Leads() {
   const [manualForm, setManualForm] = useState({
     name: "",
     phone: "",
+    email: "",
     pool_id: "",
     campaign_id: "",
-    location: "",
-    language: "English",
+    source: "Manual",
+    purpose: "",
+    country: "India",
+    state: "",
+    district: "",
+    address: "",
+    pincode: "",
+    company_name: "",
     priority: "medium",
-    source: "Manual"
+    notes: ""
   });
+  const [manualFormTouched, setManualFormTouched] = useState<Record<string, boolean>>({});
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
+  const manualFormErrors = useMemo(() => {
+    const errs: Record<string, string> = {};
+
+    if (!manualForm.name.trim()) {
+      errs.name = "Customer name is required";
+    }
+
+    if (!manualForm.phone.trim()) {
+      errs.phone = "Phone number is required";
+    } else {
+      const digits = manualForm.phone.replace(/\D/g, "");
+      const mob = digits.startsWith("91") && digits.length > 10 ? digits.slice(2) : digits;
+      if (mob.length !== 10) {
+        errs.phone = "Phone number must be exactly 10 digits";
+      } else if (!/^[6-9]\d{9}$/.test(mob)) {
+        errs.phone = "Invalid Indian mobile number (must start with 6, 7, 8, or 9)";
+      }
+    }
+
+    if (!manualForm.email.trim()) {
+      errs.email = "Email ID is required";
+    } else if (!/^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(manualForm.email)) {
+      errs.email = "Invalid email ID format";
+    }
+
+    if (!manualForm.purpose.trim()) {
+      errs.purpose = "Purpose is required";
+    }
+
+    if (!manualForm.pool_id.trim()) {
+      errs.pool_id = "Target pool is required";
+    }
+
+    if (!manualForm.state.trim()) {
+      errs.state = "State is required";
+    }
+
+    if (!manualForm.district.trim()) {
+      errs.district = "District is required";
+    }
+
+    if (!manualForm.address.trim()) {
+      errs.address = "Address is required";
+    }
+
+    if (!manualForm.pincode.trim()) {
+      errs.pincode = "Pincode is required";
+    } else if (!/^\d{6}$/.test(manualForm.pincode)) {
+      errs.pincode = "Pincode must be exactly 6 digits";
+    }
+
+    if (!manualForm.source.trim()) {
+      errs.source = "Lead source is required";
+    }
+
+    if (!manualForm.priority.trim()) {
+      errs.priority = "Priority is required";
+    }
+
+    return errs;
+  }, [manualForm]);
+
+  const isManualFormValid = useMemo(() => {
+    return Object.keys(manualFormErrors).length === 0;
+  }, [manualFormErrors]);
+
+  const getFieldError = (field: string) => {
+    return manualFormTouched[field] ? manualFormErrors[field] : "";
+  };
+
+  const handleFieldChange = (field: string, value: any) => {
+    setManualForm(prev => ({ ...prev, [field]: value }));
+    setManualFormTouched(prev => ({ ...prev, [field]: true }));
+  };
+
+  const handleStateChange = (selectedState: string) => {
+    setManualForm(prev => ({
+      ...prev,
+      state: selectedState,
+      district: ""
+    }));
+    setManualFormTouched(prev => ({
+      ...prev,
+      state: true,
+      district: false
+    }));
+  };
+
+  const addressRef = useRef<HTMLTextAreaElement>(null);
+  
+  const handleAddressChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    handleFieldChange("address", e.target.value);
+    if (addressRef.current) {
+      addressRef.current.style.height = "auto";
+      addressRef.current.style.height = `${addressRef.current.scrollHeight}px`;
+    }
+  };
 
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [assignAgentId, setAssignAgentId] = useState("");
@@ -393,16 +527,42 @@ export default function Leads() {
 
   async function handleCreateManualLead(e: React.FormEvent) {
     e.preventDefault();
-    if (!manualForm.name || !manualForm.phone || !manualForm.pool_id) {
-      showToast("Name, Phone, and Target Pool are required.", "error");
+    if (!isManualFormValid) {
+      const allTouched: Record<string, boolean> = {};
+      Object.keys(manualFormErrors).forEach(key => {
+        allTouched[key] = true;
+      });
+      setManualFormTouched(allTouched);
+      showToast("Please fill all required fields correctly.", "error");
       return;
     }
     
     if (isSubmittingManual) return;
     setIsSubmittingManual(true);
+    showToast("Creating customer lead...", "info");
 
     try {
-      const createdLead = await api.post("/api/leads", manualForm);
+      const payload = {
+        name: manualForm.name,
+        phone: manualForm.phone,
+        email: manualForm.email || undefined,
+        pool_id: manualForm.pool_id,
+        campaign_id: manualForm.campaign_id || undefined,
+        source: manualForm.source,
+        extra: {
+          purpose: manualForm.purpose,
+          country: manualForm.country,
+          state: manualForm.state,
+          district: manualForm.district,
+          address: manualForm.address,
+          pincode: manualForm.pincode,
+          company_name: manualForm.company_name || undefined,
+          priority: manualForm.priority,
+          notes: manualForm.notes || undefined
+        }
+      };
+
+      const createdLead = await api.post("/api/leads", payload);
       showToast("New customer lead added successfully!", "success");
       setShowManualModal(false);
       
@@ -414,13 +574,21 @@ export default function Leads() {
       setManualForm({
         name: "",
         phone: "",
+        email: "",
         pool_id: "",
         campaign_id: "",
-        location: "",
-        language: "English",
+        source: "Manual",
+        purpose: "",
+        country: "India",
+        state: "",
+        district: "",
+        address: "",
+        pincode: "",
+        company_name: "",
         priority: "medium",
-        source: "Manual"
+        notes: ""
       });
+      setManualFormTouched({});
 
       if (createdLead && typeof createdLead === "object") {
         setLeads(prev => [createdLead, ...prev]);
@@ -589,6 +757,94 @@ export default function Leads() {
 
   const agentsList = users.filter(u => u.role === "agent");
 
+  const poolFilterOptions = useMemo(() => {
+    const list = pools.map(p => ({
+      value: p.id,
+      label: p.name.replace(/_/g, " ").toUpperCase()
+    }));
+    return [{ value: "", label: "All Pools" }, ...list];
+  }, [pools]);
+
+  const agentFilterOptions = useMemo(() => {
+    const list = agentsList.map(a => ({
+      value: a.id,
+      label: a.name
+    }));
+    return [{ value: "", label: "All Agents" }, ...list];
+  }, [agentsList]);
+
+  const priorityFilterOptions = [
+    { value: "", label: "All Priorities" },
+    { value: "high", label: "High Priority" },
+    { value: "medium", label: "Medium Priority" },
+    { value: "low", label: "Low Priority" }
+  ];
+
+  const assignAgentOptions = useMemo(() => {
+    const list = agentsList.map(a => ({
+      value: a.id,
+      label: `${a.name} (${a.employee_id || "Agent"})`
+    }));
+    return [{ value: "", label: "-- Choose Target Agent --" }, ...list];
+  }, [agentsList]);
+
+  const manualPoolOptions = useMemo(() => {
+    return pools.map(p => ({
+      value: p.id,
+      label: p.name.replace(/_/g, " ").toUpperCase()
+    }));
+  }, [pools]);
+
+  const purposeOptions = [
+    { value: "Product Inquiry", label: "Product Inquiry" },
+    { value: "Recruitment", label: "Recruitment" },
+    { value: "Credit Card Sales", label: "Credit Card Sales" },
+    { value: "Customer Support", label: "Customer Support" },
+    { value: "Technical Support", label: "Technical Support" },
+    { value: "Complaint", label: "Complaint" },
+    { value: "Follow-up", label: "Follow-up" },
+    { value: "Demo Request", label: "Demo Request" },
+    { value: "Business Partnership", label: "Business Partnership" },
+    { value: "Other", label: "Other" }
+  ];
+
+  const sourceOptions = [
+    { value: "Website", label: "Website" },
+    { value: "Manual", label: "Manual" },
+    { value: "Referral", label: "Referral" },
+    { value: "Campaign", label: "Campaign" },
+    { value: "WhatsApp", label: "WhatsApp" },
+    { value: "Facebook", label: "Facebook" },
+    { value: "Instagram", label: "Instagram" },
+    { value: "LinkedIn", label: "LinkedIn" },
+    { value: "Other", label: "Other" }
+  ];
+
+  const priorityOptions = [
+    { value: "low", label: "Low" },
+    { value: "medium", label: "Medium" },
+    { value: "high", label: "High" }
+  ];
+
+  const stateOptions = STATES_AND_UTS;
+
+  const districtOptions = useMemo(() => {
+    return getDistrictsOptions(manualForm.state);
+  }, [manualForm.state]);
+
+  const drawerLeadWithLocation = useMemo(() => {
+    if (!drawerLead) return null;
+    if (drawerLead.location) return drawerLead;
+    const extra = drawerLead.extra || {};
+    if (extra.state) {
+      return {
+        ...drawerLead,
+        location: extra.district ? `${extra.district}, ${extra.state}` : extra.state
+      };
+    }
+    return drawerLead;
+  }, [drawerLead]);
+
   const resetFilters = () => {
     setSearchQuery("");
     setStatusFilter("");
@@ -597,6 +853,134 @@ export default function Leads() {
     setAgentFilter("");
     setPriorityFilter("");
     setQuickChipFilter("all");
+  };
+
+  const renderTextInput = (
+    field: string,
+    label: string,
+    type = "text",
+    placeholder = " ",
+    required = false,
+    maxLength?: number
+  ) => {
+    const error = getFieldError(field);
+    const value = (manualForm as any)[field];
+    return (
+      <div className="relative group w-full text-left">
+        <input
+          type={type}
+          maxLength={maxLength}
+          placeholder={placeholder}
+          value={value}
+          onChange={e => handleFieldChange(field, e.target.value)}
+          onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
+          className={`peer w-full h-[48px] pt-4.5 pb-1 px-3 border rounded-xl bg-slate-50/40 text-xs font-bold text-slate-800 transition duration-200 group-hover:border-slate-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/5 ${
+            error
+              ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/5"
+              : value && !manualFormErrors[field]
+              ? "border-emerald-300 focus:border-[#0F4FA8]"
+              : "border-slate-200/80 focus:border-[#0F4FA8]"
+          }`}
+        />
+        <label className={`absolute left-3 transition-all duration-200 pointer-events-none select-none origin-left text-[10px] font-extrabold uppercase ${
+          value ? "top-1.5 text-slate-400" : "top-3.5 text-xs text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px]"
+        } peer-focus:text-[#0F4FA8] peer-focus:font-black`}>
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+        {error && (
+          <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1 pl-1">
+            <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+            <span>{error}</span>
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const renderSelectInput = (
+    field: string,
+    label: string,
+    options: { value: string; label: string }[],
+    placeholder: string,
+    disabled = false
+  ) => {
+    const error = getFieldError(field);
+    const value = (manualForm as any)[field];
+    return (
+      <div className="space-y-1 w-full text-left">
+        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide pl-1">
+          {label} <span className="text-rose-500">*</span>
+        </label>
+        <CustomSelect
+          disabled={disabled}
+          value={value}
+          onChange={val => {
+            if (field === "state") {
+              handleStateChange(val);
+            } else {
+              handleFieldChange(field, val);
+            }
+          }}
+          options={options}
+          placeholder={placeholder}
+          searchable={true}
+          triggerClassName={`h-[48px] rounded-xl text-xs font-bold text-slate-800 ${
+            error
+              ? "border-rose-300 ring-2 ring-rose-500/5"
+              : value
+              ? "border-emerald-300"
+              : "border-slate-200"
+          }`}
+        />
+        {error && (
+          <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1.5 pl-1">
+            <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+            <span>{error}</span>
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  const renderTextareaInput = (
+    field: string,
+    label: string,
+    placeholder = "Enter text...",
+    required = false,
+    rows = 1,
+    customRef?: React.RefObject<HTMLTextAreaElement>,
+    customChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+  ) => {
+    const error = getFieldError(field);
+    const value = (manualForm as any)[field];
+    return (
+      <div className="space-y-1 w-full text-left">
+        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide pl-1">
+          {label} {required && <span className="text-rose-500">*</span>}
+        </label>
+        <textarea
+          ref={customRef}
+          rows={rows}
+          placeholder={placeholder}
+          value={value}
+          onChange={customChange || (e => handleFieldChange(field, e.target.value))}
+          onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
+          className={`w-full border rounded-xl px-3 py-2 bg-slate-50/40 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none resize-none overflow-hidden transition ${
+            error
+              ? "border-rose-300 focus:ring-4 focus:ring-rose-500/5 focus:border-rose-400"
+              : value && !manualFormErrors[field]
+              ? "border-emerald-200 focus:ring-4 focus:ring-blue-500/5 focus:border-[#0F4FA8]"
+              : "border-slate-200 focus:ring-4 focus:ring-blue-500/5 focus:border-[#0F4FA8]"
+          }`}
+        />
+        {error && (
+          <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1.5 pl-1">
+            <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+            <span>{error}</span>
+          </p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -845,70 +1229,72 @@ export default function Leads() {
       <div className="space-y-4">
 
         {/* FILTER TOOLBAR BAR WITH FULL WIDTH SCROLLABLE STATUS CHIPS (NORMAL PAGE FLOW) */}
-        <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-4 shadow-sm border border-slate-200/80 space-y-3">
+        <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-4 shadow-sm border border-slate-200/80 space-y-4">
           
           {/* Top Row: Search Input & Dropdowns */}
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
-            {/* Search Bar */}
-            <div className="relative w-full lg:w-96 shrink-0">
-              <Search className="h-4 w-4 text-[#0F4FA8] absolute left-3.5 top-3" />
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+            {/* Search Bar (50-60% width on desktop) */}
+            <div className="relative flex-1 w-full">
+              <Search className="h-5 w-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
               <input
+                ref={searchInputRef}
                 type="text"
-                placeholder="AI Search leads by name, phone, email, ID..."
+                placeholder="AI Search leads by name, phone, email, ID... (Ctrl + K)"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-xs bg-slate-50/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-semibold text-slate-800 transition"
+                className="w-full h-12 pl-12 pr-20 border border-slate-200 rounded-[16px] text-xs bg-slate-50/50 backdrop-blur-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-[#0F4FA8] focus:ring-4 focus:ring-blue-500/10 shadow-sm"
               />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600">
-                  <X className="h-3.5 w-3.5" />
+              {searchQuery ? (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X className="h-4 w-4" />
                 </button>
+              ) : (
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5 px-2 py-0.5 border border-slate-200 rounded-md text-[10px] text-slate-400 bg-white font-mono shadow-2xs font-extrabold select-none pointer-events-none">
+                  Ctrl K
+                </span>
               )}
             </div>
 
             {/* Filter Dropdowns */}
-            <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-end">
-              <select
+            <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
+              <CustomSelect
                 value={poolFilter}
-                onChange={e => setPoolFilter(e.target.value)}
-                className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-              >
-                <option value="">All Pools</option>
-                {pools.map(p => (
-                  <option key={p.id} value={p.id}>{p.name.replace(/_/g, " ").toUpperCase()}</option>
-                ))}
-              </select>
+                onChange={setPoolFilter}
+                options={poolFilterOptions}
+                placeholder="All Pools"
+                className="w-full sm:w-36 shrink-0"
+                triggerClassName="h-12 rounded-[16px] text-xs"
+              />
 
               {isManager && (
-                <select
+                <CustomSelect
                   value={agentFilter}
-                  onChange={e => setAgentFilter(e.target.value)}
-                  className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-                >
-                  <option value="">All Agents</option>
-                  {agentsList.map(a => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
+                  onChange={setAgentFilter}
+                  options={agentFilterOptions}
+                  placeholder="All Agents"
+                  className="w-full sm:w-36 shrink-0"
+                  triggerClassName="h-12 rounded-[16px] text-xs"
+                />
               )}
 
-              <select
+              <CustomSelect
                 value={priorityFilter}
-                onChange={e => setPriorityFilter(e.target.value)}
-                className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-              >
-                <option value="">All Priorities</option>
-                <option value="high">High Priority</option>
-                <option value="medium">Medium Priority</option>
-                <option value="low">Low Priority</option>
-              </select>
+                onChange={setPriorityFilter}
+                options={priorityFilterOptions}
+                placeholder="All Priorities"
+                className="w-full sm:w-36 shrink-0"
+                triggerClassName="h-12 rounded-[16px] text-xs"
+              />
 
               {(searchQuery || statusFilter || poolFilter || agentFilter || priorityFilter || quickChipFilter !== "all") && (
                 <button
                   onClick={resetFilters}
-                  className="px-3 py-2 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl text-xs font-bold transition hover:bg-rose-100 flex items-center gap-1 cursor-pointer"
+                  className="h-12 px-4 text-xs font-black text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100/80 border border-red-200/50 rounded-[16px] transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95 animate-fade-in"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-4 w-4" />
                   <span>Reset</span>
                 </button>
               )}
@@ -941,24 +1327,33 @@ export default function Leads() {
                 { id: "follow_up", label: "Follow-up Needed" },
                 { id: "not_interested", label: "Not Interested" },
                 { id: "closed", label: "Closed / Won" }
-              ].map(chip => (
-                <button
-                  key={chip.id}
-                  data-active={quickChipFilter === chip.id}
-                  onClick={() => {
-                    setQuickChipFilter(chip.id);
-                    if (chip.id === "all") setStatusFilter("");
-                    else setStatusFilter(chip.id);
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 shadow-2xs active:scale-95 ${
-                    quickChipFilter === chip.id
-                      ? "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] text-white shadow-md shadow-blue-900/10"
-                      : "bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900"
-                  }`}
-                >
-                  {chip.label}
-                </button>
-              ))}
+              ].map(chip => {
+                const count = statusCounts[chip.id as keyof typeof statusCounts] || 0;
+                const isActive = quickChipFilter === chip.id;
+                return (
+                  <button
+                    key={chip.id}
+                    data-active={isActive}
+                    onClick={() => {
+                      setQuickChipFilter(chip.id);
+                      if (chip.id === "all") setStatusFilter("");
+                      else setStatusFilter(chip.id);
+                    }}
+                    className={`px-4 py-2.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-2 active:scale-95 ${
+                      isActive
+                        ? "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] text-white shadow-md shadow-blue-900/10"
+                        : "bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 border border-slate-200/40"
+                    }`}
+                  >
+                    <span>{chip.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                      isActive ? "bg-white/20 text-white" : "bg-slate-200/85 text-slate-500"
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
             {showScrollRight && (
@@ -975,60 +1370,65 @@ export default function Leads() {
           {/* Bulk Selected Toolbar (Admin & TL / Supervisor only) */}
           {isManager && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`p-3.5 rounded-2xl transition-all duration-300 flex items-center justify-between flex-wrap gap-3 border ${
-                selectedLeadIds.length > 0
-                  ? "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] text-white shadow-lg border-blue-400/30"
-                  : "bg-slate-100/90 text-slate-500 border-slate-200"
-              }`}
+              className="bg-white/80 backdrop-blur-md border border-slate-200 rounded-[16px] p-4 shadow-lg shadow-slate-900/5 flex flex-col lg:flex-row items-center justify-between gap-4 w-full"
             >
-              <div className="flex items-center gap-2.5">
-                <div className={`p-2 rounded-xl ${selectedLeadIds.length > 0 ? "bg-white/10 text-[#FFC107]" : "bg-slate-200 text-slate-500"}`}>
-                  <CheckSquare className="h-4 w-4" />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <IndeterminateCheckbox
+                    checked={allPaginatedSelected}
+                    indeterminate={isIndeterminate}
+                    onChange={toggleSelectAll}
+                    className="h-4.5 w-4.5 text-[#0F4FA8] focus:ring-[#0F4FA8] border-slate-300 rounded cursor-pointer transition"
+                  />
+                  <span className="text-slate-400 text-xs font-bold select-none">Select Page</span>
                 </div>
-                <div>
-                  <span className={`text-xs font-black tracking-tight ${selectedLeadIds.length > 0 ? "text-white" : "text-slate-600"}`}>
-                    {selectedLeadIds.length > 0
-                      ? `${selectedLeadIds.length} Lead${selectedLeadIds.length === 1 ? "" : "s"} Selected`
-                      : "Select one or more leads to assign"}
-                  </span>
-                  {selectedLeadIds.length > 0 && (
-                    <span className="block text-[10px] text-blue-200 font-semibold">Choose an agent below to execute bulk routing</span>
-                  )}
+
+                <div className="h-5 w-px bg-slate-200" />
+
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-xl transition ${selectedLeadIds.length > 0 ? "bg-blue-50 text-[#0F4FA8]" : "bg-slate-100 text-slate-400"}`}>
+                    <CheckSquare className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-800 tracking-tight">
+                        {selectedLeadIds.length} Leads Selected
+                      </span>
+                      {selectedLeadIds.length > 0 && (
+                        <button
+                          onClick={() => setSelectedLeadIds([])}
+                          className="text-[10px] font-extrabold text-red-500 hover:text-red-600 transition cursor-pointer"
+                        >
+                          (Clear)
+                        </button>
+                      )}
+                    </div>
+                    <span className="block text-[10px] text-slate-400 font-semibold">Bulk assignment console</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-end">
-                <select
+              <div className="flex items-center gap-2.5 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
+                <CustomSelect
                   disabled={selectedLeadIds.length === 0}
                   value={assignAgentId}
-                  onChange={e => setAssignAgentId(e.target.value)}
-                  className="h-9 px-3.5 border rounded-xl text-xs font-extrabold bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FFC107] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  <option value="">-- Choose Target Agent --</option>
-                  {agentsList.map(a => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.employee_id || "Agent"})</option>
-                  ))}
-                </select>
+                  onChange={setAssignAgentId}
+                  options={assignAgentOptions}
+                  placeholder="-- Choose Target Agent --"
+                  className="w-full sm:w-52 shrink-0 text-xs"
+                  triggerClassName="h-12 rounded-[16px] text-xs"
+                />
 
                 <button
                   disabled={selectedLeadIds.length === 0 || !assignAgentId}
                   onClick={handleBulkAssignAgent}
-                  className="h-9 px-4 bg-[#FFC107] hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
+                  className="h-12 px-5 bg-amber-400 hover:bg-amber-500 disabled:bg-slate-100 disabled:text-slate-400 text-slate-900 font-extrabold text-xs rounded-[16px] transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 disabled:active:scale-100 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shrink-0"
                 >
-                  <UserCheck className="h-4 w-4 text-slate-950" />
+                  <UserCheck className="h-4 w-4" />
                   <span>Bulk Assign</span>
                 </button>
-
-                {selectedLeadIds.length > 0 && (
-                  <button
-                    onClick={() => setSelectedLeadIds([])}
-                    className="h-9 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition cursor-pointer"
-                  >
-                    Deselect All
-                  </button>
-                )}
               </div>
             </motion.div>
           )}
@@ -1128,7 +1528,7 @@ export default function Leads() {
                         <div className="font-extrabold text-slate-800 text-xs">{l.phone}</div>
                         <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
                           <MapPin className="h-3 w-3 text-slate-300" />
-                          <span>{l.location || "N/A"}</span>
+                          <span>{l.location || (l.extra?.state ? `${l.extra.district ? l.extra.district + ', ' : ''}${l.extra.state}` : '') || "N/A"}</span>
                         </div>
                       </td>
 
@@ -1250,7 +1650,7 @@ export default function Leads() {
 
       {/* 5. RIGHT SLIDE-OVER PROFILE DRAWER */}
       <LeadDetailsDrawer
-        lead={drawerLead}
+        lead={drawerLeadWithLocation}
         onClose={() => setDrawerLead(null)}
         onUpdateDisposition={async (leadId, status, notes, followUpDate) => {
           await api.patch(`/api/leads/${leadId}/status`, {
@@ -1267,71 +1667,168 @@ export default function Leads() {
       />
 
       {/* MANUAL LEAD ENTRY MODAL */}
-      {showManualModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-lg w-full shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
-                <UserPlus className="h-5 w-5 text-[#0F4FA8]" />
-                <span>Add Customer Lead</span>
-              </h3>
-              <button onClick={() => setShowManualModal(false)} className="p-1 hover:bg-slate-100 rounded-lg">
-                <X className="h-5 w-5 text-slate-400" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateManualLead} className="space-y-3 text-xs font-semibold">
-              <div className="grid grid-cols-2 gap-3">
+      <AnimatePresence>
+        {showManualModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-sans">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="bg-white rounded-[24px] p-6 max-w-4xl w-full shadow-2xl space-y-4 border border-slate-100"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3.5">
                 <div>
-                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Customer Name</label>
-                  <input
-                    required
-                    placeholder="Full name"
-                    value={manualForm.name}
-                    onChange={e => setManualForm({ ...manualForm, name: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
-                  />
+                  <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
+                    <UserPlus className="h-5 w-5 text-[#0F4FA8]" />
+                    <span>Add Customer Lead</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Enterprise customer registration & pipeline classification</p>
+                </div>
+                <button onClick={() => setShowManualModal(false)} className="p-1 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors duration-200">
+                  <X className="h-5 w-5 text-slate-400" />
+                </button>
+              </div>
+
+              {/* Form body */}
+              <form onSubmit={handleCreateManualLead} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-1.5 select-none custom-scrollbar">
+                  
+                  {/* LEFT COLUMN */}
+                  <div className="space-y-4">
+                    {/* Card 1: Profile Information */}
+                    <div className="bg-slate-50/40 backdrop-blur-xs border border-slate-100 rounded-[20px] p-5 space-y-4 shadow-sm hover:shadow transition-shadow duration-300">
+                      <div className="flex items-center gap-2 border-b border-slate-100/50 pb-3">
+                        <div className="p-1.5 bg-[#0F4FA8]/5 text-[#0F4FA8] rounded-lg">
+                          <UserPlus className="h-4.5 w-4.5" />
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-slate-800 text-[10.5px] uppercase tracking-wider">Profile Information</h4>
+                          <p className="text-[9.5px] text-slate-400 font-bold">Primary contact identity and enterprise association</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3.5">
+                        {renderTextInput("name", "Customer Name", "text", " ", true)}
+                        <div>
+                          <PhoneInput
+                            required
+                            value={manualForm.phone}
+                            onChange={(fullVal) => {
+                              setManualForm(prev => ({ ...prev, phone: fullVal }));
+                              setManualFormTouched(prev => ({ ...prev, phone: true }));
+                            }}
+                            error={getFieldError("phone")}
+                            label="Phone Number"
+                            inputClassName="h-[48px]"
+                          />
+                        </div>
+                        {renderTextInput("email", "Email ID", "email", " ", true)}
+                        {renderTextInput("company_name", "Company Name (Optional)", "text", " ", false)}
+                      </div>
+                    </div>
+
+                    {/* Card 2: Lead Details */}
+                    <div className="bg-slate-50/40 backdrop-blur-xs border border-slate-100 rounded-[20px] p-5 space-y-4 shadow-sm hover:shadow transition-shadow duration-300">
+                      <div className="flex items-center gap-2 border-b border-slate-100/50 pb-3">
+                        <div className="p-1.5 bg-[#0F4FA8]/5 text-[#0F4FA8] rounded-lg">
+                          <Target className="h-4.5 w-4.5 animate-pulse" />
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-slate-800 text-[10.5px] uppercase tracking-wider">Lead Details</h4>
+                          <p className="text-[9.5px] text-slate-400 font-bold">Pipeline classification and routing settings</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3.5">
+                        {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool")}
+                        {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
+                        {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
+                        {renderSelectInput("priority", "Priority", priorityOptions, "Select Priority")}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RIGHT COLUMN */}
+                  <div className="space-y-4">
+                    {/* Card 3: Location */}
+                    <div className="bg-slate-50/40 backdrop-blur-xs border border-slate-100 rounded-[20px] p-5 space-y-4 shadow-sm hover:shadow transition-shadow duration-300">
+                      <div className="flex items-center gap-2 border-b border-slate-100/50 pb-3">
+                        <div className="p-1.5 bg-[#0F4FA8]/5 text-[#0F4FA8] rounded-lg">
+                          <MapPin className="h-4.5 w-4.5" />
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-slate-800 text-[10.5px] uppercase tracking-wider">Location</h4>
+                          <p className="text-[9.5px] text-slate-400 font-bold">Operational address and locality details</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3.5">
+                        <div>
+                          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide pl-1 mb-1">
+                            Country <span className="text-slate-400">(Read-Only)</span>
+                          </label>
+                          <input
+                            readOnly
+                            value="India"
+                            className="w-full h-[48px] border border-slate-200 rounded-xl px-3 bg-slate-100/80 text-xs font-bold text-slate-400 select-none cursor-not-allowed focus:outline-none"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3.5">
+                          {renderSelectInput("state", "State", stateOptions, "Select State")}
+                          {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
+                        </div>
+                        {renderTextInput("pincode", "Pincode", "text", " ", true, 6)}
+                        {renderTextareaInput("address", "Address", "Street address, building, local area...", true, 1, addressRef, handleAddressChange)}
+                      </div>
+                    </div>
+
+                    {/* Card 4: Additional Information */}
+                    <div className="bg-slate-50/40 backdrop-blur-xs border border-slate-100 rounded-[20px] p-5 space-y-4 shadow-sm hover:shadow transition-shadow duration-300">
+                      <div className="flex items-center gap-2 border-b border-slate-100/50 pb-3">
+                        <div className="p-1.5 bg-[#0F4FA8]/5 text-[#0F4FA8] rounded-lg">
+                          <FileText className="h-4.5 w-4.5" />
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-slate-800 text-[10.5px] uppercase tracking-wider">Additional Information</h4>
+                          <p className="text-[9.5px] text-slate-400 font-bold">Extra contextual notes and details</p>
+                        </div>
+                      </div>
+                      <div>
+                        {renderTextareaInput("notes", "Notes (Optional)", "Add any extra notes or requirements...", false, 2)}
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
 
-                <PhoneInput
-                  required
-                  value={manualForm.phone}
-                  onChange={(fullVal) => setManualForm({ ...manualForm, phone: fullVal })}
-                  label="Phone Number"
-                />
-              </div>
-
-
-
-              <div>
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Target Pool</label>
-                <select
-                  required
-                  value={manualForm.pool_id}
-                  onChange={e => setManualForm({ ...manualForm, pool_id: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-bold"
-                >
-                  <option value="">Select Pool</option>
-                  {pools.map(p => (
-                    <option key={p.id} value={p.id}>{p.name.replace(/_/g, " ").toUpperCase()}</option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmittingManual}
-                className={`w-full text-white font-extrabold py-3 rounded-xl transition mt-2 cursor-pointer shadow-md flex items-center justify-center gap-2 ${
-                  isSubmittingManual ? "bg-slate-400 cursor-not-allowed" : "bg-[#0F4FA8] hover:bg-blue-900"
-                }`}
-              >
-                {isSubmittingManual && <Loader2 className="h-5 w-5 animate-spin" />}
-                {isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}
-              </button>
-            </form>
+                {/* Sticky Footer Actions */}
+                <div className="flex items-center gap-3 pt-4 border-t border-slate-100 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualModal(false)}
+                    className="px-6 h-[44px] bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 rounded-xl text-xs font-extrabold transition cursor-pointer active:scale-95 text-center shrink-0"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingManual || !isManualFormValid}
+                    className={`flex-1 h-[44px] text-white font-extrabold rounded-xl transition cursor-pointer shadow-md flex items-center justify-center gap-2 ${
+                      isSubmittingManual
+                        ? "bg-slate-400 cursor-not-allowed"
+                        : !isManualFormValid
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                        : "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] shadow-blue-500/20 hover:shadow-blue-900/30 active:scale-95"
+                    }`}
+                  >
+                    {isSubmittingManual && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* DELETE CONFIRMATION MODAL */}
       {leadToDelete && (

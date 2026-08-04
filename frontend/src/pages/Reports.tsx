@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api, BASE_URL } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { CustomSelect } from "../components/CustomSelect";
 
 type CallHistoryRow = {
   id: string;
@@ -136,6 +137,13 @@ function ReportsSkeleton() {
   );
 }
 
+const REPORT_TYPE_OPTIONS = [
+  { value: "agent_performance", label: "Agent Performance Report" },
+  { value: "lead_import", label: "Lead Import Log Report" },
+  { value: "campaign", label: "Campaign List Report" },
+  { value: "call_analytics", label: "Complete Call Logs" }
+];
+
 export default function Reports() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -252,16 +260,13 @@ export default function Reports() {
 
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
           {/* Report Type selector */}
-          <select
+          <CustomSelect
             value={reportType}
-            onChange={e => setReportType(e.target.value as any)}
-            className="h-10 border border-slate-200 rounded-xl px-3.5 text-xs bg-slate-50 font-extrabold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-          >
-            <option value="agent_performance">Agent Performance Report</option>
-            <option value="lead_import">Lead Import Log Report</option>
-            <option value="campaign">Campaign List Report</option>
-            <option value="call_analytics">Complete Call Logs</option>
-          </select>
+            onChange={val => setReportType(val as any)}
+            options={REPORT_TYPE_OPTIONS}
+            placeholder="Select Report"
+            className="w-56"
+          />
 
           {/* Export Actions */}
           <button

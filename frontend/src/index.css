@@ -187,3 +187,267 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   FORGE CRM — PREMIUM DARK MODE THEME
+   Triggered by .dark class on <html>. Light mode styles are UNTOUCHED.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Base Body & HTML ────────────────────────────────────────────────────── */
+.dark body {
+  background-color: #0B1220;
+  color: #E2E8F0;
+}
+
+/* ─── Main Content Area Background ────────────────────────────────────────── */
+.dark main,
+.dark .bg-\[\#f4f6fb\],
+.dark .bg-\[\#F5F7FB\],
+.dark .bg-slate-50,
+.dark .bg-gray-50 {
+  background-color: #0B1220 !important;
+  color: #E2E8F0;
+}
+
+/* ─── Top Header Toolbar ──────────────────────────────────────────────────── */
+.dark header.sticky,
+.dark .bg-white\/95 {
+  background-color: rgba(17, 24, 39, 0.97) !important;
+  border-color: #1E293B !important;
+  backdrop-filter: blur(16px);
+}
+
+/* ─── Cards & Panels ──────────────────────────────────────────────────────── */
+.dark .bg-white,
+.dark .bg-white\/80,
+.dark .bg-white\/90,
+.dark .bg-white\/95 {
+  background-color: #111827 !important;
+  border-color: #1E293B !important;
+  color: #E2E8F0;
+}
+
+.dark .bg-white\/60,
+.dark .bg-white\/50,
+.dark .bg-white\/70 {
+  background-color: rgba(17, 24, 39, 0.7) !important;
+  border-color: #1E293B !important;
+}
+
+/* ─── KPI Stat Cards (colored left borders) ───────────────────────────────── */
+.dark .bg-blue-50 { background-color: rgba(37, 99, 235, 0.1) !important; }
+.dark .bg-emerald-50,
+.dark .bg-green-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+.dark .bg-amber-50,
+.dark .bg-yellow-50 { background-color: rgba(250, 204, 21, 0.08) !important; }
+.dark .bg-red-50,
+.dark .bg-rose-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
+.dark .bg-purple-50,
+.dark .bg-violet-50 { background-color: rgba(124, 58, 237, 0.1) !important; }
+.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.1) !important; }
+.dark .bg-cyan-50,
+.dark .bg-teal-50 { background-color: rgba(6, 182, 212, 0.1) !important; }
+.dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.1) !important; }
+.dark .bg-slate-50 { background-color: #1E293B !important; }
+.dark .bg-gray-100,
+.dark .bg-slate-100 { background-color: #1E293B !important; }
+.dark .bg-slate-200 { background-color: #334155 !important; }
+
+/* Badge background overrides */
+.dark .bg-blue-100 { background-color: rgba(37, 99, 235, 0.18) !important; }
+.dark .bg-emerald-100,
+.dark .bg-green-100 { background-color: rgba(16, 185, 129, 0.18) !important; }
+.dark .bg-amber-100,
+.dark .bg-yellow-100 { background-color: rgba(250, 204, 21, 0.15) !important; }
+.dark .bg-red-100,
+.dark .bg-rose-100 { background-color: rgba(239, 68, 68, 0.18) !important; }
+.dark .bg-purple-100 { background-color: rgba(124, 58, 237, 0.18) !important; }
+
+/* ─── Text Color Overrides ────────────────────────────────────────────────── */
+.dark .text-slate-900,
+.dark .text-gray-900 { color: #F1F5F9 !important; }
+.dark .text-slate-800,
+.dark .text-gray-800 { color: #E2E8F0 !important; }
+.dark .text-slate-700,
+.dark .text-gray-700 { color: #CBD5E1 !important; }
+.dark .text-slate-600,
+.dark .text-gray-600 { color: #94A3B8 !important; }
+.dark .text-slate-500,
+.dark .text-gray-500 { color: #64748B !important; }
+.dark .text-slate-400,
+.dark .text-gray-400 { color: #64748B !important; }
+
+.dark .text-black { color: #F1F5F9 !important; }
+
+/* ─── Border Overrides ────────────────────────────────────────────────────── */
+.dark .border-slate-200,
+.dark .border-gray-200,
+.dark .border-\[\#E7ECF5\],
+.dark .border-slate-200\/80,
+.dark .border-slate-100,
+.dark .border-gray-100 {
+  border-color: #1E293B !important;
+}
+.dark .border-slate-300,
+.dark .border-gray-300 {
+  border-color: #334155 !important;
+}
+
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1E293B !important;
+}
+
+/* ─── Inputs, Selects & Form Controls ─────────────────────────────────────── */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #0F172A !important;
+  border-color: #1E293B !important;
+  color: #E2E8F0 !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #475569 !important;
+}
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #2563EB !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* ─── Tables ──────────────────────────────────────────────────────────────── */
+.dark table {
+  color: #E2E8F0;
+}
+.dark thead {
+  background-color: #0F172A !important;
+}
+.dark thead th {
+  color: #94A3B8 !important;
+  border-color: #1E293B !important;
+}
+.dark tbody tr {
+  border-color: #1E293B !important;
+}
+.dark tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+}
+.dark tbody td {
+  border-color: #1E293B !important;
+  color: #CBD5E1;
+}
+
+/* ─── Modals & Overlays ───────────────────────────────────────────────────── */
+.dark .bg-slate-900\/65,
+.dark .bg-black\/50,
+.dark .bg-black\/60,
+.dark .bg-black\/40 {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Modal content card */
+.dark [class*="bg-white"][class*="rounded-2xl"],
+.dark [class*="bg-white"][class*="rounded-xl"] {
+  background-color: #111827 !important;
+  border-color: #1E293B !important;
+}
+
+/* ─── Dropdown / Select Portals ───────────────────────────────────────────── */
+.dark .custom-select-dropdown,
+.dark [data-dropdown-portal] {
+  background-color: #111827 !important;
+  border-color: #1E293B !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(30, 41, 59, 0.8) !important;
+}
+
+/* ─── Shadows ─────────────────────────────────────────────────────────────── */
+.dark .shadow-sm,
+.dark .shadow-xs,
+.dark .shadow-2xs { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important; }
+.dark .shadow-md { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important; }
+.dark .shadow-lg { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important; }
+.dark .shadow-xl { box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5) !important; }
+.dark .shadow-2xl { box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6) !important; }
+
+/* ─── Hover States ────────────────────────────────────────────────────────── */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-gray-50:hover { background-color: #1E293B !important; }
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-gray-100:hover { background-color: rgba(30, 41, 59, 0.7) !important; }
+.dark .hover\:bg-white:hover { background-color: #1E293B !important; }
+
+/* ─── Scrollbar Dark Theme ────────────────────────────────────────────────── */
+.dark ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #0B1220;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* ─── Glassmorphism Cards ─────────────────────────────────────────────────── */
+.dark .backdrop-blur-xl,
+.dark .backdrop-blur-md,
+.dark .backdrop-blur-sm {
+  background-color: rgba(17, 24, 39, 0.85) !important;
+}
+
+/* ─── Ring Overrides ──────────────────────────────────────────────────────── */
+.dark .ring-slate-200,
+.dark .ring-gray-200 { --tw-ring-color: #1E293B !important; }
+.dark .focus\:ring-\[\#0F4FA8\]\/30:focus { --tw-ring-color: rgba(37, 99, 235, 0.25) !important; }
+
+/* ─── Tooltips ────────────────────────────────────────────────────────────── */
+.dark [class*="bg-slate-900/95"],
+.dark [class*="bg-slate-900\/95"] {
+  background-color: rgba(15, 23, 42, 0.98) !important;
+  border-color: #334155 !important;
+}
+
+/* ─── Toast / Notifications Dropdown ──────────────────────────────────────── */
+.dark .animate-scale-in {
+  background-color: #111827 !important;
+  border-color: #1E293B !important;
+}
+
+/* ─── Charts: SVG gridlines & labels ──────────────────────────────────────── */
+.dark svg .fill-slate-400 { fill: #64748B !important; }
+.dark svg line[stroke="#F1F5F9"] { stroke: #1E293B !important; }
+
+/* ─── Status Badges ───────────────────────────────────────────────────────── */
+.dark .bg-\[\#ECFDF5\] { background-color: rgba(16, 185, 129, 0.12) !important; }
+.dark .bg-\[\#FEF3C7\] { background-color: rgba(250, 204, 21, 0.1) !important; }
+.dark .bg-\[\#FEE2E2\] { background-color: rgba(239, 68, 68, 0.12) !important; }
+.dark .bg-\[\#EFF6FF\] { background-color: rgba(37, 99, 235, 0.1) !important; }
+
+/* ─── Segmented Pills / Tabs ──────────────────────────────────────────────── */
+.dark [class*="bg-slate-100"][class*="rounded-xl"] {
+  background-color: #0F172A !important;
+  border-color: #1E293B !important;
+}
+
+/* ─── Skeletons / Loading States ──────────────────────────────────────────── */
+.dark .animate-pulse {
+  opacity: 0.5;
+}
+
+/* ─── Forge Voice Engine Status Banner ────────────────────────────────────── */
+.dark .bg-gradient-to-r.from-\[\#071B36\] {
+  background: linear-gradient(to right, #0F172A, #111827) !important;
+  border-color: #1E293B !important;
+}
+
+/* ─── Smooth Transition for Theme Switch ──────────────────────────────────── */
+html.dark * {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease, box-shadow 0.2s ease;
+}
+

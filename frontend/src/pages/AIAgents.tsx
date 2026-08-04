@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, getWsUrl } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import PortalHeader from "../components/PortalHeader";
+import { CustomSelect } from "../components/CustomSelect";
 import {
   Bot,
   Plus,
@@ -43,6 +44,32 @@ type AIAgent = {
   created_at?: string;
 };
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All Statuses" },
+  { value: "online", label: "Online Only" },
+  { value: "in_call", label: "In Call Only" },
+  { value: "busy", label: "Busy Only" },
+  { value: "offline", label: "Offline Only" }
+];
+
+const VOICE_FILTER_OPTIONS = [
+  { value: "", label: "All Voice Models" },
+  { value: "Neural-Female-IN", label: "Neural-Female (English IN)" },
+  { value: "Neural-Male-IN", label: "Neural-Male (English IN)" },
+  { value: "Neural-Hindi-Female", label: "Neural-Female (Hindi)" }
+];
+
+const SORT_BY_OPTIONS = [
+  { value: "name", label: "Sort by Name" },
+  { value: "status", label: "Sort by Status" }
+];
+
+const VOICE_MODEL_OPTIONS = [
+  { value: "Neural-Female-IN", label: "Neural-Female (Indian English)" },
+  { value: "Neural-Male-IN", label: "Neural-Male (Indian English)" },
+  { value: "Neural-Hindi-Female", label: "Neural-Female (Hindi)" }
+];
+
 export default function AIAgents() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -57,6 +84,21 @@ export default function AIAgents() {
   const [voiceFilter, setVoiceFilter] = useState<string>("");
   const [activeFilter, setActiveFilter] = useState<string>("");
   const [sortBy, setSortBy] = useState<"name" | "status" | "created_at">("name");
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (statusFilter) count++;
+    if (voiceFilter) count++;
+    if (sortBy !== "name") count++;
+    return count;
+  }, [statusFilter, voiceFilter, sortBy]);
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setStatusFilter("");
+    setVoiceFilter("");
+    setSortBy("name");
+  };
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -292,58 +334,80 @@ export default function AIAgents() {
       </div>
 
       {/* 2. SEARCH & FILTER CONTROLS BAR */}
-      <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-4 shadow-sm border border-slate-200/80 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full md:w-96">
-          <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
+      <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-4 shadow-sm border border-slate-200/80 flex flex-col lg:flex-row gap-4 items-center justify-between">
+        {/* Search Input (50-60% width) */}
+        <div className="relative w-full lg:w-[55%]">
+          <Search className="h-5 w-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search AI agents by name, ID, voice model..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-semibold text-slate-800 transition"
+            className="w-full h-12 pl-12 pr-10 border border-slate-200 rounded-[16px] text-xs bg-slate-50/50 backdrop-blur-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-[#0F4FA8] focus:ring-4 focus:ring-blue-500/10 shadow-sm"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery("")} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
-              <X className="h-3.5 w-3.5" />
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap text-xs font-bold">
-          <div className="flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-slate-400" />
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-            >
-              <option value="">All Statuses</option>
-              <option value="online">Online Only</option>
-              <option value="in_call">In Call Only</option>
-              <option value="busy">Busy Only</option>
-              <option value="offline">Offline Only</option>
-            </select>
+        {/* Filter Controls Row */}
+        <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
+          {/* Active Filter Count Badge & Icon */}
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-100/80 rounded-xl text-slate-500 border border-slate-200/60 shrink-0 h-12">
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="text-xs font-black">Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="flex items-center justify-center bg-[#FFC107] text-slate-900 text-[10px] font-black h-5 w-5 rounded-full ring-2 ring-white">
+                {activeFilterCount}
+              </span>
+            )}
           </div>
 
-          <select
-            value={voiceFilter}
-            onChange={e => setVoiceFilter(e.target.value)}
-            className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-          >
-            <option value="">All Voice Models</option>
-            <option value="Neural-Female-IN">Neural-Female (English IN)</option>
-            <option value="Neural-Male-IN">Neural-Male (English IN)</option>
-            <option value="Neural-Hindi-Female">Neural-Female (Hindi)</option>
-          </select>
+          {/* Status Select */}
+          <CustomSelect
+            value={statusFilter}
+            onChange={setStatusFilter}
+            options={STATUS_FILTER_OPTIONS}
+            placeholder="All Statuses"
+            className="w-full sm:w-36 shrink-0"
+            triggerClassName="h-12 rounded-[16px] text-xs"
+          />
 
-          <select
+          {/* Voice Model Select */}
+          <CustomSelect
+            value={voiceFilter}
+            onChange={setVoiceFilter}
+            options={VOICE_FILTER_OPTIONS}
+            placeholder="All Voice Models"
+            className="w-full sm:w-44 shrink-0"
+            triggerClassName="h-12 rounded-[16px] text-xs"
+          />
+
+          {/* Sort By Select */}
+          <CustomSelect
             value={sortBy}
-            onChange={e => setSortBy(e.target.value as any)}
-            className="border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-50/70 text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] cursor-pointer"
-          >
-            <option value="name">Sort by Name</option>
-            <option value="status">Sort by Status</option>
-          </select>
+            onChange={val => setSortBy(val as any)}
+            options={SORT_BY_OPTIONS}
+            placeholder="Sort by"
+            className="w-full sm:w-36 shrink-0"
+            triggerClassName="h-12 rounded-[16px] text-xs"
+          />
+
+          {/* Reset Filters button */}
+          {(searchQuery || activeFilterCount > 0) && (
+            <button
+              onClick={resetFilters}
+              className="h-12 px-4 text-xs font-black text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100/80 border border-red-200/50 rounded-[16px] transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95 animate-fade-in"
+            >
+              <X className="h-4 w-4" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -560,15 +624,12 @@ export default function AIAgents() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Voice Model</label>
-                  <select
+                  <CustomSelect
                     value={form.voice_model}
-                    onChange={e => setForm({ ...form, voice_model: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 font-bold"
-                  >
-                    <option value="Neural-Female-IN">Neural-Female (Indian English)</option>
-                    <option value="Neural-Male-IN">Neural-Male (Indian English)</option>
-                    <option value="Neural-Hindi-Female">Neural-Female (Hindi)</option>
-                  </select>
+                    onChange={val => setForm({ ...form, voice_model: val })}
+                    options={VOICE_MODEL_OPTIONS}
+                    placeholder="Select Voice Model"
+                  />
                 </div>
 
                 <div>

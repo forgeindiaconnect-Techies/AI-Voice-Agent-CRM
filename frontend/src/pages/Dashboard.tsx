@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -192,6 +192,62 @@ export default function Dashboard() {
   const [liveCallsList, setLiveCallsList] = useState<LiveCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [hoveredVolumePoint, setHoveredVolumePoint] = useState<{ label: string; val: number; x: number; y: number } | null>(null);
+
+  const hourlyCallVolumeData = useMemo(() => [
+    { label: "8 AM", val: 32 },
+    { label: "9 AM", val: 68 },
+    { label: "10 AM", val: 105 },
+    { label: "11 AM", val: 142 },
+    { label: "12 PM", val: 84 },
+    { label: "1 PM", val: 135 },
+    { label: "2 PM", val: 96 },
+    { label: "3 PM", val: 75 },
+    { label: "4 PM", val: 52 },
+    { label: "5 PM", val: 38 }
+  ], []);
+
+  const volumePeakPoint = useMemo(() => {
+    return hourlyCallVolumeData.reduce((prev, curr) => (prev.val > curr.val ? prev : curr), hourlyCallVolumeData[0]);
+  }, [hourlyCallVolumeData]);
+
+  const volumeChartPoints = useMemo(() => {
+    const width = 600;
+    const height = 200;
+    const paddingX = 40;
+    const paddingY = 30;
+    const maxVal = 160;
+
+    return hourlyCallVolumeData.map((d, idx) => {
+      const x = paddingX + (idx / (hourlyCallVolumeData.length - 1)) * (width - 2 * paddingX);
+      const y = height - paddingY - (d.val / maxVal) * (height - 2 * paddingY);
+      return { x, y, label: d.label, val: d.val };
+    });
+  }, [hourlyCallVolumeData]);
+
+  const volumeLineD = useMemo(() => {
+    return volumeChartPoints.reduce((acc, pt, idx, arr) => {
+      if (idx === 0) return `M ${pt.x},${pt.y}`;
+      const prev = arr[idx - 1];
+      const dx = pt.x - prev.x;
+      const tension = 0.3;
+      const cp1x = prev.x + dx * tension;
+      const cp1y = prev.y;
+      const cp2x = pt.x - dx * tension;
+      const cp2y = pt.y;
+      return `${acc} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${pt.x},${pt.y}`;
+    }, "");
+  }, [volumeChartPoints]);
+
+  const volumeAreaD = useMemo(() => {
+    if (volumeChartPoints.length === 0) return "";
+    const first = volumeChartPoints[0];
+    const last = volumeChartPoints[volumeChartPoints.length - 1];
+    const height = 200;
+    const paddingY = 30;
+    return `${volumeLineD} L ${last.x},${height - paddingY} L ${first.x},${height - paddingY} Z`;
+  }, [volumeLineD, volumeChartPoints]);
 
   // Filters & Search for Live Calls
   const [liveSearchQuery, setLiveSearchQuery] = useState("");
@@ -799,12 +855,12 @@ export default function Dashboard() {
               <p className="text-xs text-slate-400 font-semibold mt-0.5">Real-time dialer throughput across active AI voice channels</p>
             </div>
             <span className="text-[11px] font-mono font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl shadow-2xs">
-              Peak: 142 Calls/hr at 12:00 PM
+              Peak: {volumePeakPoint.val} Calls/hr at {volumePeakPoint.label}
             </span>
           </div>
 
           {/* SVG Line Chart */}
-          <div className="relative w-full overflow-hidden pt-2">
+          <div className="relative w-full overflow-visible pt-2">
             <svg viewBox="0 0 600 200" className="w-full h-56 overflow-visible">
               <defs>
                 <linearGradient id="dashboardChartGrad" x1="0" y1="0" x2="0" y2="1">
@@ -813,34 +869,54 @@ export default function Dashboard() {
                 </linearGradient>
               </defs>
               {[40, 80, 120, 160].map((val, idx) => {
-                const y = 180 - (val / 160) * 140;
+                const y = 170 - (val / 160) * 140; // baseline 170, max height 140
                 return (
                   <g key={idx}>
-                    <line x1="30" y1={y} x2="570" y2={y} stroke="#F1F5F9" strokeDasharray="3 3" strokeWidth="1" />
-                    <text x="22" y={y + 3} textAnchor="end" className="text-[9px] fill-slate-400 font-mono font-bold">{val}</text>
+                    <line x1="40" y1={y} x2="560" y2={y} stroke="#F1F5F9" strokeDasharray="3 3" strokeWidth="1" />
+                    <text x="32" y={y + 3} textAnchor="end" className="text-[9px] fill-slate-400 font-mono font-bold">{val}</text>
                   </g>
                 );
               })}
-              <path d="M 30,152 C 60,152 90,120 120,88 C 150,56 180,36 210,24 C 240,12 270,75 300,106 C 330,137 360,76 390,47 C 420,18 450,52 480,78 C 510,104 540,130 570,148 L 570,180 L 30,180 Z" fill="url(#dashboardChartGrad)" />
-              <path d="M 30,152 C 60,152 90,120 120,88 C 150,56 180,36 210,24 C 240,12 270,75 300,106 C 330,137 360,76 390,47 C 420,18 450,52 480,78 C 510,104 540,130 570,148" fill="none" stroke="#0F4FA8" strokeWidth="3" strokeLinecap="round" />
-              {[
-                { x: 30, y: 152, h: "8 AM", v: 32 },
-                { x: 90, y: 120, h: "9 AM", v: 68 },
-                { x: 150, y: 88, h: "10 AM", v: 105 },
-                { x: 210, y: 24, h: "11 AM", v: 142 },
-                { x: 270, y: 106, h: "12 PM", v: 84 },
-                { x: 330, y: 47, h: "1 PM", v: 135 },
-                { x: 390, y: 78, h: "2 PM", v: 96 },
-                { x: 450, y: 110, h: "3 PM", v: 75 },
-                { x: 510, y: 130, h: "4 PM", v: 52 },
-                { x: 570, y: 148, h: "5 PM", v: 38 }
-              ].map((pt, idx) => (
-                <g key={idx} className="group/pt cursor-pointer">
-                  <circle cx={pt.x} cy={pt.y} r="4.5" className="fill-[#0F4FA8] stroke-white stroke-2 group-hover/pt:r-7 transition-all shadow-md" />
-                  <text x={pt.x} y="196" textAnchor="middle" className="text-[9px] fill-slate-400 font-extrabold uppercase">{pt.h}</text>
+              
+              {/* Dynamic Path Area & Line */}
+              {volumeAreaD && <path d={volumeAreaD} fill="url(#dashboardChartGrad)" />}
+              {volumeLineD && <path d={volumeLineD} fill="none" stroke="#0F4FA8" strokeWidth="3" strokeLinecap="round" />}
+
+              {/* Data points */}
+              {volumeChartPoints.map((pt, idx) => (
+                <g
+                  key={idx}
+                  className="group/pt cursor-pointer"
+                  onMouseEnter={() => setHoveredVolumePoint(pt)}
+                  onMouseLeave={() => setHoveredVolumePoint(null)}
+                >
+                  <circle
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={hoveredVolumePoint?.label === pt.label ? "6" : "4"}
+                    className="fill-[#0F4FA8] stroke-white stroke-2 transition-all duration-200 shadow-md animate-in fade-in duration-300"
+                  />
+                  <text x={pt.x} y="190" textAnchor="middle" className="text-[9px] fill-slate-400 font-extrabold uppercase">{pt.label}</text>
                 </g>
               ))}
             </svg>
+
+            {/* Hover Tooltip */}
+            {hoveredVolumePoint && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${(hoveredVolumePoint.x / 600) * 100}%`,
+                  top: `${(hoveredVolumePoint.y / 200) * 100 - 18}%`,
+                  transform: "translate(-50%, -50%)",
+                  pointerEvents: "none"
+                }}
+                className="bg-slate-900/95 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1.5 rounded-lg shadow-lg border border-slate-700/50 flex flex-col items-center gap-0.5 z-50 shrink-0 select-none animate-in fade-in zoom-in-95 duration-150"
+              >
+                <span className="text-[8px] text-slate-400 uppercase leading-none font-extrabold">{hoveredVolumePoint.label}</span>
+                <span className="leading-none mt-1">{hoveredVolumePoint.val} Calls/hr</span>
+              </div>
+            )}
           </div>
         </div>
 
