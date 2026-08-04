@@ -1080,85 +1080,90 @@ export default function Users() {
 
       {/* Tab Contents: Supervisor mapping */}
       {activeTab === "assignments" && (
-        <div className="space-y-6 font-sans">
-          
-          {/* 1. BLUE-TO-GOLD GRADIENT HERO HEADER WITH LIVE STATISTICS */}
-          <div className="relative overflow-hidden bg-gradient-to-r from-[#0F172A] via-[#0F4FA8] to-[#0F172A] p-6 rounded-[20px] shadow-lg border border-slate-800/80 text-white space-y-4">
-            <div className="absolute top-0 right-0 -mt-12 -mr-12 w-64 h-64 bg-[#FFC107]/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 left-1/3 -mb-12 w-48 h-48 bg-blue-500/20 rounded-full blur-2xl pointer-events-none" />
-
-            <div className="relative flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-3.5">
-                <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 text-[#FFC107]">
-                  <Crown className="h-6 w-6" />
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-6 font-sans"
+        >
+          {/* 1. COMPACT PAGE HEADER & LIVE KPI GRID (REPLACING BULKY DARK BANNER) */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-5 shadow-sm border border-slate-200/80 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] flex items-center justify-center font-black shadow-md shrink-0 border border-blue-400/30">
+                  <Crown className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2.5">
-                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">Supervisor Management Dashboard</h2>
-                    <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-black text-slate-900 tracking-tight">Supervisor Mapping Console</h2>
+                    <span className="text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
                       LIVE TELEMETRY
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-300 font-medium mt-0.5">
-                    Enterprise hierarchy mapping, status tracking, and agent allocation engine
-                  </p>
+                  <p className="text-xs text-slate-400 font-semibold mt-0.5">Hierarchy mapping, agent workload allocation, and team leader monitoring</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <button
-                  onClick={loadData}
-                  className="h-9 px-3.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 border border-white/20 cursor-pointer active:scale-95"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 text-[#FFC107]" />
-                  <span>Sync Workload</span>
-                </button>
-              </div>
+              <button
+                onClick={loadData}
+                className="h-9 px-4 bg-slate-100 hover:bg-[#0F4FA8] text-slate-700 hover:text-white border border-slate-200 hover:border-[#0F4FA8] rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs shrink-0"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Sync Workload</span>
+              </button>
             </div>
 
-            {/* Live Stats Pills */}
-            <div className="relative grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-semibold">
-              <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center justify-between">
+            {/* Compact Live KPI Statistic Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs hover:shadow-md transition">
                 <div>
-                  <span className="text-slate-300 text-[10px] uppercase font-bold block">Active Supervisors</span>
-                  <span className="text-lg font-black text-white font-mono leading-tight">{supervisorsList.length} TLs</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">ACTIVE SUPERVISORS</span>
+                  <span className="text-xl font-black text-slate-900 font-mono mt-0.5 block">{supervisorsList.length} TLs</span>
                 </div>
-                <UsersIcon className="h-5 w-5 text-[#FFC107]" />
+                <div className="h-9 w-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+                  <Crown className="h-4 w-4" />
+                </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center justify-between">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs hover:shadow-md transition">
                 <div>
-                  <span className="text-slate-300 text-[10px] uppercase font-bold block">Total Agents</span>
-                  <span className="text-lg font-black text-white font-mono leading-tight">{users.filter(u => u.role === "agent").length} Personnel</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">TOTAL AGENTS</span>
+                  <span className="text-xl font-black text-slate-900 font-mono mt-0.5 block">{users.filter(u => u.role === "agent").length} Personnel</span>
                 </div>
-                <Layers className="h-5 w-5 text-blue-300" />
+                <div className="h-9 w-9 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center border border-blue-100">
+                  <Layers className="h-4 w-4" />
+                </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center justify-between">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs hover:shadow-md transition">
                 <div>
-                  <span className="text-slate-300 text-[10px] uppercase font-bold block">Mapped Agents</span>
-                  <span className="text-lg font-black text-emerald-300 font-mono leading-tight">
+                  <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider block">MAPPED AGENTS</span>
+                  <span className="text-xl font-black text-emerald-700 font-mono mt-0.5 block">
                     {users.filter(u => u.role === "agent" && u.supervisor_id).length} Mapped
                   </span>
                 </div>
-                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/15 flex items-center justify-between">
+              <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80 flex items-center justify-between shadow-2xs hover:shadow-md transition">
                 <div>
-                  <span className="text-slate-300 text-[10px] uppercase font-bold block">Unassigned Agents</span>
-                  <span className="text-lg font-black text-amber-300 font-mono leading-tight">
-                    {users.filter(u => u.role === "agent" && !u.supervisor_id).length} Available
+                  <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider block">UNASSIGNED AGENTS</span>
+                  <span className="text-xl font-black text-amber-700 font-mono mt-0.5 block">
+                    {unassignedAgents.length} Available
                   </span>
                 </div>
-                <ShieldCheck className="h-5 w-5 text-amber-400" />
+                <div className="h-9 w-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
               </div>
             </div>
           </div>
 
           {/* 2. SUPERVISOR SELECTOR & GLASSMORPHISM KPI CARDS */}
-          <div className="bg-white/95 backdrop-blur-xl rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-4">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[16px] p-5 shadow-sm border border-slate-200/80 space-y-4">
             <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-5 border-b border-slate-100 pb-4">
               
               {/* Supervisor Dropdown with Profile Preview */}
@@ -1172,7 +1177,7 @@ export default function Users() {
                   <select
                     value={selectedSupervisorId}
                     onChange={e => setSelectedSupervisorId(e.target.value)}
-                    className="w-full h-[46px] pl-4 pr-10 border border-slate-200 rounded-[16px] text-xs font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] transition cursor-pointer"
+                    className="w-full h-[46px] pl-4 pr-10 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-slate-50/70 hover:bg-slate-100/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] transition cursor-pointer"
                   >
                     <option value="">-- Choose Supervisor / Team Lead --</option>
                     {supervisorsList.map(tl => (
@@ -1189,8 +1194,8 @@ export default function Users() {
                 const curSup = supervisorsList.find(s => s.id === selectedSupervisorId);
                 if (!curSup) return null;
                 return (
-                  <div className="bg-slate-50 p-3 rounded-[16px] border border-slate-200/80 flex items-center gap-3.5 min-w-[280px]">
-                    <div className="h-10 w-10 rounded-xl bg-[#0F172A] text-[#FFC107] font-black text-sm flex items-center justify-center shadow-xs shrink-0 border border-slate-800">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 flex items-center gap-3.5 min-w-[280px]">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] font-black text-sm flex items-center justify-center shadow-xs shrink-0 border border-blue-400/30">
                       {curSup.name[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1215,7 +1220,7 @@ export default function Users() {
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
                 
                 {/* Total Agents KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">TOTAL AGENTS</span>
                     <div className="h-7 w-7 rounded-lg bg-blue-50 text-[#0F4FA8] flex items-center justify-center">
@@ -1229,7 +1234,7 @@ export default function Users() {
                 </div>
 
                 {/* Online KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-emerald-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-emerald-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider">ONLINE</span>
                     <div className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -1245,7 +1250,7 @@ export default function Users() {
                 </div>
 
                 {/* Offline KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">OFFLINE</span>
                     <div className="h-7 w-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
@@ -1261,7 +1266,7 @@ export default function Users() {
                 </div>
 
                 {/* Busy KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-rose-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-rose-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-rose-600 uppercase tracking-wider">ON CALL / BUSY</span>
                     <div className="h-7 w-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
@@ -1275,7 +1280,7 @@ export default function Users() {
                 </div>
 
                 {/* Break KPI */}
-                <div className="bg-white p-3.5 rounded-[16px] border border-amber-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
+                <div className="bg-white p-3.5 rounded-xl border border-amber-200/80 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between h-[92px]">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-extrabold text-amber-600 uppercase tracking-wider">ON BREAK</span>
                     <div className="h-7 w-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -1362,12 +1367,14 @@ export default function Users() {
                     const isLoading = isActionLoading === agent.id;
 
                     return (
-                      <div
+                      <motion.div
                         key={agent.id}
-                        className={`p-3 rounded-[16px] border transition-all duration-200 flex items-center justify-between gap-3 ${
+                        whileHover={{ y: -2, scale: 1.005 }}
+                        transition={{ duration: 0.15 }}
+                        className={`p-3 rounded-xl border transition-all duration-200 flex items-center justify-between gap-3 ${
                           isSelected
-                            ? "bg-blue-50/70 border-blue-300 shadow-xs"
-                            : "bg-slate-50/50 hover:bg-white border-slate-200/80 hover:shadow-2xs"
+                            ? "bg-blue-50/80 border-blue-300 shadow-xs"
+                            : "bg-slate-50/60 hover:bg-white border-slate-200/80 hover:shadow-xs"
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -1379,7 +1386,7 @@ export default function Users() {
                           />
 
                           <div className="relative shrink-0">
-                            <div className="h-9 w-9 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
+                            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] font-black text-xs flex items-center justify-center shadow-2xs">
                               {agent.name[0].toUpperCase()}
                             </div>
                             <span
@@ -1420,7 +1427,7 @@ export default function Users() {
                           )}
                           <span>Unmap</span>
                         </button>
-                      </div>
+                      </motion.div>
                     );
                   })}
 
@@ -1499,12 +1506,14 @@ export default function Users() {
                     const isLoading = isActionLoading === agent.id;
 
                     return (
-                      <div
+                      <motion.div
                         key={agent.id}
-                        className={`p-3 rounded-[16px] border transition-all duration-200 flex items-center justify-between gap-3 ${
+                        whileHover={{ y: -2, scale: 1.005 }}
+                        transition={{ duration: 0.15 }}
+                        className={`p-3 rounded-xl border transition-all duration-200 flex items-center justify-between gap-3 ${
                           isSelected
-                            ? "bg-blue-50/70 border-blue-300 shadow-xs"
-                            : "bg-slate-50/50 hover:bg-white border-slate-200/80 hover:shadow-2xs"
+                            ? "bg-blue-50/80 border-blue-300 shadow-xs"
+                            : "bg-slate-50/60 hover:bg-white border-slate-200/80 hover:shadow-xs"
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -1516,7 +1525,7 @@ export default function Users() {
                           />
 
                           <div className="relative shrink-0">
-                            <div className="h-9 w-9 rounded-xl bg-slate-700 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
+                            <div className="h-9 w-9 rounded-xl bg-slate-800 text-white font-bold text-xs flex items-center justify-center shadow-2xs">
                               {agent.name[0].toUpperCase()}
                             </div>
                             <span
@@ -1560,7 +1569,7 @@ export default function Users() {
                             <span>Assign TL</span>
                           </button>
                         )}
-                      </div>
+                      </motion.div>
                     );
                   })}
 
@@ -1578,7 +1587,11 @@ export default function Users() {
 
           {/* 4. BULK SELECTION ACTION CONTROL BAR */}
           {selectedAgentIds.length > 0 && (
-            <div className="bg-[#0F172A] text-white p-4 rounded-[20px] shadow-xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-slate-900 text-white p-4 rounded-2xl shadow-xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+            >
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-[#0F4FA8] text-[#FFC107] font-black text-sm flex items-center justify-center shrink-0 shadow-md">
                   {selectedAgentIds.length}
@@ -1641,10 +1654,10 @@ export default function Users() {
                   Clear
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
 
-        </div>
+        </motion.div>
       )}
 
       {/* Register User Modal */}
