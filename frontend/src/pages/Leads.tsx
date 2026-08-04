@@ -968,9 +968,9 @@ export default function Leads() {
                     </tr>
                   ))
                 ) : paginatedLeads.map((l, idx) => {
-                  const isSelected = selectedLeadIds.includes(l.id);
-                  const assignedAgent = users.find(u => u.id === l.assigned_agent_id);
-                  const poolObj = pools.find(p => p.id === l.pool_id);
+                  const isSelected = selectedLeadIds.includes(l.id) || (l.lead_id ? selectedLeadIds.includes(l.lead_id) : false);
+                  const assignedAgent = l.assigned_agent_id ? users.find(u => u.id === l.assigned_agent_id || u.employee_id === l.assigned_agent_id) : undefined;
+                  const poolObj = pools.find(p => p.id === l.pool_id || p.name === l.pool_id);
 
                   return (
                     <tr

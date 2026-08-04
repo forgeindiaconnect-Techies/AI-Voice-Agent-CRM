@@ -137,7 +137,13 @@ export default function Dialer() {
     }
 
     return () => {
-      if (ws) ws.close();
+      if (ws) {
+        if (ws.readyState === WebSocket.CONNECTING) {
+          ws.onopen = () => ws?.close();
+        } else {
+          ws.close();
+        }
+      }
     };
   }, []);
 
@@ -206,6 +212,14 @@ export default function Dialer() {
       // 1. Try WebRTC connection if device is registered
       if (deviceRef.current && deviceReady) {
         try {
+          try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch (micErr) {
+            showToast("Microphone permission denied! Please allow microphone access to make calls.", "error");
+            setCallStatus("ended");
+            return;
+          }
+
           const twilioCall = await deviceRef.current.connect({
             params: { To: outboundPhone }
           });
