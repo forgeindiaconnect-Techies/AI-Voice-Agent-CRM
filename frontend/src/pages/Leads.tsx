@@ -113,6 +113,37 @@ function Sparkline({ color = "#0F4FA8" }: { color?: string }) {
   );
 }
 
+// Indeterminate Checkbox Component for Table Header
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  className = ""
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: () => void;
+  className?: string;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      className={className}
+    />
+  );
+}
+
 export default function Leads() {
   const { user } = useAuth();
   const isManager = user?.role === "admin" || user?.role === "team_leader";
@@ -445,12 +476,16 @@ export default function Leads() {
 
   async function handleBulkAssignAgent() {
     if (selectedLeadIds.length === 0 || !assignAgentId) return;
+    const selectedAgentObj = users.find(u => u.id === assignAgentId || u.employee_id === assignAgentId);
+    const agentName = selectedAgentObj?.name || "Agent";
+    const leadCount = selectedLeadIds.length;
+
     try {
       await api.patch("/api/leads/bulk-assign", {
         lead_ids: selectedLeadIds,
         agent_id: assignAgentId
       });
-      showToast(`Assigned ${selectedLeadIds.length} lead(s) to agent.`, "success");
+      showToast(`${leadCount} lead${leadCount === 1 ? "" : "s"} assigned successfully to ${agentName}.`, "success");
       setSelectedLeadIds([]);
       setAssignAgentId("");
       setShowBulkMenu(false);
@@ -477,13 +512,7 @@ export default function Leads() {
     }
   }
 
-  const toggleSelectAll = () => {
-    if (selectedLeadIds.length === paginatedLeads.length) {
-      setSelectedLeadIds([]);
-    } else {
-      setSelectedLeadIds(paginatedLeads.map(l => l.id));
-    }
-  };
+
 
   const toggleSelectLead = (leadId: string) => {
     setSelectedLeadIds(prev =>
@@ -536,6 +565,25 @@ export default function Leads() {
     const start = (currentPage - 1) * pageSize;
     return filteredLeads.slice(start, start + pageSize);
   }, [filteredLeads, currentPage]);
+
+  const allPaginatedSelected = useMemo(() => {
+    return paginatedLeads.length > 0 && paginatedLeads.every(l => selectedLeadIds.includes(l.id));
+  }, [paginatedLeads, selectedLeadIds]);
+
+  const isIndeterminate = useMemo(() => {
+    const paginatedIds = paginatedLeads.map(l => l.id);
+    const selectedCountOnPage = paginatedIds.filter(id => selectedLeadIds.includes(id)).length;
+    return selectedCountOnPage > 0 && selectedCountOnPage < paginatedLeads.length;
+  }, [paginatedLeads, selectedLeadIds]);
+
+  const toggleSelectAll = () => {
+    const paginatedIds = paginatedLeads.map(l => l.id);
+    if (allPaginatedSelected) {
+      setSelectedLeadIds(prev => prev.filter(id => !paginatedIds.includes(id)));
+    } else {
+      setSelectedLeadIds(prev => Array.from(new Set([...prev, ...paginatedIds])));
+    }
+  };
 
   const agentsList = users.filter(u => u.role === "agent");
 
@@ -923,42 +971,62 @@ export default function Leads() {
           </div>
 
           {/* Bulk Selected Toolbar (Admin & TL / Supervisor only) */}
-          {isManager && selectedLeadIds.length > 0 && (
+          {isManager && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 bg-[#0F4FA8] text-white rounded-xl flex items-center justify-between flex-wrap gap-3 shadow-md"
+              className={`p-3.5 rounded-2xl transition-all duration-300 flex items-center justify-between flex-wrap gap-3 border ${
+                selectedLeadIds.length > 0
+                  ? "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] text-white shadow-lg border-blue-400/30"
+                  : "bg-slate-100/90 text-slate-500 border-slate-200"
+              }`}
             >
-              <span className="text-xs font-extrabold flex items-center gap-2">
-                <CheckSquare className="h-4 w-4 text-[#FFC107]" />
-                <span>{selectedLeadIds.length} Lead(s) Selected</span>
-              </span>
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-xl ${selectedLeadIds.length > 0 ? "bg-white/10 text-[#FFC107]" : "bg-slate-200 text-slate-500"}`}>
+                  <CheckSquare className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className={`text-xs font-black tracking-tight ${selectedLeadIds.length > 0 ? "text-white" : "text-slate-600"}`}>
+                    {selectedLeadIds.length > 0
+                      ? `${selectedLeadIds.length} Lead${selectedLeadIds.length === 1 ? "" : "s"} Selected`
+                      : "Select one or more leads to assign"}
+                  </span>
+                  {selectedLeadIds.length > 0 && (
+                    <span className="block text-[10px] text-blue-200 font-semibold">Choose an agent below to execute bulk routing</span>
+                  )}
+                </div>
+              </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-end">
                 <select
+                  disabled={selectedLeadIds.length === 0}
                   value={assignAgentId}
                   onChange={e => setAssignAgentId(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-800 focus:outline-none"
+                  className="h-9 px-3.5 border rounded-xl text-xs font-extrabold bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#FFC107] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  <option value="">-- Assign Agent --</option>
+                  <option value="">-- Choose Target Agent --</option>
                   {agentsList.map(a => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
+                    <option key={a.id} value={a.id}>{a.name} ({a.employee_id || "Agent"})</option>
                   ))}
                 </select>
 
                 <button
+                  disabled={selectedLeadIds.length === 0 || !assignAgentId}
                   onClick={handleBulkAssignAgent}
-                  className="px-3 py-1.5 bg-[#FFC107] hover:bg-amber-400 text-slate-900 font-extrabold text-xs rounded-lg transition cursor-pointer"
+                  className="h-9 px-4 bg-[#FFC107] hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 cursor-pointer"
                 >
-                  Bulk Assign
+                  <UserCheck className="h-4 w-4 text-slate-950" />
+                  <span>Bulk Assign</span>
                 </button>
 
-                <button
-                  onClick={() => setSelectedLeadIds([])}
-                  className="text-xs font-extrabold hover:underline"
-                >
-                  Deselect All
-                </button>
+                {selectedLeadIds.length > 0 && (
+                  <button
+                    onClick={() => setSelectedLeadIds([])}
+                    className="h-9 px-3 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Deselect All
+                  </button>
+                )}
               </div>
             </motion.div>
           )}
@@ -972,11 +1040,11 @@ export default function Leads() {
                 <tr>
                   {isManager && (
                     <th className="px-4 py-3.5 w-10">
-                      <input
-                        type="checkbox"
-                        checked={selectedLeadIds.length === paginatedLeads.length && paginatedLeads.length > 0}
+                      <IndeterminateCheckbox
+                        checked={allPaginatedSelected}
+                        indeterminate={isIndeterminate}
                         onChange={toggleSelectAll}
-                        className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
+                        className="h-4 w-4 text-[#0F4FA8] focus:ring-[#0F4FA8] border-slate-300 rounded cursor-pointer"
                       />
                     </th>
                   )}
