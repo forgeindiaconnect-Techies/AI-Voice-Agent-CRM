@@ -4,6 +4,7 @@ import { api, getWsUrl } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Device } from "@twilio/voice-sdk";
+import { CustomPauseIcon } from "../components/CustomPauseIcon";
 import {
   Phone,
   PhoneCall,
@@ -461,7 +462,7 @@ export default function Dialer() {
                           <span className="text-[10px] font-bold uppercase">Mute</span>
                         </button>
                         <button onClick={() => handleAction(callStatus === "hold" ? "resume" : "hold")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${callStatus === "hold" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                          {callStatus === "hold" ? <Play className="h-5 w-5" /> : <Pause className="h-5 w-5" />}
+                          {callStatus === "hold" ? <Play className="h-5 w-5" /> : <CustomPauseIcon size={22} />}
                           <span className="text-[10px] font-bold uppercase">Hold</span>
                         </button>
                         <button onClick={() => setShowInCallKeypad(!showInCallKeypad)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${showInCallKeypad ? "bg-[#0F4FA8]/10 text-[#0F4FA8]" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>

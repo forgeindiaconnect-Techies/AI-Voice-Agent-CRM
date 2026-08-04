@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { CustomPauseIcon } from "./CustomPauseIcon";
 import {
   Mic,
   MicOff,
@@ -623,7 +624,7 @@ export default function LiveCallModal({
                       : "bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200"
                   }`}
                 >
-                  {activeCallHold ? <Play className="h-4 w-4 text-white" /> : <Pause className="h-4 w-4 text-slate-400" />}
+                  {activeCallHold ? <Play className="h-4 w-4 text-white" /> : <CustomPauseIcon size={20} />}
                   <span>{activeCallHold ? "Resume Call" : "Hold Call"}</span>
                 </button>
 
