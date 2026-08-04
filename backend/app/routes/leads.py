@@ -242,10 +242,10 @@ class LeadBulkStatus(BaseModel):
     status: str
 
 
-@router.post("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
-@router.post("/bulk-assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
-@router.patch("/bulk-assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
-@router.patch("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+@router.post("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.post("/bulk-assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.patch("/bulk-assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.patch("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_user)):
     lead_ids = payload.lead_ids
     if not lead_ids:
@@ -343,8 +343,7 @@ async def list_leads(user: dict = Depends(get_current_user), pool_id: str | None
     if user["role"] == Role.AGENT:
         query["$or"] = [
             {"assigned_agent_id": uid},
-            {"created_by": uid},
-            {"assigned_agent_id": None}
+            {"created_by": uid}
         ]
         
     if pool_id:
