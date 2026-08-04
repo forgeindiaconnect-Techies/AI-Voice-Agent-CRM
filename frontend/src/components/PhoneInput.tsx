@@ -94,9 +94,9 @@ export function PhoneInput({
 
       <div className="relative flex items-center">
         {/* Fixed Non-editable Country Code Badge + Icon */}
-        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none select-none z-10">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none select-none z-10">
           <Phone className="h-4 w-4 text-slate-400" />
-          <span className="text-xs font-extrabold text-slate-900 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md font-mono">
+          <span className="text-xs font-black text-slate-900 bg-slate-100/90 border border-slate-200 px-2 py-0.5 rounded-md font-mono">
             {countryCode}
           </span>
         </div>
@@ -112,7 +112,7 @@ export function PhoneInput({
           onPaste={handlePaste}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
-          className={`w-full h-11 pl-24 pr-10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border rounded-xl text-xs font-mono font-bold tracking-wider text-slate-900 focus:outline-none transition shadow-2xs ${
+          className={`w-full h-11 pl-[76px] pr-10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border rounded-xl text-xs font-mono font-bold tracking-wider text-slate-900 focus:outline-none transition shadow-2xs ${
             displayError
               ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
               : isValid
