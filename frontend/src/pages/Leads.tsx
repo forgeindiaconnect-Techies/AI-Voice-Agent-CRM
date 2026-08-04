@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api, BASE_URL } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
+import { PhoneInput } from "../components/PhoneInput";
 import {
   Plus,
   X,
@@ -1397,16 +1398,12 @@ export default function Leads() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Phone Number</label>
-                  <input
-                    required
-                    placeholder="+919876543210"
-                    value={manualForm.phone}
-                    onChange={e => setManualForm({ ...manualForm, phone: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
-                  />
-                </div>
+                <PhoneInput
+                  required
+                  value={manualForm.phone}
+                  onChange={(fullVal) => setManualForm({ ...manualForm, phone: fullVal })}
+                  label="Phone Number"
+                />
               </div>
 
 

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
+import { PhoneInput } from "../components/PhoneInput";
 import PortalHeader from "../components/PortalHeader";
 import RegisterUserModal from "../components/RegisterUserModal";
 import ConfirmModal from "../components/ConfirmModal";
@@ -1779,15 +1780,11 @@ export default function Users() {
                 </div>
 
                 {/* Phone Number */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Phone Number</label>
-                  <input
-                    type="text"
-                    value={editForm.phone}
-                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 transition"
-                  />
-                </div>
+                <PhoneInput
+                  value={editForm.phone}
+                  onChange={(fullVal) => setEditForm({ ...editForm, phone: fullVal })}
+                  label="Phone Number"
+                />
 
                 {/* Shift Schedule */}
                 <div>

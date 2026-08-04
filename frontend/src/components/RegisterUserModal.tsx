@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
+import { PhoneInput } from "./PhoneInput";
 
 type PoolRow = { id: string; name: string };
 type UserRow = { id: string; name: string; role: string; employee_id: string };
@@ -387,20 +388,11 @@ export default function RegisterUserModal({
                       </div>
 
                       {/* Phone Number */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-2">Phone Number</label>
-                        <div className="relative">
-                          <Phone className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
-                          <input
-                            type="text"
-                            value={phone}
-                            onChange={e => setPhone(e.target.value)}
-                            placeholder="+91 98765 43210"
-                            className="w-full h-11 pl-10 pr-4 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
-                          />
-                        </div>
-                        <p className="text-[11px] text-slate-400 font-normal mt-1.5">Contact phone number for telephony integration</p>
-                      </div>
+                      <PhoneInput
+                        value={phone}
+                        onChange={(fullVal) => setPhone(fullVal)}
+                        label="Phone Number"
+                      />
 
                       {/* Employee ID */}
                       <div>
