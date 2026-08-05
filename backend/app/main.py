@@ -148,8 +148,8 @@ async def root():
     }
 
 
-@app.get("/health")
 @app.get("/api/health")
+@app.get("/health")
 async def health():
     db_ok = await check_db_connection()
     if not db_ok:

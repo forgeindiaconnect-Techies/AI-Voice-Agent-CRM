@@ -123,7 +123,7 @@ async def create_user(payload: UserCreate, admin_user: dict = Depends(get_curren
         )
 
 
-@router.get("", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+@router.get("", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def list_users(user: dict = Depends(get_current_user), role: str | None = None, pool_id: str | None = None):
     query = {}
     if user["role"] == Role.TEAM_LEADER:

@@ -70,11 +70,8 @@ type ActiveCall = {
 
 // Lead interface matching backend
 type Lead = {
-  _id?: string;
-  id?: string;
-  lead_id?: string;
-  name?: string;
-  customer_name?: string;
+  _id: string;
+  name: string;
   phone: string;
   source: string;
   campaign_id?: string;
@@ -198,31 +195,24 @@ export default function Dialer() {
     }
 
     return () => {
-      if (ws) {
-        if (ws.readyState === WebSocket.CONNECTING) {
-          ws.onopen = () => ws?.close();
-        } else {
-          ws.close();
-        }
-      }
+      if (ws) ws.close();
     };
   }, []);
 
   useEffect(() => {
-    // Initialize Twilio Device if token endpoint is available
+    // Initialize Twilio Device
     const setupDevice = async () => {
       try {
-        const res = await api.get("/api/calls/token");
-        if (res && res.token) {
-          const device = new Device(res.token);
-          device.on("registered", () => setDeviceReady(true));
-          device.on("error", (error) => console.warn("Twilio Softphone Error:", error));
-          await device.register();
-          deviceRef.current = device;
-        }
+        const { token } = await api.get("/api/calls/token");
+        const device = new Device(token);
+
+        device.on("registered", () => setDeviceReady(true));
+        device.on("error", (error) => showToast(`Twilio Error: ${error.message}`, "error"));
+        
+        await device.register();
+        deviceRef.current = device;
       } catch (err: any) {
-        // WebRTC token optional; fallback to manual dialer endpoint
-        console.log("WebRTC Softphone token not configured, using direct CRM dialer.");
+        showToast("Failed to initialize softphone. Check microphone permissions.", "error");
       }
     };
     setupDevice();
@@ -302,6 +292,7 @@ export default function Dialer() {
           } else {
             showToast("Existing lead loaded", "success");
             matchedLead = {
+              _id: "temp_" + Date.now(),
               phone: fullPhoneNumber,
               name: `Manual Lead - ${outboundPhone}`,
               source: "Manual Dialer",
@@ -319,7 +310,6 @@ export default function Dialer() {
 
     setCallStatus("ringing");
     setCallDuration(0);
-
     try {
       // 1. Try WebRTC connection if device is registered
       if (deviceRef.current && deviceReady) {
@@ -359,12 +349,8 @@ export default function Dialer() {
       });
 
       setCurrentCallId(res.id || res._id || res.call_id || "call_" + Date.now());
-      
-      // Simulate ring time then connect
-      setTimeout(() => {
-        setCallStatus("connected");
-        showToast("Call connected!", "success");
-      }, 2000);
+
+
     } catch (err: any) {
       setCallStatus("idle");
       showToast(err.message || "Dialing failed", "error");
@@ -747,7 +733,7 @@ export default function Dialer() {
                       ) : (
                         filteredLeads.map((lead, idx) => (
                           <div 
-                            key={lead._id || lead.id || lead.lead_id || `lead-${idx}`}
+                            key={lead._id || `lead-${idx}`}
                             className={`bg-white dark:bg-[#172033] rounded-[18px] border ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'border-[#2563EB] ring-2 ring-[#2563EB]/20' : 'border-slate-200 dark:border-white/10'} p-4 shadow-sm hover:shadow-lg dark:hover:shadow-blue-500/10 hover:border-l-4 hover:border-l-[#2563EB] transition-all duration-250 group`}
                           >
                             <div className="flex justify-between items-start mb-3">
