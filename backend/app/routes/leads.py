@@ -23,6 +23,11 @@ class LeadImportProcessPayload(BaseModel):
     rows: list[dict]
 
 
+class LeadBulkStatus(BaseModel):
+    lead_ids: list[str]
+    status: str
+
+
 def _uid(user: dict) -> str:
     return user.get("id") or str(user["_id"])
 
