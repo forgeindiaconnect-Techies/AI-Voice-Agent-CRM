@@ -33,6 +33,8 @@ class CallDirection(str, Enum):
 class CallOutcome(str, Enum):
     ANSWERED = "answered"
     MISSED = "missed"
+    BUSY = "busy"
+    NO_ANSWER = "no_answer"
     TRANSFERRED = "transferred"
     VOICEMAIL = "voicemail"
     NOT_INTERESTED = "not_interested"

@@ -104,16 +104,16 @@ export function PhoneInput({
   return (
     <div className={`space-y-1 font-sans ${className}`}>
       {label && (
-        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide">
+        <label className="block text-[10px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wide">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
       )}
 
       <div className="relative flex items-center">
         {/* Fixed Non-editable Country Code Badge + Icon */}
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none select-none z-10">
-          <Phone className="h-4 w-4 text-slate-400" />
-          <span className="text-xs font-black text-slate-900 bg-slate-100/90 border border-slate-200 px-2 py-0.5 rounded-md font-mono">
+        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none select-none z-10">
+          <Phone className="h-4 w-4 text-[#64748B] dark:text-slate-500" />
+          <span className="text-xs font-black text-[#0F172A] dark:text-[#F8FAFC] bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#CBD5E1] dark:border-white/10 px-2 py-0.5 rounded-md font-mono">
             {countryCode}
           </span>
         </div>
@@ -129,14 +129,14 @@ export function PhoneInput({
           onPaste={handlePaste}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
-          className={`w-full pl-[76px] pr-10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border rounded-xl text-xs font-mono font-bold tracking-wider text-slate-900 focus:outline-none transition shadow-2xs ${
-            inputClassName || "h-11"
+          className={`w-full pl-[80px] pr-10 bg-white dark:bg-[#0F172A] border rounded-[14px] text-[14px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#94A3B8] focus:outline-none transition focus:ring-4 ${
+            inputClassName || "h-[52px]"
           } ${
             displayError
-              ? "border-rose-400 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+              ? "border-rose-400 dark:border-rose-500 focus:ring-rose-500/10 focus:border-rose-500"
               : isValid
-              ? "border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              : "border-slate-200 focus:ring-2 focus:ring-[#0F4FA8]/20 focus:border-[#0F4FA8]"
+              ? "border-emerald-400 dark:border-emerald-500 focus:ring-emerald-500/10 focus:border-emerald-500"
+              : "border-[#CBD5E1] dark:border-white/[0.08] focus:ring-[#2563EB]/10 focus:border-[#2563EB]"
           }`}
         />
 

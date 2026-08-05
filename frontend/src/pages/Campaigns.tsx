@@ -185,29 +185,29 @@ function HourlyCallVolumeChart() {
   const peakPoint = points.find(p => p.val === peakVal);
 
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-6 shadow-sm border border-slate-200/80 space-y-4 relative overflow-hidden group hover:shadow-md transition-all">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3.5">
+    <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-6 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] dark:border-t-2 dark:border-t-[#2563EB] space-y-5 relative overflow-hidden group hover:shadow-md transition-all duration-250">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-white/5 pb-3.5">
         <div>
-          <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-            <Activity className="h-5 w-5 text-[#0F4FA8]" />
+          <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+            <Activity className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
             <span>Hourly Call Volume & Velocity</span>
           </h3>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+          <p className="text-[12px] text-slate-500 dark:text-[#94A3B8] font-medium mt-0.5">
             Real-time dialer throughput across active AI voice channels
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Time range selector */}
-          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/80 text-xs font-bold">
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          {/* Today/Week/Month Segmented Control */}
+          <div className="flex bg-slate-100 dark:bg-[#0B1220] p-1 rounded-xl border border-slate-200/80 dark:border-white/5 text-xs font-bold shrink-0">
             {(["today", "week", "month"] as const).map(range => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-3 py-1 rounded-lg capitalize transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg capitalize transition-all duration-200 cursor-pointer ${
                   timeRange === range
-                    ? "bg-[#0F4FA8] text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-[0_4px_12px_rgba(37,99,235,0.25)]"
+                    : "text-slate-600 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 {range}
@@ -215,9 +215,13 @@ function HourlyCallVolumeChart() {
             ))}
           </div>
 
-          <span className="text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-            Peak: {peakVal} Calls/{timeRange === "today" ? "hr" : timeRange === "week" ? "day" : "wk"}{peakPoint ? ` (${peakPoint.hour})` : ""}
+          {/* Premium Glass Peak Badge */}
+          <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-2xs">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>Peak: {peakVal} Calls/{timeRange === "today" ? "hr" : timeRange === "week" ? "day" : "wk"}{peakPoint ? ` (${peakPoint.hour})` : ""}</span>
           </span>
         </div>
       </div>
@@ -226,41 +230,45 @@ function HourlyCallVolumeChart() {
         {/* Interactive Tooltip Overlay */}
         {hoveredPoint && (
           <div
-            className="absolute z-20 bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-xl text-xs pointer-events-none transform -translate-x-1/2 -translate-y-full border border-slate-700 font-mono"
+            className="absolute z-20 bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-xl text-xs pointer-events-none transform -translate-x-1/2 -translate-y-full border border-slate-700 dark:border-white/10 font-mono"
             style={{ left: `${(hoveredPoint.x / width) * 100}%`, top: `${(hoveredPoint.y / height) * 100 - 8}%` }}
           >
-            <div className="font-bold text-[#FFC107]">{hoveredPoint.hour}</div>
-            <div>{hoveredPoint.val} calls/hr</div>
+            <div className="font-bold text-[#FFC107] dark:text-[#FACC15]">{hoveredPoint.hour}</div>
+            <div>{hoveredPoint.val} calls/{timeRange === "today" ? "hr" : timeRange === "week" ? "day" : "wk"}</div>
           </div>
         )}
 
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-48 overflow-visible">
           <defs>
             <linearGradient id="chartGradientMain" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0F4FA8" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#0F4FA8" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
+            </linearGradient>
+            <linearGradient id="chartLineGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#2563EB" />
+              <stop offset="100%" stopColor="#3B82F6" />
             </linearGradient>
           </defs>
 
-          {/* Grid lines */}
+          {/* Grid lines (15% opacity in dark mode) */}
           {[0.25, 0.5, 0.75, 1.0].map((frac, idx) => {
             const val = Math.round(maxVal * frac);
             const y = height - paddingY - (val / maxVal) * (height - 2 * paddingY);
             return (
               <g key={idx}>
-                <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="#E2E8F0" strokeDasharray="4 4" strokeWidth="1" />
-                <text x={paddingX - 8} y={y + 3} textAnchor="end" className="text-[9px] fill-slate-400 font-mono font-bold">{val}</text>
+                <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} className="stroke-slate-100 dark:stroke-white/[0.08]" strokeDasharray="4 4" strokeWidth="1" />
+                <text x={paddingX - 8} y={y + 3} textAnchor="end" className="text-[12px] fill-slate-400 dark:fill-[#94A3B8] font-mono font-semibold">{val}</text>
               </g>
             );
           })}
 
           {/* Average reference line */}
-          <line x1={paddingX} y1={avgY} x2={width - paddingX} y2={avgY} stroke="#FFC107" strokeDasharray="6 6" strokeWidth="1.5" />
-          <text x={width - paddingX + 5} y={avgY + 3} className="text-[9px] fill-[#D4AF37] font-bold">Avg: {avgVal}</text>
+          <line x1={paddingX} y1={avgY} x2={width - paddingX} y2={avgY} className="stroke-[#FFC107] dark:stroke-[#FACC15]/40" strokeDasharray="6 6" strokeWidth="1.5" />
+          <text x={width - paddingX + 5} y={avgY + 3} className="text-[10px] fill-[#D4AF37] dark:fill-[#FACC15] font-bold">Avg: {avgVal}</text>
 
           {/* Area & Line */}
           <path d={areaD} fill="url(#chartGradientMain)" />
-          <path d={d} fill="none" stroke="#0F4FA8" strokeWidth="3.5" strokeLinecap="round" />
+          <path d={d} fill="none" stroke="url(#chartLineGrad)" strokeWidth="2" strokeLinecap="round" />
 
           {/* Points */}
           {pathPoints.map((pt, idx) => (
@@ -270,8 +278,13 @@ function HourlyCallVolumeChart() {
               onMouseEnter={() => setHoveredPoint(pt)}
               onMouseLeave={() => setHoveredPoint(null)}
             >
-              <circle cx={pt.x} cy={pt.y} r="5" className="fill-[#0F4FA8] stroke-white stroke-2 group-hover/pt:r-7 transition-all" />
-              <text x={pt.x} y={height - 4} textAnchor="middle" className="text-[10px] fill-slate-400 font-bold uppercase">{pt.hour}</text>
+              <circle
+                cx={pt.x}
+                cy={pt.y}
+                r={hoveredPoint?.hour === pt.hour ? "7" : "5"}
+                className="fill-[#2563EB] dark:fill-[#3B82F6] stroke-white dark:stroke-[#131C2F] stroke-2 transition-all duration-150 shadow-[0_0_8px_rgba(37,99,235,0.6)]"
+              />
+              <text x={pt.x} y={height - 4} textAnchor="middle" className="text-[12px] fill-slate-400 dark:fill-[#94A3B8] font-bold uppercase">{pt.hour}</text>
             </g>
           ))}
         </svg>
@@ -283,45 +296,45 @@ function HourlyCallVolumeChart() {
 // 2. Realtime AI Dialer Health Widget
 function RealtimeAIDialerHealth() {
   return (
-    <div className="bg-gradient-to-br from-[#081D38] via-[#0A264A] to-[#041224] text-white rounded-[20px] p-6 shadow-md border border-[#0F4FA8]/40 space-y-4 relative overflow-hidden">
+    <div className="bg-gradient-to-br from-[#081D38] via-[#0A264A] to-[#041224] dark:from-[#131C2F] dark:via-[#18243A] dark:to-[#0B1220] text-white rounded-[22px] p-6 shadow-md dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-[#0F4FA8]/40 dark:border-white/[0.06] space-y-4 relative overflow-hidden">
       <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[#0F4FA8]/30 rounded-xl border border-[#0F4FA8]/50 text-[#FFC107]">
+          <div className="p-2 bg-[#0F4FA8]/30 rounded-xl border border-[#0F4FA8]/50 text-[#FFC107] dark:text-[#FACC15]">
             <Gauge className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-white text-base tracking-tight">Realtime AI Dialer Health</h3>
-            <p className="text-xs text-blue-200/80 font-medium">Neural Bot Latency & Channel Concurrency</p>
+            <h3 className="text-[20px] font-bold text-white tracking-tight">Realtime AI Dialer Health</h3>
+            <p className="text-[12px] text-blue-200/80 dark:text-[#94A3B8] font-medium mt-0.5">Neural Bot Latency & Channel Concurrency</p>
           </div>
         </div>
-        <span className="text-[10px] font-extrabold bg-[#FFC107]/20 text-[#FFC107] border border-[#FFC107]/40 px-3 py-1 rounded-full uppercase tracking-wider">
+        <span className="text-[10px] font-extrabold bg-[#FFC107]/20 text-[#FFC107] dark:text-[#FACC15] border border-[#FFC107]/40 dark:border-[#FACC15]/40 px-3 py-1 rounded-full uppercase tracking-wider">
           SYSTEM HEALTH: EXCELLENT
         </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-xl border border-white/10 space-y-1">
-          <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Connected Agents</div>
+        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-white/10 dark:border-white/5 space-y-1">
+          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Connected Agents</div>
           <div className="text-2xl font-black text-white font-mono">18 Online</div>
           <div className="text-[10px] text-emerald-400 font-semibold">100% Capacity</div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-xl border border-white/10 space-y-1">
-          <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Active Calls</div>
-          <div className="text-2xl font-black text-[#FFC107] font-mono">14 Live</div>
-          <div className="text-[10px] text-blue-200 font-semibold">5 Retries Processing</div>
+        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-white/10 dark:border-white/5 space-y-1">
+          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Active Calls</div>
+          <div className="text-2xl font-black text-[#FFC107] dark:text-[#FACC15] font-mono">14 Live</div>
+          <div className="text-[10px] text-blue-200 dark:text-[#60A5FA] font-semibold">5 Retries Processing</div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-xl border border-white/10 space-y-1">
-          <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Queue Size</div>
+        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-white/10 dark:border-white/5 space-y-1">
+          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Queue Size</div>
           <div className="text-2xl font-black text-white font-mono">3 Leads</div>
           <div className="text-[10px] text-emerald-400 font-semibold">Fast Clear Rate</div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-3.5 rounded-xl border border-white/10 space-y-1">
-          <div className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Avg Response Time</div>
+        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-white/10 dark:border-white/5 space-y-1">
+          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Avg Response Time</div>
           <div className="text-2xl font-black text-emerald-400 font-mono">1.8 sec</div>
-          <div className="text-[10px] text-slate-300 font-semibold">18ms STT Latency</div>
+          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-semibold">18ms STT Latency</div>
         </div>
       </div>
     </div>
@@ -331,37 +344,46 @@ function RealtimeAIDialerHealth() {
 // 3. Active Campaign Timeline & Live Status Panel
 function ActiveCampaignTimeline() {
   const milestones = [
-    { title: "Credit Card Sales Q3", pool: "Outbound Sales Pool", status: "Running", progress: 68, color: "bg-emerald-500" },
-    { title: "Q3 Executive Hiring", pool: "Recruitment Pool", status: "Running", progress: 84, color: "bg-blue-600" },
-    { title: "Priority Support Follow-up", pool: "Customer Care Pool", status: "Paused", progress: 42, color: "bg-amber-500" },
-    { title: "Wealth Advisory Outbound", pool: "VIP Clients", status: "Scheduled", progress: 10, color: "bg-purple-600" }
+    { title: "Credit Card Sales Q3", pool: "Outbound Sales Pool", status: "Running", progress: 68, color: "from-[#10B981] to-[#06B6D4]" },
+    { title: "Q3 Executive Hiring", pool: "Recruitment Pool", status: "Running", progress: 84, color: "from-[#2563EB] to-[#3B82F6]" },
+    { title: "Priority Support Follow-up", pool: "Customer Care Pool", status: "Paused", progress: 42, color: "from-[#F59E0B] to-[#FBBF24]" },
+    { title: "Wealth Advisory Outbound", pool: "VIP Clients", status: "Scheduled", progress: 10, color: "from-[#8B5CF6] to-[#A78BFA]" }
   ];
 
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-6 shadow-sm border border-slate-200/80 space-y-4">
-      <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-        <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-          <Clock className="h-5 w-5 text-purple-600" />
-          <span>Active Campaign Timeline & Execution Stage</span>
+    <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-6 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-5">
+      <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-3">
+        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+          <Clock className="h-5 w-5 text-purple-600 dark:text-[#A78BFA]" />
+          <span>Active Campaign Timeline</span>
         </h3>
-        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200">
-          Live Tracking
+        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-500/10 text-[#2563EB] dark:text-[#60A5FA] border border-blue-500/20 shadow-[0_0_12px_rgba(37,99,235,0.15)] shrink-0">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+          </span>
+          <span>Live Tracking</span>
         </span>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         {milestones.map((m, idx) => (
-          <div key={idx} className="space-y-1.5">
+          <div key={idx} className="space-y-2">
             <div className="flex justify-between items-center text-xs">
               <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full ${m.color}`} />
-                <span className="font-extrabold text-slate-900">{m.title}</span>
-                <span className="text-[10px] text-slate-400 font-medium font-mono">({m.pool})</span>
+                <span className={`h-2.5 w-2.5 rounded-full bg-gradient-to-r ${m.color}`} />
+                <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC]">{m.title}</span>
+                <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-medium font-mono">({m.pool})</span>
               </div>
-              <span className="font-mono font-black text-slate-800">{m.progress}%</span>
+              <span className="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-[#34D399]">
+                {m.progress}%
+              </span>
             </div>
-            <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200/60">
-              <div className={`h-full rounded-full ${m.color} transition-all duration-500`} style={{ width: `${m.progress}%` }} />
+            <div className="h-3 w-full bg-slate-100 dark:bg-[#0B1220] rounded-full p-0.5 border border-slate-200/40 dark:border-white/5 overflow-hidden">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${m.color} transition-all duration-500 shadow-[0_0_8px_rgba(16,185,129,0.3)] animate-pulse`}
+                style={{ width: `${m.progress}%` }}
+              />
             </div>
           </div>
         ))}
@@ -379,31 +401,40 @@ function SupervisorAlertsPanel() {
   ];
 
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-3">
-      <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
-        <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-          <Bell className="h-4 w-4 text-[#0F4FA8]" />
-          <span>Supervisor Alerts & Operational Warnings</span>
+    <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
+      <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
+        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+          <Bell className="h-5 w-5 text-[#0F4FA8] dark:text-[#60A5FA]" />
+          <span>Supervisor Alerts</span>
         </h3>
-        <span className="text-[10px] font-bold text-slate-400">3 Active</span>
+        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider animate-pulse">
+          3 Active
+        </span>
       </div>
 
-      <div className="space-y-2.5 text-xs">
+      <div className="space-y-3 text-xs">
         {alerts.map((al, idx) => (
-          <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
-            {al.type === "warning" ? (
-              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-            ) : al.type === "success" ? (
-              <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-            ) : (
-              <AlertCircle className="h-4 w-4 text-[#0F4FA8] shrink-0 mt-0.5" />
-            )}
+          <div
+            key={idx}
+            className="p-3.5 rounded-[16px] bg-slate-50 dark:bg-[#18243A] border border-slate-100 dark:border-white/5 hover:border-blue-500/30 dark:hover:border-blue-500/30 flex items-start gap-3 border-l-4 border-l-[#FACC15] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(37,99,235,0.08)] transition-all duration-200 cursor-pointer"
+          >
+            {/* Warning icon inside glowing circle */}
+            <div className="h-8 w-8 rounded-full bg-[#FACC15]/10 dark:bg-[#FACC15]/10 text-[#FACC15] flex items-center justify-center shadow-[0_0_10px_rgba(250,204,21,0.2)] shrink-0">
+              {al.type === "warning" ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : al.type === "success" ? (
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-blue-500" />
+              )}
+            </div>
             <div className="min-w-0 flex-1">
-              <div className="flex justify-between items-center">
-                <span className="font-extrabold text-slate-900 truncate">{al.title}</span>
-                <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-1">{al.time}</span>
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] truncate">{al.title}</span>
+                {/* Aligned perfectly right */}
+                <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-mono shrink-0 ml-auto pl-2">{al.time}</span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">{al.desc}</p>
+              <p className="text-[11px] text-slate-500 dark:text-[#94A3B8] font-medium mt-1 leading-normal">{al.desc}</p>
             </div>
           </div>
         ))}
@@ -429,61 +460,69 @@ function QuickActionsPanel({
   onImport: () => void;
 }) {
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-3">
-      <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
-        <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-          <Zap className="h-4 w-4 text-[#FFC107]" />
-          <span>Quick Actions Panel</span>
+    <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
+      <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
+        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+          <Zap className="h-5 w-5 text-[#FFC107] dark:text-[#FACC15]" />
+          <span>Quick Actions</span>
         </h3>
-        <span className="text-[10px] font-bold text-slate-400">2×3 Enterprise Grid</span>
+        <span className="text-[10px] font-bold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">
+          2×3 Grid
+        </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
+        {/* Blue Card */}
         <button
           onClick={onLaunch}
-          className="p-3.5 bg-blue-50/90 hover:bg-[#0F4FA8] text-[#0F4FA8] hover:text-white border border-blue-200/80 rounded-xl text-xs font-extrabold transition-all duration-200 flex flex-col items-center justify-center gap-2 text-center cursor-pointer shadow-2xs active:scale-95 group"
+          className="p-4 bg-blue-50/70 hover:bg-[#0F4FA8] dark:bg-[#2563EB]/10 dark:hover:bg-[#2563EB]/25 border border-blue-200/80 dark:border-blue-500/20 text-[#0F4FA8] dark:text-[#60A5FA] hover:text-white dark:hover:text-white rounded-[18px] text-xs font-extrabold transition-all duration-250 flex flex-col items-center justify-center gap-2.5 text-center cursor-pointer shadow-2xs hover:shadow-[0_8px_25px_rgba(37,99,235,0.25)] hover:-translate-y-1 hover:scale-[1.03] active:scale-95 group"
         >
-          <Rocket className="h-4 w-4 text-[#0F4FA8] group-hover:text-white transition-colors" />
+          <Rocket className="h-5 w-5 text-[#0F4FA8] dark:text-[#60A5FA] group-hover:text-white transition-colors" />
           <span>Launch Campaign</span>
         </button>
 
+        {/* Purple Card */}
         <button
           onClick={onConfig}
-          className="p-3.5 bg-purple-50/90 hover:bg-purple-600 text-purple-700 hover:text-white border border-purple-200/80 rounded-xl text-xs font-extrabold transition-all duration-200 flex flex-col items-center justify-center gap-2 text-center cursor-pointer shadow-2xs active:scale-95 group"
+          className="p-4 bg-purple-50/70 hover:bg-purple-600 dark:bg-[#8B5CF6]/10 dark:hover:bg-[#8B5CF6]/25 border border-purple-200/80 dark:border-purple-500/20 text-purple-700 dark:text-[#C084FC] hover:text-white dark:hover:text-white rounded-[18px] text-xs font-extrabold transition-all duration-250 flex flex-col items-center justify-center gap-2.5 text-center cursor-pointer shadow-2xs hover:shadow-[0_8px_25px_rgba(139,92,246,0.25)] hover:-translate-y-1 hover:scale-[1.03] active:scale-95 group"
         >
-          <Sparkles className="h-4 w-4 text-purple-600 group-hover:text-white transition-colors" />
+          <Sparkles className="h-5 w-5 text-purple-600 dark:text-[#C084FC] group-hover:text-white transition-colors" />
           <span>AI Voice Config</span>
         </button>
 
+        {/* Green Card */}
         <button
           onClick={onImport}
-          className="p-3.5 bg-emerald-50/90 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200/80 rounded-xl text-xs font-extrabold transition-all duration-200 flex flex-col items-center justify-center gap-2 text-center cursor-pointer shadow-2xs active:scale-95 group"
+          className="p-4 bg-emerald-50/70 hover:bg-emerald-600 dark:bg-[#10B981]/10 dark:hover:bg-[#10B981]/25 border border-emerald-200/80 dark:border-emerald-500/20 text-emerald-700 dark:text-[#34D399] hover:text-white dark:hover:text-white rounded-[18px] text-xs font-extrabold transition-all duration-250 flex flex-col items-center justify-center gap-2.5 text-center cursor-pointer shadow-2xs hover:shadow-[0_8px_25px_rgba(16,185,129,0.25)] hover:-translate-y-1 hover:scale-[1.03] active:scale-95 group"
         >
-          <FileSpreadsheet className="h-4 w-4 text-emerald-600 group-hover:text-white transition-colors" />
+          <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-[#34D399] group-hover:text-white transition-colors" />
           <span>Import Leads</span>
         </button>
 
+        {/* Indigo Card */}
         <button
           onClick={onExport}
-          className="p-3.5 bg-indigo-50/90 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200/80 rounded-xl text-xs font-extrabold transition-all duration-200 flex flex-col items-center justify-center gap-2 text-center cursor-pointer shadow-2xs active:scale-95 group"
+          className="p-4 bg-indigo-50/70 hover:bg-indigo-600 dark:bg-[#6366F1]/10 dark:hover:bg-[#6366F1]/25 border border-indigo-200/80 dark:border-indigo-500/20 text-indigo-700 dark:text-[#818CF8] hover:text-white dark:hover:text-white rounded-[18px] text-xs font-extrabold transition-all duration-250 flex flex-col items-center justify-center gap-2.5 text-center cursor-pointer shadow-2xs hover:shadow-[0_8px_25px_rgba(99,102,241,0.25)] hover:-translate-y-1 hover:scale-[1.03] active:scale-95 group"
         >
-          <Download className="h-4 w-4 text-indigo-600 group-hover:text-white transition-colors" />
+          <Download className="h-5 w-5 text-indigo-600 dark:text-[#818CF8] group-hover:text-white transition-colors" />
           <span>Export Analytics</span>
         </button>
 
+        {/* Orange Card */}
         <button
           onClick={onSync}
-          className="p-3.5 bg-amber-50/90 hover:bg-amber-500 text-amber-700 hover:text-white border border-amber-200/80 rounded-xl text-xs font-extrabold transition-all duration-200 flex flex-col items-center justify-center gap-2 text-center cursor-pointer shadow-2xs active:scale-95 group"
+          className="p-4 bg-amber-50/70 hover:bg-amber-500 dark:bg-[#F59E0B]/10 dark:hover:bg-[#F59E0B]/25 border border-amber-200/80 dark:border-amber-500/20 text-amber-700 dark:text-[#FBBF24] hover:text-white dark:hover:text-white rounded-[18px] text-xs font-extrabold transition-all duration-250 flex flex-col items-center justify-center gap-2.5 text-center cursor-pointer shadow-2xs hover:shadow-[0_8px_25px_rgba(245,158,11,0.25)] hover:-translate-y-1 hover:scale-[1.03] active:scale-95 group"
         >
-          <BarChart2 className="h-4 w-4 text-amber-600 group-hover:text-white transition-colors" />
+          <BarChart2 className="h-5 w-5 text-amber-600 dark:text-[#FBBF24] group-hover:text-white transition-colors" />
           <span>View Reports</span>
         </button>
 
+        {/* Slate/Glass Card */}
         <button
           onClick={onDial}
-          className="p-3.5 bg-slate-100/90 hover:bg-slate-800 text-slate-700 hover:text-white border border-slate-200/80 rounded-xl text-xs font-extrabold transition-all duration-200 flex flex-col items-center justify-center gap-2 text-center cursor-pointer shadow-2xs active:scale-95 group"
+          className="p-4 bg-slate-100/90 hover:bg-slate-800 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:text-white dark:hover:text-white rounded-[18px] text-xs font-extrabold transition-all duration-250 flex flex-col items-center justify-center gap-2.5 text-center cursor-pointer shadow-2xs hover:shadow-[0_8px_25px_rgba(255,255,255,0.1)] hover:-translate-y-1 hover:scale-[1.03] active:scale-95 group"
         >
-          <Layers className="h-4 w-4 text-slate-600 group-hover:text-white transition-colors" />
+          <Layers className="h-5 w-5 text-slate-600 dark:text-slate-300 group-hover:text-white transition-colors" />
           <span>Campaign Templates</span>
         </button>
       </div>
@@ -502,28 +541,28 @@ function LiveCampaignStatusPanel({ campaigns }: { campaigns: Campaign[] }) {
   };
 
   const statuses = [
-    { label: "Running", count: statusCounts.running, color: "bg-emerald-500 text-emerald-700 bg-emerald-50 border-emerald-200" },
-    { label: "Scheduled", count: statusCounts.scheduled, color: "bg-blue-500 text-blue-700 bg-blue-50 border-blue-200" },
-    { label: "Paused", count: statusCounts.paused, color: "bg-amber-500 text-amber-700 bg-amber-50 border-amber-200" },
-    { label: "Completed", count: statusCounts.completed, color: "bg-purple-500 text-purple-700 bg-purple-50 border-purple-200" },
-    { label: "Failed", count: statusCounts.failed, color: "bg-rose-500 text-rose-700 bg-rose-50 border-rose-200" }
+    { label: "Running", count: statusCounts.running, color: "bg-emerald-50/50 dark:bg-[#10B981]/10 border-emerald-100 dark:border-[#10B981]/20 text-emerald-700 dark:text-[#34D399] hover:shadow-[0_0_15px_rgba(16,185,129,0.25)]" },
+    { label: "Scheduled", count: statusCounts.scheduled, color: "bg-blue-50/50 dark:bg-[#2563EB]/10 border-blue-100 dark:border-[#2563EB]/20 text-blue-700 dark:text-[#60A5FA] hover:shadow-[0_0_15px_rgba(37,99,235,0.25)]" },
+    { label: "Paused", count: statusCounts.paused, color: "bg-amber-50/50 dark:bg-[#F59E0B]/10 border-amber-100 dark:border-[#F59E0B]/20 text-amber-700 dark:text-[#FBBF24] hover:shadow-[0_0_15px_rgba(245,158,11,0.25)]" },
+    { label: "Completed", count: statusCounts.completed, color: "bg-purple-50/50 dark:bg-[#8B5CF6]/10 border-purple-100 dark:border-[#8B5CF6]/20 text-purple-700 dark:text-[#C084FC] hover:shadow-[0_0_15px_rgba(139,92,246,0.25)]" },
+    { label: "Failed", count: statusCounts.failed, color: "bg-rose-50/50 dark:bg-[#EF4444]/10 border-rose-100 dark:border-[#EF4444]/20 text-rose-700 dark:text-[#F87171] hover:shadow-[0_0_15px_rgba(239,68,68,0.25)]" }
   ];
 
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-3">
-      <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
-        <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-          <Activity className="h-4 w-4 text-emerald-600" />
-          <span>Live Campaign Status Breakdown</span>
+    <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
+      <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
+        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+          <Activity className="h-5 w-5 text-emerald-600 dark:text-[#34D399]" />
+          <span>Status Breakdown</span>
         </h3>
-        <span className="text-[10px] font-bold text-slate-400">Total: {campaigns.length || 6}</span>
+        <span className="text-[10px] font-bold text-slate-400 dark:text-[#64748B]">Total: {campaigns.length || 6}</span>
       </div>
 
       <div className="grid grid-cols-5 gap-2 text-center text-xs">
         {statuses.map((s, idx) => (
-          <div key={idx} className={`p-2.5 rounded-xl border ${s.color} flex flex-col items-center justify-center`}>
-            <span className="text-lg font-black font-mono">{s.count}</span>
-            <span className="text-[10px] font-bold uppercase">{s.label}</span>
+          <div key={idx} className={`p-2.5 rounded-xl border ${s.color} flex flex-col items-center justify-center hover:scale-105 hover:-translate-y-0.5 transition-all duration-250 cursor-pointer`}>
+            <span className="text-[30px] font-bold font-mono tracking-tight leading-none mb-1">{s.count}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider">{s.label}</span>
           </div>
         ))}
       </div>
@@ -541,27 +580,27 @@ function RecentActivityFeed() {
   ];
 
   return (
-    <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-5 shadow-sm border border-slate-200/80 space-y-3">
-      <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
-        <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-          <FileText className="h-4 w-4 text-[#0F4FA8]" />
-          <span>Recent Activity & Audit Trail</span>
+    <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
+      <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
+        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+          <FileText className="h-5 w-5 text-[#0F4FA8] dark:text-[#60A5FA]" />
+          <span>Activity Audit</span>
         </h3>
-        <span className="text-[10px] font-bold text-slate-400">Real-time</span>
+        <span className="text-[10px] font-bold text-slate-400 dark:text-[#64748B]">Real-time</span>
       </div>
 
-      <div className="space-y-2.5 text-xs">
+      <div className="space-y-3 text-xs">
         {activities.map((act, i) => (
-          <div key={i} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-2.5">
+          <div key={i} className="p-3.5 rounded-[16px] bg-slate-50 dark:bg-[#18243A] border border-slate-100 dark:border-white/5 flex items-start gap-2.5 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(255,255,255,0.02)] transition-all duration-200">
             <CheckCircle2 className={`h-4 w-4 shrink-0 mt-0.5 ${
-              act.type === "success" ? "text-emerald-500" : act.type === "warning" ? "text-amber-500" : "text-[#0F4FA8]"
+              act.type === "success" ? "text-emerald-500" : act.type === "warning" ? "text-amber-500" : "text-blue-500"
             }`} />
             <div className="min-w-0 flex-1">
               <div className="flex justify-between items-center">
-                <span className="font-extrabold text-slate-900 truncate">{act.title}</span>
-                <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-1">{act.time}</span>
+                <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] truncate">{act.title}</span>
+                <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-mono shrink-0 ml-1">{act.time}</span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">{act.desc}</p>
+              <p className="text-[11px] text-slate-500 dark:text-[#94A3B8] font-medium truncate mt-0.5">{act.desc}</p>
             </div>
           </div>
         ))}

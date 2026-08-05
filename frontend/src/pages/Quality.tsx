@@ -150,72 +150,107 @@ export default function Quality() {
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header Panel (Normal Flow) */}
-      <div className="bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div>
-            <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
-              <ShieldCheck className="h-6 w-6 text-forgeBlue" />
-              <span>Call Quality Auditing Console</span>
-            </h1>
-            <p className="text-sm text-gray-500 font-medium">Audit agent conversations, inspect speech transcripts, and rate guidelines compliance</p>
+    <div className="space-y-6 max-w-7xl mx-auto font-sans">
+      {/* Header Panel */}
+      <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-6 rounded-[20px] shadow-md border border-slate-200/80 dark:border-white/10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-5">
+          <div className="flex items-center gap-5">
+            {/* 72x72 Shield Avatar with 135° Blue -> Yellow Gradient Border */}
+            <div className="h-[72px] w-[72px] rounded-[24px] p-[3px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-[0_8px_20px_-4px_rgba(37,99,235,0.35),0_8px_20px_-4px_rgba(250,204,21,0.25)] shrink-0 transition-transform duration-300 hover:scale-105">
+              <div className="w-full h-full rounded-[21px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-[21px]" />
+                <ShieldCheck className="h-[32px] w-[32px] text-white relative z-10 drop-shadow-xs" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">
+                  Call Quality Auditing Console
+                </h1>
+                <span className="text-[11px] font-extrabold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200 dark:border-blue-500/30 px-3 py-1 rounded-full uppercase tracking-wider hidden sm:inline-block">
+                  AUDIT SUITE
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-[#94A3B8] font-semibold mt-1.5">
+                Audit agent conversations, inspect speech transcripts, and rate guidelines compliance
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Completed Calls Log List */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 lg:col-span-1 flex flex-col max-h-[700px]">
-          <h2 className="text-base font-black text-gray-800 mb-4 flex items-center gap-2">
-            <CheckSquare className="h-4 w-4 text-forgeBlue" />
-            <span>Completed Shift Logs</span>
-          </h2>
+        <div className="bg-white dark:bg-[#111827] rounded-[20px] p-6 shadow-md border border-slate-200/80 dark:border-white/10 lg:col-span-1 flex flex-col max-h-[720px] space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-4">
+            <h2 className="text-base font-black text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2.5">
+              <CheckSquare className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
+              <span>Completed Shift Logs</span>
+            </h2>
+            <span className="bg-slate-100 dark:bg-[#172033] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-[#94A3B8] text-xs font-mono font-extrabold px-3 py-1 rounded-full">
+              {calls.length} Logs
+            </span>
+          </div>
           
           {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-forgeBlue border-t-transparent mb-3"></div>
-              <p className="text-xs text-gray-400 font-bold">Loading call history...</p>
+            <div className="text-center py-16">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-3 border-[#2563EB] border-t-transparent mb-3"></div>
+              <p className="text-xs text-slate-400 dark:text-[#64748B] font-extrabold uppercase tracking-widest">Loading call history...</p>
             </div>
           ) : (
             <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-              {calls.map(c => (
-                <div
-                  key={c.id}
-                  onClick={() => selectCallToAudit(c)}
-                  className={`p-4 border rounded-2xl transition cursor-pointer text-left space-y-2 ${
-                    selectedCall?.id === c.id
-                      ? "border-forgeBlue bg-blue-50/30"
-                      : "bg-gray-50/50 hover:bg-white"
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-extrabold text-forgeBlue text-xs">{c.lead_id}</span>
-                    <span className="text-[10px] text-gray-400 font-bold flex items-center gap-0.5">
-                      <Clock className="h-3 w-3" />
-                      {Math.floor(c.duration_seconds / 60)}:{String(c.duration_seconds % 60).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <div className="text-xs font-bold text-gray-700">Agent: {c.agent_id}</div>
-                      <div className="text-[10px] text-gray-400 font-semibold">{new Date(c.started_at).toLocaleString()}</div>
+              {calls.map(c => {
+                const isSelected = selectedCall?.id === c.id;
+                const minutes = Math.floor(c.duration_seconds / 60);
+                const seconds = String(c.duration_seconds % 60).padStart(2, "0");
+
+                return (
+                  <div
+                    key={c.id}
+                    onClick={() => selectCallToAudit(c)}
+                    className={`p-4 border rounded-[18px] transition-all duration-200 cursor-pointer text-left space-y-2.5 ${
+                      isSelected
+                        ? "border-[#2563EB] dark:border-[#2563EB] bg-blue-50/70 dark:bg-blue-500/15 shadow-md shadow-blue-500/10 border-l-4 border-l-[#2563EB]"
+                        : "bg-slate-50 dark:bg-[#172033] hover:bg-white dark:hover:bg-[#1C2740] border-slate-200/80 dark:border-white/10 hover:shadow-xs hover:border-l-4 hover:border-l-[#2563EB]"
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-mono font-black text-xs text-[#2563EB] dark:text-[#60A5FA] bg-blue-50 dark:bg-blue-500/15 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-500/30">
+                        {c.lead_id}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-[#94A3B8] font-bold font-mono flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                        {minutes}:{seconds}
+                      </span>
                     </div>
-                    {c.quality_evaluation ? (
-                      <span className="bg-green-50 border border-green-200 text-green-700 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                        <Award className="h-3 w-3" />
-                        <span>Audited ({c.quality_evaluation.ai_quality_score})</span>
-                      </span>
-                    ) : (
-                      <span className="bg-slate-100 border text-slate-500 text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full">
-                        Pending
-                      </span>
-                    )}
+
+                    <div className="flex justify-between items-end gap-2 pt-1">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0 border border-blue-400/30">
+                          {c.agent_id[0]?.toUpperCase() || "A"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-slate-900 dark:text-[#F8FAFC] truncate">Agent: {c.agent_id}</div>
+                          <div className="text-[10px] text-slate-400 dark:text-[#64748B] font-semibold">{new Date(c.started_at).toLocaleString()}</div>
+                        </div>
+                      </div>
+
+                      {c.quality_evaluation ? (
+                        <span className="bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-[#047857] dark:text-[#34D399] text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0">
+                          <Award className="h-3 w-3" />
+                          <span>Audited ({c.quality_evaluation.ai_quality_score})</span>
+                        </span>
+                      ) : (
+                        <span className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-[#94A3B8] text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full shrink-0">
+                          Pending
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {calls.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-12 font-medium">No completed calls logs found.</p>
+                <p className="text-xs text-slate-400 dark:text-[#64748B] text-center py-16 font-medium">No completed call logs found.</p>
               )}
             </div>
           )}
@@ -224,36 +259,40 @@ export default function Quality() {
         {/* Right Column: Audio details and audit form */}
         <div className="lg:col-span-2 space-y-6">
           {selectedCall ? (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 space-y-6">
+            <div className="bg-white dark:bg-[#111827] rounded-[20px] p-6 shadow-md border border-slate-200/80 dark:border-white/10 space-y-6">
               
-              {/* Call identity panel */}
-              <div className="bg-slate-50 border p-4 rounded-2xl flex flex-col md:flex-row justify-between gap-4">
+              {/* Call identity & Audio player panel */}
+              <div className="bg-slate-50 dark:bg-[#172033] border border-slate-200/80 dark:border-white/10 p-5 rounded-[20px] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xs">
                 <div className="space-y-1">
-                  <h3 className="font-extrabold text-gray-800 text-base">Conversation ID: {selectedCall.id.slice(-8).toUpperCase()}</h3>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 font-semibold">
-                    <span className="flex items-center gap-1"><User className="h-3.5 w-3.5" /> Agent: {selectedCall.agent_id}</span>
+                  <h3 className="font-black text-slate-900 dark:text-[#F8FAFC] text-lg font-mono flex items-center gap-2">
+                    <span>Conversation ID:</span>
+                    <span className="text-[#2563EB] dark:text-[#60A5FA]">{selectedCall.id.slice(-8).toUpperCase()}</span>
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-[#94A3B8] font-semibold">
+                    <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#60A5FA]" /> Agent: {selectedCall.agent_id}</span>
                     <span>·</span>
-                    <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> Date: {new Date(selectedCall.started_at).toLocaleString()}</span>
+                    <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#60A5FA]" /> Date: {new Date(selectedCall.started_at).toLocaleString()}</span>
                   </div>
                 </div>
                 
-                {/* Audio mock player */}
-                <div className="flex items-center gap-3 bg-white border px-4 py-2 rounded-xl shadow-xs self-start md:self-center">
+                {/* Audio player */}
+                <div className="flex items-center gap-3.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 px-4 py-2.5 rounded-[16px] shadow-sm self-start md:self-center">
                   <button
                     onClick={() => setIsPlaying(!isPlaying)}
-                    className="p-2 bg-forgeBlue text-white hover:bg-blue-800 rounded-full transition"
+                    className="h-9 w-9 bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white hover:from-[#1D4ED8] hover:to-[#2563EB] rounded-full transition-all duration-200 flex items-center justify-center shadow-md shadow-blue-500/25 cursor-pointer active:scale-95"
                     aria-label={isPlaying ? "Pause Recording" : "Play Recording"}
                   >
                     {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                   </button>
-                  <div className="w-32 bg-gray-100 h-2 rounded-full overflow-hidden relative">
+                  <div className="w-36 bg-slate-200 dark:bg-[#172033] h-2 rounded-full overflow-hidden relative">
                     <div
-                      className="bg-forgeBlue h-full rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-[#2563EB] to-[#FACC15] h-full rounded-full transition-all duration-300"
                       style={{ width: `${playProgress}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-gray-400 font-bold font-mono">
-                    {isPlaying ? "PLAYING" : "RECORDING"}
+                  <span className="text-[10px] text-slate-500 dark:text-[#94A3B8] font-black font-mono flex items-center gap-1">
+                    <span className={`h-2 w-2 rounded-full ${isPlaying ? "bg-emerald-500 animate-ping" : "bg-rose-500"}`} />
+                    <span>{isPlaying ? "PLAYING" : "RECORDING"}</span>
                   </span>
                 </div>
               </div>
@@ -261,50 +300,52 @@ export default function Quality() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Left side: transcript summary */}
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {/* AI Summary */}
                   <div>
-                    <h4 className="font-bold text-gray-800 text-sm mb-1.5 flex items-center gap-1">
-                      <Sparkles className="h-4 w-4 text-forgeBlue animate-pulse" />
+                    <h4 className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-sm mb-2 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA] animate-pulse" />
                       <span>AI Conversation Summary</span>
                     </h4>
-                    <div className="border rounded-2xl p-4 bg-gray-50/50 text-xs font-semibold text-gray-500 leading-relaxed max-h-36 overflow-y-auto">
+                    <div className="border border-slate-200/80 dark:border-white/10 rounded-[18px] p-4.5 bg-slate-50 dark:bg-[#172033] text-xs font-semibold text-slate-700 dark:text-[#94A3B8] leading-relaxed max-h-40 overflow-y-auto shadow-xs">
                       {selectedCall.ai_summary || "AI Summary not generated for this voice channel log."}
                     </div>
                   </div>
 
                   {/* Transcript */}
                   <div>
-                    <h4 className="font-bold text-gray-800 text-sm mb-1.5 flex items-center gap-1">
-                      <BookOpen className="h-4 w-4 text-forgeBlue" />
+                    <h4 className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-sm mb-2 flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" />
                       <span>Call Speech Transcript</span>
                     </h4>
-                    <div className="border rounded-2xl p-4 bg-gray-50/50 text-xs font-semibold text-gray-500 leading-relaxed h-72 overflow-y-auto space-y-3 font-mono">
+                    <div className="border border-slate-200/80 dark:border-white/10 rounded-[18px] p-4.5 bg-slate-50 dark:bg-[#172033] text-xs font-semibold text-slate-700 dark:text-[#94A3B8] leading-relaxed h-72 overflow-y-auto space-y-3 font-mono shadow-xs">
                       {selectedCall.transcript ? (
                         selectedCall.transcript.split("\n").map((line, idx) => (
-                          <div key={idx} className="border-b border-gray-100 pb-1.5 last:border-b-0">
+                          <div key={idx} className="border-b border-slate-200/60 dark:border-white/5 pb-2 last:border-b-0">
                             {line}
                           </div>
                         ))
                       ) : (
-                        <p className="text-gray-400 italic">No audio speech data recorded.</p>
+                        <p className="text-slate-400 dark:text-[#64748B] italic">No audio speech data recorded.</p>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Right side: Auditing evaluation form */}
-                <form onSubmit={handleSaveEvaluation} className="space-y-4 border-l pl-0 md:pl-6 border-gray-100">
-                  <h3 className="font-black text-gray-800 text-sm uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <Award className="h-4.5 w-4.5 text-forgeGold" />
+                <form onSubmit={handleSaveEvaluation} className="space-y-5 border-l-0 md:border-l border-slate-100 dark:border-white/10 pl-0 md:pl-6">
+                  <h3 className="font-black text-slate-900 dark:text-[#F8FAFC] text-sm uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <Award className="h-5 w-5 text-[#FACC15]" />
                     <span>Evaluation Scorecard</span>
                   </h3>
                   
-                  {/* AI Quality slider */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-xs font-bold text-gray-600">AI Quality Score</label>
-                      <span className="text-xs font-extrabold text-forgeBlue">{aiQualityScore} / 100</span>
+                  {/* AI Quality Score */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-extrabold text-slate-700 dark:text-[#F8FAFC]">AI Quality Score</label>
+                      <span className="bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-[#2563EB] dark:text-[#60A5FA] font-mono font-black px-2.5 py-1 rounded-full text-xs">
+                        {aiQualityScore} / 100
+                      </span>
                     </div>
                     <input
                       type="range"
@@ -312,15 +353,17 @@ export default function Quality() {
                       max={100}
                       value={aiQualityScore}
                       onChange={e => setAiQualityScore(Number(e.target.value))}
-                      className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-forgeBlue"
+                      className="w-full h-2 bg-slate-100 dark:bg-[#172033] rounded-lg appearance-none cursor-pointer accent-[#2563EB]"
                     />
                   </div>
 
-                  {/* Compliance slider */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className="text-xs font-bold text-gray-600">Compliance & Guidelines Score</label>
-                      <span className="text-xs font-extrabold text-forgeBlue">{complianceScore} / 100</span>
+                  {/* Compliance Score */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-extrabold text-slate-700 dark:text-[#F8FAFC]">Compliance & Guidelines Score</label>
+                      <span className="bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 text-[#047857] dark:text-[#34D399] font-mono font-black px-2.5 py-1 rounded-full text-xs">
+                        {complianceScore} / 100
+                      </span>
                     </div>
                     <input
                       type="range"
@@ -328,38 +371,39 @@ export default function Quality() {
                       max={100}
                       value={complianceScore}
                       onChange={e => setComplianceScore(Number(e.target.value))}
-                      className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-forgeBlue"
+                      className="w-full h-2 bg-slate-100 dark:bg-[#172033] rounded-lg appearance-none cursor-pointer accent-[#2563EB]"
                     />
                   </div>
 
                   {/* Sentiment select */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">Customer Sentiment Analysis</label>
+                    <label className="block text-xs font-extrabold text-slate-700 dark:text-[#F8FAFC] mb-1.5">Customer Sentiment Analysis</label>
                     <CustomSelect
                       value={sentiment}
                       onChange={setSentiment}
                       options={SENTIMENT_OPTIONS}
                       placeholder="Select Sentiment"
+                      triggerClassName="h-[52px] rounded-[14px] text-xs dark:bg-[#172033] dark:text-[#F8FAFC] dark:border-white/10 hover:border-[#2563EB]"
                     />
                   </div>
 
                   {/* Coaching notes */}
                   <div>
-                    <label className="block text-xs font-bold text-gray-600 mb-1">Supervisor Coaching Notes</label>
+                    <label className="block text-xs font-extrabold text-slate-700 dark:text-[#F8FAFC] mb-1.5">Supervisor Coaching Notes</label>
                     <textarea
                       placeholder="Add specific coaching guidelines, positive call highlights, or compliance correctives..."
                       value={coachingNotes}
                       onChange={e => setCoachingNotes(e.target.value)}
-                      className="w-full border rounded-xl px-3 py-2 text-xs bg-gray-50 h-32 text-gray-700 focus:outline-none focus:ring-2 focus:ring-forgeBlue"
+                      className="w-full border border-slate-200 dark:border-white/10 rounded-[16px] p-3.5 text-xs bg-slate-50 dark:bg-[#172033] h-32 text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20 transition font-sans"
                       required
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-forgeBlue hover:bg-blue-800 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5"
+                    className="w-full h-[52px] bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white font-black text-xs rounded-[14px] transition-all duration-200 shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
-                    <ShieldCheck className="h-4 w-4" />
+                    <ShieldCheck className="h-4.5 w-4.5" />
                     <span>Submit Evaluation Audit</span>
                   </button>
                 </form>
@@ -367,9 +411,9 @@ export default function Quality() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl py-24 text-center border border-gray-100 text-gray-400">
-              <ChevronRight className="h-10 w-10 mx-auto text-gray-300 mb-3" />
-              <p className="text-sm font-semibold">Select a completed call from the left menu to audit recording parameters.</p>
+            <div className="bg-white dark:bg-[#111827] rounded-[20px] py-24 text-center border border-slate-200/80 dark:border-white/10 text-slate-400 dark:text-[#64748B] shadow-md">
+              <ChevronRight className="h-10 w-10 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
+              <p className="text-sm font-extrabold text-slate-700 dark:text-[#F8FAFC]">Select a completed call from the left menu to audit recording parameters.</p>
             </div>
           )}
         </div>

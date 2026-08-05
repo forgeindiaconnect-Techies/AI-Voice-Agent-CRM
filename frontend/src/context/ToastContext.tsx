@@ -107,12 +107,12 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
 
     const timer = setInterval(() => {
       setProgress((prev) => {
-        const next = prev - step;
-        if (next <= 0) {
-          onClose();
+        if (prev <= step) {
+          clearInterval(timer);
+          setTimeout(() => onClose(), 0);
           return 0;
         }
-        return next;
+        return prev - step;
       });
     }, intervalTime);
 

@@ -45,28 +45,28 @@ export default function PortalHeader({
   return (
     <div className="relative mb-6 font-sans max-w-full">
       {/* 2-Column Flex Header: Height <= 130px, 16px Border Radius, 20px Padding, 24px Gap */}
-      <div className="bg-white/95 backdrop-blur-md px-6 py-4 rounded-[16px] shadow-xs border border-slate-200/80 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 transition-all duration-200 overflow-hidden max-w-full min-h-[92px] max-h-[130px]">
+      <div className="bg-white dark:bg-[#111827] backdrop-blur-md px-6 py-4 rounded-[16px] shadow-sm border border-slate-200/80 dark:border-white/10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 transition-all duration-200 overflow-hidden max-w-full min-h-[92px] max-h-[130px]">
         
         {/* Left Section: Icon + Title + Total Campaigns Badge + Subtitle */}
         <div className="flex items-center gap-4 min-w-0 max-w-full">
-          <div className="h-11 w-11 rounded-2xl bg-blue-50/90 text-[#1E5EFF] flex items-center justify-center font-bold shadow-2xs shrink-0 border border-blue-100/80">
+          <div className="h-11 w-11 rounded-2xl bg-blue-50/90 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center font-bold shadow-2xs shrink-0 border border-blue-100/80 dark:border-blue-500/30">
             {icon}
           </div>
 
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-none truncate">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none truncate">
                 {title}
               </h1>
               {badgeText && (
-                <span className="text-[11px] font-extrabold bg-blue-50 text-[#1E5EFF] border border-blue-200/80 px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                <span className="text-[11px] font-extrabold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200/80 dark:border-blue-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
                   {badgeText}
                 </span>
               )}
             </div>
 
             {subtitle && (
-              <p className="text-xs sm:text-sm text-slate-500 font-medium tracking-tight truncate leading-tight">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-[#94A3B8] font-medium tracking-tight truncate leading-tight">
                 {subtitle}
               </p>
             )}
@@ -76,15 +76,15 @@ export default function PortalHeader({
         {/* Right Section: Aligned Row with 48px Tabs & 48px Primary Action Button */}
         <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap w-full lg:w-auto max-w-full min-w-0 justify-end">
           {tabs && tabs.length > 0 && (
-            <div className="h-12 flex items-center bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 overflow-x-auto max-w-full min-w-0 no-scrollbar whitespace-nowrap">
+            <div className="h-12 flex items-center bg-slate-100/90 dark:bg-[#172033] p-1 rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-x-auto max-w-full min-w-0 no-scrollbar whitespace-nowrap">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => onTabChange?.(tab.id)}
                   className={`h-10 px-4 text-xs font-extrabold rounded-xl transition-all duration-200 cursor-pointer shrink-0 whitespace-nowrap flex items-center justify-center ${
                     activeTab === tab.id
-                      ? "bg-[#1E5EFF] text-white shadow-xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                      ? "bg-[#2563EB] text-white shadow-xs"
+                      : "text-slate-600 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-[#1C2740]"
                   }`}
                 >
                   {tab.label}
@@ -98,7 +98,7 @@ export default function PortalHeader({
               key={idx}
               onClick={btn.onClick}
               title={btn.title || btn.label}
-              className="h-12 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+              className="h-12 px-4 bg-slate-100 dark:bg-[#172033] hover:bg-slate-200 dark:hover:bg-[#1F2B45] text-slate-700 dark:text-[#F8FAFC] border border-slate-200 dark:border-white/10 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
             >
               {btn.icon}
               {btn.label && <span>{btn.label}</span>}
@@ -108,7 +108,7 @@ export default function PortalHeader({
           {primaryButton && (
             <button
               onClick={primaryButton.onClick}
-              className="h-12 px-5 bg-[#1E5EFF] hover:bg-blue-700 text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+              className="h-12 px-5 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
             >
               {primaryButton.icon || <Plus className="h-4 w-4" />}
               <span>{primaryButton.label}</span>

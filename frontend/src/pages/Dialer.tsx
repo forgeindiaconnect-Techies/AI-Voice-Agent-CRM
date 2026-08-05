@@ -456,7 +456,7 @@ export default function Dialer() {
   // ----------------------------------------------------
   
   const renderKeypad = (inCall = false) => (
-    <div className="grid grid-cols-3 gap-4 md:gap-6 w-full max-w-[280px] mx-auto my-6">
+    <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full max-w-[280px] mx-auto my-4">
       {[
         { d: "1", l: "" }, { d: "2", l: "ABC" }, { d: "3", l: "DEF" },
         { d: "4", l: "GHI" }, { d: "5", l: "JKL" }, { d: "6", l: "MNO" },
@@ -466,37 +466,73 @@ export default function Dialer() {
         <button
           key={key.d}
           onClick={() => handleKeypadPress(key.d)}
-          className="aspect-square flex flex-col items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 active:bg-slate-300 transition shadow-sm text-slate-800"
+          className="h-[64px] w-[64px] sm:h-[70px] sm:w-[70px] mx-auto flex flex-col items-center justify-center rounded-full bg-slate-100 dark:bg-[#172033] hover:bg-blue-50 dark:hover:bg-blue-500/20 active:scale-95 transition-all duration-200 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-[#F8FAFC] shadow-sm hover:border-blue-500/40 cursor-pointer"
         >
-          <span className="text-2xl md:text-3xl font-light">{key.d}</span>
-          {key.l && <span className="text-[10px] font-bold text-slate-500 tracking-widest">{key.l}</span>}
+          <span className="text-xl sm:text-2xl font-light leading-none">{key.d}</span>
+          {key.l && <span className="text-[9px] font-extrabold text-slate-400 dark:text-[#64748B] tracking-widest leading-none mt-0.5">{key.l}</span>}
         </button>
       ))}
     </div>
   );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col">
-      {/* Header */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 shrink-0">
+    <div className="space-y-5 max-w-[1600px] mx-auto h-[calc(100vh-100px)] flex flex-col font-sans pb-16">
+      {/* Header Card */}
+      <div className="bg-white dark:bg-[#111827] p-4 rounded-[20px] shadow-sm border border-slate-200 dark:border-white/10 shrink-0">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-[#0F4FA8]/10 text-[#0F4FA8] rounded-xl flex items-center justify-center">
+          <div className="flex items-center gap-3.5">
+            <div className="h-10 w-10 bg-[#2563EB]/10 text-[#2563EB] dark:text-[#60A5FA] rounded-xl flex items-center justify-center border border-[#2563EB]/20 shadow-xs">
               <PhoneCall className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-800">Manual Dialer</h1>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Unified Comms & Supervisor Station</p>
+              <h1 className="text-xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight">Manual Dialer</h1>
+              <p className="text-xs text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Unified Comms &amp; Supervisor Station</p>
             </div>
           </div>
           
-          <div className="flex bg-slate-100 p-1 rounded-xl">
-            <button onClick={() => setActiveTab("outbound")} className={`px-4 py-2 text-sm font-bold rounded-lg transition ${activeTab === "outbound" ? "bg-white text-[#0F4FA8] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Outbound</button>
-            <button onClick={() => setActiveTab("inbound")} className={`px-4 py-2 text-sm font-bold rounded-lg transition ${activeTab === "inbound" ? "bg-white text-[#0F4FA8] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Inbound</button>
+          <div className="flex bg-slate-100 dark:bg-[#172033] p-1.5 rounded-2xl border border-slate-200 dark:border-white/10">
+            <button
+              onClick={() => setActiveTab("outbound")}
+              className={`px-4 py-2 text-xs font-extrabold rounded-xl transition ${
+                activeTab === "outbound"
+                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
+                  : "text-slate-500 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Outbound
+            </button>
+            <button
+              onClick={() => setActiveTab("inbound")}
+              className={`px-4 py-2 text-xs font-extrabold rounded-xl transition ${
+                activeTab === "inbound"
+                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
+                  : "text-slate-500 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              Inbound
+            </button>
             {isSupervisor && (
-              <button onClick={() => setActiveTab("supervisor")} className={`px-4 py-2 text-sm font-bold rounded-lg transition ${activeTab === "supervisor" ? "bg-white text-[#0F4FA8] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Supervisor</button>
+              <button
+                onClick={() => setActiveTab("supervisor")}
+                className={`px-4 py-2 text-xs font-extrabold rounded-xl transition ${
+                  activeTab === "supervisor"
+                    ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
+                    : "text-slate-500 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                Supervisor
+              </button>
             )}
-            <button onClick={() => setActiveTab("history")} className={`px-4 py-2 text-sm font-bold rounded-lg transition ${activeTab === "history" ? "bg-white text-[#0F4FA8] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>History</button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`px-4 py-2 text-xs font-extrabold rounded-xl transition ${
+                activeTab === "history"
+                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
+                  : "text-slate-500 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              History
+            </button>
           </div>
         </div>
       </div>
@@ -512,17 +548,17 @@ export default function Dialer() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="h-full flex flex-col md:flex-row gap-6"
+              className="h-full flex flex-col lg:flex-row gap-6"
             >
-              {/* Left Column: Keypad */}
-              <div className="w-full md:w-[400px] bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex flex-col items-center justify-between overflow-y-auto shrink-0">
+              {/* Left Column: Keypad (30% Width / ~380px) */}
+              <div className="w-full lg:w-[360px] xl:w-[380px] bg-white dark:bg-[#111827] rounded-[24px] shadow-sm border border-slate-200 dark:border-white/10 p-6 flex flex-col items-center justify-between overflow-y-auto shrink-0">
                 
                 <div className="w-full text-center">
                   <div className="h-6 flex items-center justify-center gap-2 mb-4">
-                    {callStatus === "idle" && <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">Ready to Dial</span>}
-                    {callStatus === "ringing" && <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full animate-pulse flex items-center gap-1"><PhoneForwarded className="h-3 w-3" /> Ringing...</span>}
-                    {callStatus === "connected" && <span className="text-xs font-bold text-[#10B981] bg-[#10B981]/10 px-3 py-1 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Connected {formatTime(callDuration)}</span>}
-                    {callStatus === "hold" && <span className="text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full flex items-center gap-1"><Pause className="h-3 w-3" /> On Hold {formatTime(callDuration)}</span>}
+                    {callStatus === "idle" && <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] bg-slate-100 dark:bg-[#172033] border border-slate-200 dark:border-white/10 px-3 py-1 rounded-full">Ready to Dial</span>}
+                    {callStatus === "ringing" && <span className="text-xs font-bold text-amber-600 dark:text-[#FCD34D] bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-3 py-1 rounded-full animate-pulse flex items-center gap-1"><PhoneForwarded className="h-3 w-3" /> Ringing...</span>}
+                    {callStatus === "connected" && <span className="text-xs font-bold text-[#10B981] dark:text-[#34D399] bg-[#10B981]/10 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Connected {formatTime(callDuration)}</span>}
+                    {callStatus === "hold" && <span className="text-xs font-bold text-amber-600 dark:text-[#FCD34D] bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-3 py-1 rounded-full flex items-center gap-1"><Pause className="h-3 w-3" /> On Hold {formatTime(callDuration)}</span>}
                   </div>
                   
                   <div className="relative w-full max-w-xs mx-auto mb-2">
@@ -546,12 +582,12 @@ export default function Dialer() {
                       }}
                       readOnly={callStatus !== "idle"}
                       placeholder="Enter mobile number"
-                      className="w-full text-center text-3xl font-light tracking-wide text-slate-800 bg-transparent outline-none py-2"
+                      className="w-full text-center text-3xl font-light tracking-wide text-slate-900 dark:text-[#F8FAFC] bg-transparent outline-none py-2 font-sans"
                     />
                     {callStatus === "idle" && outboundPhone.length > 0 && (
                       <button 
                         onClick={() => setOutboundPhone(prev => prev.slice(0, -1))} 
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#172033] rounded-full transition cursor-pointer"
                       >
                         <XCircle className="h-5 w-5" />
                       </button>
@@ -559,7 +595,7 @@ export default function Dialer() {
                   </div>
                   {/* Inline Validation Warning Message */}
                   {validationMessage && (
-                    <div className="mt-1 mb-3 text-xs font-bold text-rose-500 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 justify-center w-full max-w-xs mx-auto animate-fadeIn">
+                    <div className="mt-1 mb-3 text-xs font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 px-3 py-1.5 rounded-xl flex items-center gap-1.5 justify-center w-full max-w-xs mx-auto animate-fadeIn">
                       <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
                       <span>{validationMessage}</span>
                     </div>
@@ -572,11 +608,11 @@ export default function Dialer() {
                 
                 {(callStatus === "connected" || callStatus === "hold") && !showInCallKeypad && (
                   <div className="my-8 w-full">
-                    <div className="h-24 w-24 rounded-full bg-[#0F4FA8]/5 border-4 border-[#0F4FA8]/10 mx-auto flex items-center justify-center text-[#0F4FA8] mb-6">
+                    <div className="h-24 w-24 rounded-full bg-[#2563EB]/10 border-4 border-[#2563EB]/20 mx-auto flex items-center justify-center text-[#2563EB] dark:text-[#60A5FA] mb-6">
                       <User className="h-10 w-10" />
                     </div>
-                    <p className="text-center text-sm font-bold text-slate-600">Unknown Customer</p>
-                    <p className="text-center text-xs text-slate-400">{outboundPhone}</p>
+                    <p className="text-center text-sm font-extrabold text-slate-900 dark:text-[#F8FAFC]">Unknown Customer</p>
+                    <p className="text-center text-xs text-slate-400 font-mono mt-0.5">+91 {outboundPhone}</p>
                   </div>
                 )}
 
@@ -586,7 +622,7 @@ export default function Dialer() {
                     <button
                       onClick={handleDial}
                       disabled={!isValidMobile || isCreatingLead}
-                      className="w-full bg-[#10B981] hover:bg-emerald-600 text-white rounded-full py-4 font-bold text-lg shadow-lg shadow-emerald-500/30 transition disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2"
+                      className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white rounded-full py-4 font-extrabold text-base shadow-lg shadow-emerald-500/25 transition disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                     >
                       {isCreatingLead ? (
                         <>
@@ -599,32 +635,32 @@ export default function Dialer() {
                       )}
                     </button>
                   ) : callStatus === "ended" ? (
-                    <div className="text-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                      <p className="font-bold text-slate-700 mb-3">Please save outcome on the right</p>
+                    <div className="text-center p-4 bg-slate-50 dark:bg-[#172033] rounded-2xl border border-slate-200 dark:border-white/10">
+                      <p className="font-bold text-slate-700 dark:text-[#F8FAFC] text-xs">Please save outcome on the right</p>
                     </div>
                   ) : (
                     <div className="space-y-4 w-full">
                       <div className="grid grid-cols-4 gap-2">
-                        <button onClick={() => handleAction(isMuted ? "resume" : "mute")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${isMuted ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                        <button onClick={() => handleAction(isMuted ? "resume" : "mute")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${isMuted ? "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-[#FCD34D]" : "bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200"}`}>
                           {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                           <span className="text-[10px] font-bold uppercase">Mute</span>
                         </button>
-                        <button onClick={() => handleAction(callStatus === "hold" ? "resume" : "hold")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${callStatus === "hold" ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                        <button onClick={() => handleAction(callStatus === "hold" ? "resume" : "hold")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${callStatus === "hold" ? "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-[#FCD34D]" : "bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200"}`}>
                           {callStatus === "hold" ? <Play className="h-5 w-5" /> : <CustomPauseIcon size={22} />}
                           <span className="text-[10px] font-bold uppercase">Hold</span>
                         </button>
-                        <button onClick={() => setShowInCallKeypad(!showInCallKeypad)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${showInCallKeypad ? "bg-[#0F4FA8]/10 text-[#0F4FA8]" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                        <button onClick={() => setShowInCallKeypad(!showInCallKeypad)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${showInCallKeypad ? "bg-blue-50 dark:bg-blue-500/20 text-[#2563EB] dark:text-[#60A5FA]" : "bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200"}`}>
                           <Hash className="h-5 w-5" />
                           <span className="text-[10px] font-bold uppercase">Keypad</span>
                         </button>
-                        <button onClick={() => setIsSpeaker(!isSpeaker)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${isSpeaker ? "bg-[#0F4FA8]/10 text-[#0F4FA8]" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                        <button onClick={() => setIsSpeaker(!isSpeaker)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${isSpeaker ? "bg-blue-50 dark:bg-blue-500/20 text-[#2563EB] dark:text-[#60A5FA]" : "bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200"}`}>
                           {isSpeaker ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
                           <span className="text-[10px] font-bold uppercase">Speaker</span>
                         </button>
                       </div>
                       <button
                         onClick={handleHangup}
-                        className="w-full bg-[#EF4444] hover:bg-red-600 text-white rounded-full py-4 font-bold text-lg shadow-lg shadow-red-500/30 transition flex items-center justify-center gap-2"
+                        className="w-full bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white rounded-full py-4 font-extrabold text-base shadow-lg shadow-rose-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                       >
                         <PhoneOff className="h-5 w-5 fill-current" /> End Call
                       </button>
@@ -633,63 +669,64 @@ export default function Dialer() {
                 </div>
               </div>
 
-              {/* Right Column: Dynamic Workspace */}
-              <div className="flex-1 flex flex-col gap-4 overflow-hidden h-full">
+              {/* Right Column: Dynamic Workspace (70% Width) */}
+              <div className="flex-1 flex flex-col gap-4 overflow-hidden h-full min-w-0">
                 {callStatus === "idle" ? (
                   // -------------- ASSIGNED LEADS WORKSPACE --------------
-                  <div className="bg-slate-50/50 rounded-3xl border border-slate-200 p-4 flex-1 flex flex-col overflow-hidden shadow-sm">
+                  <div className="bg-slate-50/50 dark:bg-[#111827] rounded-[24px] border border-slate-200 dark:border-white/10 p-5 flex-1 flex flex-col overflow-hidden shadow-sm">
                     {/* Workspace Header / Counters */}
                     <div className="flex justify-between items-end mb-4">
                       <div>
-                        <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                          <UserCheck className="h-5 w-5 text-[#0F4FA8]" /> Assigned Leads Workspace
+                        <h2 className="text-lg font-black text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+                          <UserCheck className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" /> Assigned Leads Workspace
                         </h2>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Real-time Lead Sync Active</p>
+                        <p className="text-xs font-bold text-slate-400 dark:text-[#64748B] uppercase tracking-widest mt-1">Real-time Lead Sync Active</p>
                       </div>
-                      <button onClick={fetchLeads} className="p-2 hover:bg-white rounded-xl border border-transparent hover:border-slate-200 hover:shadow-sm text-slate-500 transition">
+                      <button onClick={fetchLeads} className="p-2 hover:bg-white dark:hover:bg-[#172033] rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-white/10 text-slate-500 dark:text-[#94A3B8] transition cursor-pointer">
                         <RefreshCw className={`h-4 w-4 ${isLoadingLeads ? 'animate-spin' : ''}`} />
                       </button>
                     </div>
 
+                    {/* Equal Height KPI Stat Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 shrink-0">
-                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Leads</p>
-                        <p className="text-xl font-black text-slate-800">{leads.length}</p>
+                      <div className="bg-white dark:bg-[#172033] p-3.5 rounded-[18px] border border-slate-200 dark:border-white/10 shadow-sm hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-center">
+                        <p className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1">Total Leads</p>
+                        <p className="text-xl font-black text-slate-900 dark:text-[#F8FAFC]">{leads.length}</p>
                       </div>
-                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">New Leads</p>
-                        <p className="text-xl font-black text-[#0F4FA8]">{leads.filter(l => l.status === "new").length}</p>
+                      <div className="bg-white dark:bg-[#172033] p-3.5 rounded-[18px] border border-slate-200 dark:border-white/10 shadow-sm hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-center">
+                        <p className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1">New Leads</p>
+                        <p className="text-xl font-black text-[#2563EB] dark:text-[#60A5FA]">{leads.filter(l => l.status === "new").length}</p>
                       </div>
-                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Pending Follow-ups</p>
-                        <p className="text-xl font-black text-orange-500">{leads.filter(l => l.status === "follow_up_required").length}</p>
+                      <div className="bg-white dark:bg-[#172033] p-3.5 rounded-[18px] border border-slate-200 dark:border-white/10 shadow-sm hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-center">
+                        <p className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1">Pending Follow-ups</p>
+                        <p className="text-xl font-black text-amber-500 dark:text-[#FCD34D]">{leads.filter(l => l.status === "follow_up_required").length}</p>
                       </div>
-                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Completed / Closed</p>
-                        <p className="text-xl font-black text-emerald-500">{leads.filter(l => l.status === "closed").length}</p>
+                      <div className="bg-white dark:bg-[#172033] p-3.5 rounded-[18px] border border-slate-200 dark:border-white/10 shadow-sm hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-center">
+                        <p className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1">Completed / Closed</p>
+                        <p className="text-xl font-black text-emerald-500 dark:text-[#34D399]">{leads.filter(l => l.status === "closed").length}</p>
                       </div>
                     </div>
 
-                    {/* Search & Filters */}
-                    <div className="flex gap-2 mb-4 shrink-0">
+                    {/* Search & Filters (Height 52px) */}
+                    <div className="flex gap-3 mb-4 shrink-0">
                       <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#64748B]" />
                         <input
                           type="text"
                           placeholder="Search leads by name or phone..."
                           value={searchQuery}
                           onChange={e => setSearchQuery(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20"
+                          className="w-full h-[52px] pl-11 pr-4 bg-white dark:bg-[#172033] border border-slate-200 dark:border-white/10 rounded-[14px] text-xs font-semibold text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20"
                         />
                       </div>
-                      <div className="relative w-48">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
+                      <div className="relative w-52">
+                        <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-[#64748B] z-10" />
                         <CustomSelect
                           value={statusFilter}
                           onChange={setStatusFilter}
                           options={STATUS_FILTER_OPTIONS}
                           placeholder="Select Status"
-                          triggerClassName="pl-10"
+                          triggerClassName="h-[52px] rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#172033] dark:text-[#F8FAFC] hover:border-[#2563EB] pl-10"
                         />
                       </div>
                     </div>
@@ -698,52 +735,56 @@ export default function Dialer() {
                     <div className="flex-1 overflow-y-auto pr-2 space-y-3">
                       {isLoadingLeads && leads.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                          <Loader2 className="h-8 w-8 animate-spin text-[#0F4FA8] mb-4" />
+                          <Loader2 className="h-8 w-8 animate-spin text-[#2563EB] mb-4" />
                           <p className="font-bold text-sm">Loading Assigned Leads...</p>
                         </div>
                       ) : filteredLeads.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
-                          <AlertCircle className="h-10 w-10 text-slate-300 mb-3" />
-                          <p className="font-bold text-slate-600">No Assigned Leads Found</p>
+                        <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-[#64748B] bg-white dark:bg-[#172033] rounded-2xl border border-dashed border-slate-200 dark:border-white/10 p-8">
+                          <AlertCircle className="h-10 w-10 text-slate-300 dark:text-slate-600 mb-3" />
+                          <p className="font-bold text-slate-700 dark:text-[#F8FAFC]">No Assigned Leads Found</p>
                           <p className="text-xs">Adjust your filters or wait for new assignments.</p>
                         </div>
                       ) : (
                         filteredLeads.map((lead, idx) => (
                           <div 
                             key={lead._id || lead.id || lead.lead_id || `lead-${idx}`}
-                            className={`bg-white rounded-2xl border ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'border-[#0F4FA8] ring-2 ring-[#0F4FA8]/10' : 'border-slate-200'} p-4 shadow-sm hover:shadow-md transition group`}
+                            className={`bg-white dark:bg-[#172033] rounded-[18px] border ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'border-[#2563EB] ring-2 ring-[#2563EB]/20' : 'border-slate-200 dark:border-white/10'} p-4 shadow-sm hover:shadow-lg dark:hover:shadow-blue-500/10 hover:border-l-4 hover:border-l-[#2563EB] transition-all duration-250 group`}
                           >
                             <div className="flex justify-between items-start mb-3">
                               <div>
-                                <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                <h3 className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-sm flex items-center gap-2">
                                   {lead.name || (lead as any).customer_name || "Unknown Customer"}
-                                  {lead.priority === "high" && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+                                  {lead.priority === "high" && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
                                 </h3>
-                                <p className="text-sm font-bold text-[#0F4FA8]">{lead.phone}</p>
+                                <p className="text-xs font-bold text-[#2563EB] dark:text-[#60A5FA] font-mono mt-0.5">{lead.phone}</p>
                               </div>
-                              <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
-                                lead.status === 'new' ? 'bg-blue-50 text-blue-600' :
-                                lead.status === 'follow_up_required' ? 'bg-orange-50 text-orange-600' :
-                                lead.status === 'closed' ? 'bg-emerald-50 text-emerald-600' :
-                                'bg-slate-100 text-slate-600'
+                              <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full uppercase tracking-wider border ${
+                                lead.status === 'new' ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#2563EB] dark:text-[#60A5FA]' :
+                                lead.status === 'follow_up_required' ? 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30 text-amber-700 dark:text-[#FCD34D]' :
+                                lead.status === 'closed' ? 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30 text-[#047857] dark:text-[#34D399]' :
+                                'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-[#94A3B8]'
                               }`}>
                                 {lead.status.replace(/_/g, ' ')}
                               </span>
                             </div>
                             
-                            <div className="flex items-center gap-4 text-xs font-medium text-slate-500 mb-4">
-                              <span className="bg-slate-50 px-2 py-1 rounded-md">Src: <strong className="text-slate-700">{lead.source}</strong></span>
+                            <div className="flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-[#94A3B8] mb-4">
+                              <span className="bg-slate-50 dark:bg-[#111827] px-2.5 py-1 rounded-lg border border-slate-100 dark:border-white/5">Src: <strong className="text-slate-700 dark:text-[#F8FAFC]">{lead.source}</strong></span>
                               <span>Added: {formatDate(lead.created_at)}</span>
                             </div>
                             
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleQuickCall(lead.phone)}
-                                className={`flex-1 py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'bg-[#0F4FA8] text-white' : 'bg-[#0F4FA8]/5 text-[#0F4FA8] hover:bg-[#0F4FA8]/10'}`}
+                                className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
+                                  outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone
+                                    ? 'bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md'
+                                    : 'bg-[#2563EB]/10 text-[#2563EB] dark:text-[#60A5FA] hover:bg-[#2563EB]/20 border border-[#2563EB]/20'
+                                }`}
                               >
                                 <Phone className="h-4 w-4" /> Quick Call
                               </button>
-                              <button className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl font-bold text-sm border border-slate-200 transition">
+                              <button className="px-4 py-2.5 bg-slate-100 dark:bg-[#111827] hover:bg-slate-200 dark:hover:bg-[#1F2B45] text-slate-700 dark:text-[#F8FAFC] rounded-xl font-bold text-xs border border-slate-200 dark:border-white/10 transition cursor-pointer">
                                 Details
                               </button>
                             </div>
@@ -754,38 +795,39 @@ export default function Dialer() {
                   </div>
                 ) : (
                   // -------------- CALL NOTES & DISPOSITION --------------
-                  <div className="bg-white rounded-3xl shadow-sm border border-[#0F4FA8]/20 p-6 flex-1 flex flex-col relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-[#0F4FA8] to-emerald-400"></div>
+                  <div className="bg-white dark:bg-[#111827] rounded-[24px] shadow-sm border border-slate-200 dark:border-white/10 p-6 flex-1 flex flex-col relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-[#2563EB] to-emerald-400"></div>
                     
-                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-[#0F4FA8]" /> Live Call Notes & Disposition
+                    <h2 className="text-sm font-black text-slate-900 dark:text-[#F8FAFC] uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" /> Live Call Notes &amp; Disposition
                     </h2>
                     
                     <div className="flex-1 flex flex-col gap-4">
-                      <div className="flex-1 bg-slate-50 rounded-2xl border border-slate-100 p-4 relative">
+                      <div className="flex-1 bg-slate-50 dark:bg-[#172033] rounded-2xl border border-slate-100 dark:border-white/10 p-4 relative">
                         <textarea
                           placeholder="Type notes here during the call..."
                           value={notes}
                           onChange={e => setNotes(e.target.value)}
-                          className="w-full h-full bg-transparent resize-none outline-none text-sm font-medium text-slate-700"
+                          className="w-full h-full bg-transparent resize-none outline-none text-sm font-medium text-slate-800 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B]"
                         />
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Call Outcome</label>
+                          <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase mb-1">Call Outcome</label>
                           <CustomSelect
                             value={outcome}
                             onChange={setOutcome}
                             options={OUTCOME_OPTIONS}
                             placeholder="Select Outcome"
+                            triggerClassName="h-[46px] rounded-xl text-xs dark:bg-[#172033] dark:text-[#F8FAFC] dark:border-white/10"
                           />
                         </div>
                         <div className="flex items-end">
                           <button
                             onClick={saveOutcome}
                             disabled={callStatus !== "ended" || isSavingOutcome}
-                            className="w-full h-[46px] bg-[#0F4FA8] hover:bg-blue-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:bg-slate-300 shadow-sm"
+                            className="w-full h-[46px] bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:bg-slate-300 shadow-md cursor-pointer active:scale-95"
                           >
                             {isSavingOutcome ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             Save Call Data
@@ -806,18 +848,18 @@ export default function Dialer() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="h-full flex items-center justify-center p-6 bg-white rounded-3xl shadow-sm border border-slate-200"
+              className="h-full flex items-center justify-center p-6 bg-white dark:bg-[#111827] rounded-[24px] shadow-sm border border-slate-200 dark:border-white/10"
             >
               <div className="text-center max-w-sm">
-                <div className="h-24 w-24 bg-[#0F4FA8]/5 rounded-full flex items-center justify-center mx-auto mb-6 relative">
-                  <div className="absolute inset-0 bg-[#0F4FA8] rounded-full animate-ping opacity-20"></div>
-                  <Ear className="h-10 w-10 text-[#0F4FA8]" />
+                <div className="h-24 w-24 bg-[#2563EB]/10 dark:bg-blue-500/15 border border-[#2563EB]/20 dark:border-blue-500/30 rounded-full flex items-center justify-center mx-auto mb-6 relative shadow-lg shadow-blue-500/10">
+                  <div className="absolute inset-0 bg-[#2563EB] rounded-full animate-ping opacity-20"></div>
+                  <Ear className="h-10 w-10 text-[#2563EB] dark:text-[#60A5FA]" />
                 </div>
-                <h2 className="text-2xl font-black text-slate-800 mb-2">Inbound Queue Active</h2>
-                <p className="text-slate-500 font-medium text-sm">You are currently available to receive incoming manual and AI transferred calls.</p>
-                <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Simulate Incoming Call</p>
-                  <button className="w-full bg-slate-800 text-white font-bold py-2 rounded-xl text-sm hover:bg-slate-900 transition">
+                <h2 className="text-2xl font-black text-slate-900 dark:text-[#F8FAFC] mb-2">Inbound Queue Active</h2>
+                <p className="text-slate-500 dark:text-[#94A3B8] font-medium text-sm">You are currently available to receive incoming manual and AI transferred calls.</p>
+                <div className="mt-8 p-4 bg-slate-50 dark:bg-[#172033] rounded-2xl border border-slate-100 dark:border-white/10">
+                  <p className="text-xs font-bold text-slate-400 dark:text-[#64748B] uppercase tracking-widest mb-2">Simulate Incoming Call</p>
+                  <button className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-extrabold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95 shadow-md">
                     Test Inbound Call
                   </button>
                 </div>
@@ -835,34 +877,34 @@ export default function Dialer() {
               className="h-full flex flex-col gap-6"
             >
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Active Calls</p>
-                  <div className="text-3xl font-black text-[#10B981] flex items-center gap-2">
+                <div className="bg-white dark:bg-[#111827] p-5 rounded-[20px] border border-slate-200 dark:border-white/10 shadow-sm">
+                  <p className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1">Active Calls</p>
+                  <div className="text-3xl font-black text-[#10B981] dark:text-[#34D399] flex items-center gap-2">
                     0 <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse"></span>
                   </div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Agents Online</p>
-                  <div className="text-3xl font-black text-slate-800">12</div>
+                <div className="bg-white dark:bg-[#111827] p-5 rounded-[20px] border border-slate-200 dark:border-white/10 shadow-sm">
+                  <p className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1">Agents Online</p>
+                  <div className="text-3xl font-black text-slate-900 dark:text-[#F8FAFC]">12</div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Manual Calls Today</p>
-                  <div className="text-3xl font-black text-slate-800">145</div>
+                <div className="bg-white dark:bg-[#111827] p-5 rounded-[20px] border border-slate-200 dark:border-white/10 shadow-sm">
+                  <p className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1">Total Manual Calls Today</p>
+                  <div className="text-3xl font-black text-slate-900 dark:text-[#F8FAFC]">145</div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                  <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Avg Handle Time</p>
-                  <div className="text-3xl font-black text-slate-800">2m 14s</div>
+                <div className="bg-white dark:bg-[#111827] p-5 rounded-[20px] border border-slate-200 dark:border-white/10 shadow-sm">
+                  <p className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1">Avg Handle Time</p>
+                  <div className="text-3xl font-black text-slate-900 dark:text-[#F8FAFC]">2m 14s</div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-3xl border border-slate-200 shadow-sm flex-1 p-6 flex flex-col overflow-hidden">
-                <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Headphones className="h-4 w-4 text-[#0F4FA8]" /> Live Agent Monitoring
+              <div className="bg-white dark:bg-[#111827] rounded-[24px] border border-slate-200 dark:border-white/10 shadow-sm flex-1 p-6 flex flex-col overflow-hidden">
+                <h2 className="text-sm font-black text-slate-800 dark:text-[#F8FAFC] uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Headphones className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" /> Live Agent Monitoring
                 </h2>
                 
-                <div className="flex-1 flex items-center justify-center text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-[#64748B] bg-slate-50 dark:bg-[#172033] rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
                   <div className="text-center">
-                    <ListOrdered className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                    <ListOrdered className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
                     <p className="font-bold">No active manual calls right now</p>
                   </div>
                 </div>
@@ -877,15 +919,15 @@ export default function Dialer() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="h-full bg-white rounded-3xl border border-slate-200 shadow-sm p-6 flex flex-col overflow-hidden"
+              className="h-full bg-white dark:bg-[#111827] rounded-[24px] border border-slate-200 dark:border-white/10 shadow-sm p-6 flex flex-col overflow-hidden"
             >
-              <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <History className="h-4 w-4 text-[#0F4FA8]" /> My Recent Manual Calls
+              <h2 className="text-sm font-black text-slate-800 dark:text-[#F8FAFC] uppercase tracking-widest mb-4 flex items-center gap-2">
+                <History className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" /> My Recent Manual Calls
               </h2>
               
               <div className="flex-1 overflow-y-auto">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase tracking-wider sticky top-0">
+                  <thead className="bg-slate-50 dark:bg-[#172033] text-slate-500 dark:text-[#94A3B8] font-bold text-xs uppercase tracking-wider sticky top-0 border-b border-slate-200 dark:border-white/10">
                     <tr>
                       <th className="px-4 py-3 rounded-l-xl">Phone</th>
                       <th className="px-4 py-3">Outcome</th>
@@ -893,9 +935,9 @@ export default function Dialer() {
                       <th className="px-4 py-3 rounded-r-xl">Time</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/10">
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-slate-400 font-medium">
+                      <td colSpan={4} className="px-4 py-8 text-center text-slate-400 dark:text-[#64748B] font-medium">
                         No recent manual calls found.
                       </td>
                     </tr>

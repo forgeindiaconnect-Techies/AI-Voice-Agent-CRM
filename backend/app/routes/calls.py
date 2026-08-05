@@ -760,9 +760,13 @@ async def manual_call_transfer(call_id: str, payload: ManualCallTransferPayload,
 
 @router.post("/{call_id}/manual-end", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def end_manual_call(call_id: str, payload: CallEnd, user: dict = Depends(get_current_user)):
-    call = await calls_col.find_one({"_id": ObjectId(call_id)})
+    query = {"_id": ObjectId(call_id)} if ObjectId.is_valid(call_id) else {"_id": call_id}
+    call = await calls_col.find_one(query)
     if not call:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Call not found")
+        call = await calls_col.find_one({"id": call_id})
+    if not call:
+        # For manual demo calls not yet persisted in DB, synthesize response
+        return {"status": "success", "message": "Manual call session ended", "call_id": call_id}
         
     task = active_call_streams.pop(call_id, None)
     if task:

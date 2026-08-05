@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { CustomSelect } from "./CustomSelect";
+import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
@@ -84,6 +85,7 @@ export default function LeadDetailsDrawer({
   onCall,
   showToast
 }: LeadDetailsDrawerProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"overview" | "disposition" | "timeline">("overview");
   
   // Collapsible section states
@@ -402,58 +404,68 @@ export default function LeadDetailsDrawer({
               {/* TAB 2: DISPOSITION */}
               {activeTab === "disposition" && (
                 <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                  <form onSubmit={handleSaveDisposition} className="bg-white p-3 rounded-[14px] border border-slate-200/80 shadow-xs space-y-3">
-                    <div className="text-[10px] font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1">
-                      <Edit3 className="h-3.5 w-3.5 text-[#0F4FA8]" />
-                      <span>Update Status & Notes</span>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Status Disposition</label>
-                      <CustomSelect
-                        value={status}
-                        onChange={setStatus}
-                        options={DISPOSITION_STATUS_OPTIONS}
-                        placeholder="Select Status"
-                      />
-                    </div>
-
-                    {(status === "follow_up" || status === "in_progress") && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                        <label className="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Follow-up Date & Time</label>
-                        <input
-                          type="datetime-local"
-                          value={followUpDate}
-                          onChange={e => setFollowUpDate(e.target.value)}
-                          className="w-full h-8 bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
-                        />
-                      </motion.div>
-                    )}
-
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <label className="block text-[10px] font-extrabold text-slate-700 uppercase">Call Notes / Summary</label>
-                        <span className={`text-[9px] font-mono font-bold ${notes.length > 450 ? "text-rose-500" : "text-slate-400"}`}>
-                          {notes.length} / 500
-                        </span>
+                  {user?.role === "agent" && lead.status !== "new" ? (
+                    <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 rounded-[14px] p-4 text-xs text-rose-700 dark:text-rose-400 font-bold flex items-start gap-2.5 shadow-sm">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-extrabold uppercase text-[10px] tracking-wider mb-0.5 text-rose-800 dark:text-rose-400">Read-Only Lead</p>
+                        <p className="font-medium text-slate-500 dark:text-slate-400">Agents are only permitted to update the disposition of leads that are in NEW status.</p>
                       </div>
-                      <textarea
-                        rows={4}
-                        maxLength={500}
-                        placeholder="Enter conversation notes or next steps..."
-                        value={notes}
-                        onChange={e => {
-                          setNotes(e.target.value);
-                          if (notesError) setNotesError("");
-                        }}
-                        className={`w-full bg-slate-50 border ${
-                          notesError ? "border-rose-500" : "border-slate-200"
-                        } rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-medium`}
-                      />
-                      {notesError && <p className="text-[10px] font-bold text-rose-600 mt-1">{notesError}</p>}
                     </div>
+                  ) : (
+                    <form onSubmit={handleSaveDisposition} className="bg-white p-3 rounded-[14px] border border-slate-200/80 shadow-xs space-y-3">
+                      <div className="text-[10px] font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-100 pb-1">
+                        <Edit3 className="h-3.5 w-3.5 text-[#0F4FA8]" />
+                        <span>Update Status & Notes</span>
+                      </div>
 
-                  </form>
+                      <div>
+                        <label className="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Status Disposition</label>
+                        <CustomSelect
+                          value={status}
+                          onChange={setStatus}
+                          options={DISPOSITION_STATUS_OPTIONS}
+                          placeholder="Select Status"
+                        />
+                      </div>
+
+                      {(status === "follow_up" || status === "in_progress") && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                          <label className="block text-[10px] font-extrabold text-slate-700 uppercase mb-1">Follow-up Date & Time</label>
+                          <input
+                            type="datetime-local"
+                            value={followUpDate}
+                            onChange={e => setFollowUpDate(e.target.value)}
+                            className="w-full h-8 bg-slate-50 border border-slate-200 rounded-xl px-2.5 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
+                          />
+                        </motion.div>
+                      )}
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-[10px] font-extrabold text-slate-700 uppercase">Call Notes / Summary</label>
+                          <span className={`text-[9px] font-mono font-bold ${notes.length > 450 ? "text-rose-500" : "text-slate-400"}`}>
+                            {notes.length} / 500
+                          </span>
+                        </div>
+                        <textarea
+                          rows={4}
+                          maxLength={500}
+                          placeholder="Enter conversation notes or next steps..."
+                          value={notes}
+                          onChange={e => {
+                            setNotes(e.target.value);
+                            if (notesError) setNotesError("");
+                          }}
+                          className={`w-full bg-slate-50 border ${
+                            notesError ? "border-rose-500" : "border-slate-200"
+                          } rounded-xl p-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-medium`}
+                        />
+                        {notesError && <p className="text-[10px] font-bold text-rose-600 mt-1">{notesError}</p>}
+                      </div>
+
+                    </form>
+                  )}
                 </motion.div>
               )}
 
@@ -521,8 +533,8 @@ export default function LeadDetailsDrawer({
 
                 <button
                   onClick={() => handleSaveDisposition()}
-                  disabled={isSubmitting}
-                  className="h-8 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white rounded-xl text-[11px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs disabled:opacity-50"
+                  disabled={isSubmitting || (user?.role === "agent" && lead.status !== "new")}
+                  className="h-8 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white rounded-xl text-[11px] font-extrabold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Save Disposition"
                 >
                   {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}

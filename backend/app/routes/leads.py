@@ -69,10 +69,36 @@ async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user
     
     doc["lead_id"] = gen_lead_id()
     doc["status"] = LeadStatus.NEW
-    doc["assigned_agent_id"] = None
-    doc["supervisor_id"] = _uid(user) if user.get("role") == Role.TEAM_LEADER else None
     doc["created_by"] = _uid(user)
     doc["created_at"] = utcnow()
+    doc["ai_score"] = doc.get("ai_score") or 85
+
+    # Enforce Role-Based lead assignment rules
+    if user.get("role") == Role.AGENT:
+        # Agents can create Manual Leads and assign them to their own assigned pool only.
+        user_pool = user.get("pool_id")
+        if payload.pool_id != user_pool:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Agents can only create leads within their assigned pool.")
+        
+        doc["assigned_agent_id"] = _uid(user)
+        doc["supervisor_id"] = user.get("supervisor_id")
+        
+        # Store metadata: Agent ID, Agent Name, Branch ID, Pool ID, Role, and Timestamp
+        doc["agent_id"] = _uid(user)
+        doc["agent_name"] = user.get("name")
+        doc["branch_id"] = user.get("branch_id") or "HQ"
+        doc["pool_id"] = user_pool
+        doc["role"] = user.get("role")
+        doc["timestamp"] = doc["created_at"]
+    else:
+        doc["assigned_agent_id"] = None
+        doc["supervisor_id"] = _uid(user) if user.get("role") == Role.TEAM_LEADER else None
+        # Preserve standard audit context for admin/TL
+        doc["agent_id"] = None
+        doc["agent_name"] = None
+        doc["branch_id"] = user.get("branch_id") or "HQ"
+        doc["role"] = user.get("role")
+        doc["timestamp"] = doc["created_at"]
     
     result = await leads_col.insert_one(doc)
     doc["_id"] = result.inserted_id
@@ -312,8 +338,16 @@ async def bulk_status_leads(payload: LeadBulkStatus, user: dict = Depends(get_cu
     or_conditions.append({"lead_id": {"$in": lead_ids}})
     or_conditions.append({"id": {"$in": lead_ids}})
 
+    db_query = {"$or": or_conditions}
+    if user.get("role") == Role.AGENT:
+        uid = _uid(user)
+        owner_condition = {"$or": [{"assigned_agent_id": uid}, {"created_by": uid}]}
+        # Agent can only edit NEW leads
+        status_condition = {"status": "new"}
+        db_query = {"$and": [db_query, owner_condition, status_condition]}
+
     result = await leads_col.update_many(
-        {"$or": or_conditions},
+        db_query,
         {
             "$set": {
                 "status": payload.status,
@@ -367,6 +401,22 @@ async def list_imports():
 
 @router.patch("/{lead_id}/disposition", dependencies=[Depends(require_roles(Role.AGENT, Role.TEAM_LEADER, Role.ADMIN))])
 async def update_disposition(lead_id: str, payload: DispositionUpdate, user: dict = Depends(get_current_user)):
+    query = {"_id": ObjectId(lead_id)} if ObjectId.is_valid(lead_id) else {"lead_id": lead_id}
+    lead = await leads_col.find_one(query)
+    if not lead:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Lead '{lead_id}' not found")
+
+    if user.get("role") == Role.AGENT:
+        uid = _uid(user)
+        is_owner = (lead.get("assigned_agent_id") == uid) or (lead.get("created_by") == uid)
+        if not is_owner:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "You do not have permission to update this lead")
+        
+        # Verify status is new
+        current_status = lead.get("status")
+        if current_status != "new" and current_status != LeadStatus.NEW:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Agents can only edit leads in NEW status")
+
     update = {"status": payload.status, "updated_at": utcnow()}
     if payload.sub_disposition:
         update["sub_disposition"] = payload.sub_disposition
@@ -375,7 +425,6 @@ async def update_disposition(lead_id: str, payload: DispositionUpdate, user: dic
     if payload.follow_up_at:
         update["follow_up_at"] = payload.follow_up_at
         
-    query = {"_id": ObjectId(lead_id)} if ObjectId.is_valid(lead_id) else {"lead_id": lead_id}
     await leads_col.update_one(query, {"$set": update})
 
     await audit_logs_col.insert_one({
@@ -396,10 +445,17 @@ async def get_lead(lead_id: str, user: dict = Depends(get_current_user)):
     lead = await leads_col.find_one(query)
     if not lead:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Lead '{lead_id}' not found")
+        
+    if user.get("role") == Role.AGENT:
+        uid = _uid(user)
+        is_owner = (lead.get("assigned_agent_id") == uid) or (lead.get("created_by") == uid)
+        if not is_owner:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Access to this lead is restricted")
+
     return oid_str(lead)
 
 
-@router.delete("/{lead_id}", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+@router.delete("/{lead_id}", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def delete_lead(lead_id: str, user: dict = Depends(get_current_user)):
     """Permanently delete a lead document from MongoDB by ObjectId or lead_id string."""
     if not lead_id or not lead_id.strip():

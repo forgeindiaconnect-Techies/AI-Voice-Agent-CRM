@@ -119,34 +119,58 @@ function Sparkline({ color = "#0F4FA8" }: { color?: string }) {
   );
 }
 
-// Indeterminate Checkbox Component for Table Header
-function IndeterminateCheckbox({
+// Custom Premium Branded Checkbox
+function CustomCheckbox({
   checked,
   indeterminate,
   onChange,
-  className = ""
+  size = 22,
+  isHeader = false,
 }: {
   checked: boolean;
-  indeterminate: boolean;
+  indeterminate?: boolean;
   onChange: () => void;
-  className?: string;
+  size?: number;
+  isHeader?: boolean;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.indeterminate = indeterminate;
-    }
-  }, [indeterminate]);
-
   return (
-    <input
-      ref={ref}
-      type="checkbox"
-      checked={checked}
-      onChange={onChange}
-      className={className}
-    />
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange();
+      }}
+      className="relative flex items-center justify-center shrink-0 cursor-pointer select-none transition-all duration-220 group/cb"
+      style={{ width: size, height: size }}
+    >
+      <div
+        className={`w-full h-full rounded-[8px] flex items-center justify-center transition-all duration-220 border-2 ${
+          checked || indeterminate
+            ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] border-transparent shadow-[0_8px_22px_rgba(37,99,235,0.35)] scale-100"
+            : "bg-[#1A2438] border-[rgba(59,130,246,0.30)] hover:bg-[#2563EB]/12 hover:border-[#2563EB] hover:scale-108"
+        }`}
+        style={
+          isHeader && !(checked || indeterminate)
+            ? {
+                borderColor: "rgba(59, 130, 246, 0.4)",
+                backgroundImage: "linear-gradient(#1A2438, #1A2438), linear-gradient(135deg, #2563EB, #FACC15)",
+                backgroundClip: "content-box, border-box",
+                backgroundOrigin: "border-box",
+              }
+            : undefined
+        }
+      >
+        {checked && (
+          <Check className="text-white h-3.5 w-3.5 stroke-[3] scale-100 transition-transform duration-200" />
+        )}
+        {!checked && indeterminate && (
+          <span className="h-0.5 w-2.5 bg-white rounded-xs" />
+        )}
+      </div>
+
+      {checked && (
+        <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#FACC15] border border-white dark:border-[#111827] animate-pulse" />
+      )}
+    </div>
   );
 }
 
@@ -224,6 +248,7 @@ export default function Leads() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
@@ -235,6 +260,18 @@ export default function Leads() {
   const [showImportSection, setShowImportSection] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
+
+  // Prevent background scrolling when manual lead modal is open
+  useEffect(() => {
+    if (showManualModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showManualModal]);
 
   // Stepper file upload states
   const [file, setFile] = useState<File | null>(null);
@@ -274,7 +311,8 @@ export default function Leads() {
     pincode: "",
     company_name: "",
     priority: "medium",
-    notes: ""
+    notes: "",
+    assigned_agent_id: ""
   });
   const [manualFormTouched, setManualFormTouched] = useState<Record<string, boolean>>({});
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
@@ -563,6 +601,18 @@ export default function Leads() {
       };
 
       const createdLead = await api.post("/api/leads", payload);
+      
+      if (manualForm.assigned_agent_id) {
+        try {
+          await api.patch("/api/leads/bulk-assign", {
+            lead_ids: [createdLead.id || createdLead._id],
+            agent_id: manualForm.assigned_agent_id
+          });
+        } catch (err) {
+          console.error("Failed to assign agent to new lead:", err);
+        }
+      }
+
       showToast("New customer lead added successfully!", "success");
       setShowManualModal(false);
       
@@ -586,7 +636,8 @@ export default function Leads() {
         pincode: "",
         company_name: "",
         priority: "medium",
-        notes: ""
+        notes: "",
+        assigned_agent_id: ""
       });
       setManualFormTouched({});
 
@@ -662,6 +713,23 @@ export default function Leads() {
       loadData();
     } catch (err: any) {
       showToast(err.message || "Bulk assignment failed.", "error");
+    }
+  }
+
+  async function handleAssignAgentInline(leadId: string, agentId: string) {
+    const targetAgentId = agentId === "unassigned" ? "" : agentId;
+    const selectedAgentObj = users.find(u => u.id === targetAgentId || u.employee_id === targetAgentId);
+    const agentName = selectedAgentObj?.name || "Unassigned";
+
+    try {
+      await api.patch("/api/leads/bulk-assign", {
+        lead_ids: [leadId],
+        agent_id: targetAgentId
+      });
+      showToast(`Lead assigned successfully to ${agentName}.`, "success");
+      loadData();
+    } catch (err: any) {
+      showToast(err.message || "Failed to assign agent.", "error");
     }
   }
 
@@ -788,11 +856,34 @@ export default function Leads() {
     return [{ value: "", label: "-- Choose Target Agent --" }, ...list];
   }, [agentsList]);
 
+  const inlineAgentOptions = useMemo(() => {
+    const list = agentsList.map(a => ({
+      value: a.id,
+      label: a.name
+    }));
+    return [{ value: "unassigned", label: "Unassigned" }, ...list];
+  }, [agentsList]);
+
+  const manualAgentOptions = useMemo(() => {
+    const list = agentsList.map(a => ({
+      value: a.id,
+      label: `${a.name} (${a.employee_id || "Agent"})`
+    }));
+    if (user?.role === "agent") {
+      return list.filter(a => a.value === user.id);
+    }
+    return list;
+  }, [agentsList, user]);
+
   const manualPoolOptions = useMemo(() => {
-    return pools.map(p => ({
+    const list = pools.map(p => ({
       value: p.id,
       label: p.name.replace(/_/g, " ").toUpperCase()
     }));
+    if (user?.role === "agent") {
+      return list.filter(p => p.value === user.pool_id);
+    }
+    return list;
   }, [pools]);
 
   const purposeOptions = [
@@ -866,30 +957,30 @@ export default function Leads() {
     const error = getFieldError(field);
     const value = (manualForm as any)[field];
     return (
-      <div className="relative group w-full text-left">
-        <input
-          type={type}
-          maxLength={maxLength}
-          placeholder={placeholder}
-          value={value}
-          onChange={e => handleFieldChange(field, e.target.value)}
-          onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
-          className={`peer w-full h-[48px] pt-4.5 pb-1 px-3 border rounded-xl bg-slate-50/40 text-xs font-bold text-slate-800 transition duration-200 group-hover:border-slate-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/5 ${
-            error
-              ? "border-rose-300 focus:border-rose-400 focus:ring-rose-500/5"
-              : value && !manualFormErrors[field]
-              ? "border-emerald-300 focus:border-[#0F4FA8]"
-              : "border-slate-200/80 focus:border-[#0F4FA8]"
-          }`}
-        />
-        <label className={`absolute left-3 transition-all duration-200 pointer-events-none select-none origin-left text-[10px] font-extrabold uppercase ${
-          value ? "top-1.5 text-slate-400" : "top-3.5 text-xs text-slate-400 peer-focus:top-1.5 peer-focus:text-[10px]"
-        } peer-focus:text-[#0F4FA8] peer-focus:font-black`}>
+      <div className="space-y-1.5 w-full text-left font-sans">
+        <label className="block text-[12px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider pl-1">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
+        <div className="relative">
+          <input
+            type={type}
+            maxLength={maxLength}
+            placeholder={placeholder || " "}
+            value={value}
+            onChange={e => handleFieldChange(field, e.target.value)}
+            onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
+            className={`w-full h-[52px] px-4 border rounded-[14px] bg-white dark:bg-[#0F172A] text-[14px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#94A3B8] focus:outline-none transition-all duration-250 ${
+              error
+                ? "border-rose-400 dark:border-rose-500 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10"
+                : value && !manualFormErrors[field]
+                ? "border-emerald-400 dark:border-emerald-500/60 focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+                : "border-[#CBD5E1] dark:border-white/[0.08] focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+            }`}
+          />
+        </div>
         {error && (
-          <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1 pl-1">
-            <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+          <p className="text-[11px] text-[#EF4444] font-semibold mt-1 flex items-center gap-1 pl-1">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{error}</span>
           </p>
         )}
@@ -907,8 +998,8 @@ export default function Leads() {
     const error = getFieldError(field);
     const value = (manualForm as any)[field];
     return (
-      <div className="space-y-1 w-full text-left">
-        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide pl-1">
+      <div className="space-y-1.5 w-full text-left font-sans">
+        <label className="block text-[12px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider pl-1">
           {label} <span className="text-rose-500">*</span>
         </label>
         <CustomSelect
@@ -924,17 +1015,17 @@ export default function Leads() {
           options={options}
           placeholder={placeholder}
           searchable={true}
-          triggerClassName={`h-[48px] rounded-xl text-xs font-bold text-slate-800 ${
+          triggerClassName={`h-[52px] rounded-[14px] text-[14px] font-semibold border transition-all duration-250 bg-white dark:bg-[#0F172A] ${
             error
-              ? "border-rose-300 ring-2 ring-rose-500/5"
+              ? "border-rose-400 dark:border-rose-500 ring-4 ring-rose-500/10"
               : value
-              ? "border-emerald-300"
-              : "border-slate-200"
+              ? "border-emerald-400 dark:border-emerald-500/60"
+              : "border-[#CBD5E1] dark:border-white/[0.08]"
           }`}
         />
         {error && (
-          <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1.5 pl-1">
-            <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+          <p className="text-[11px] text-[#EF4444] font-semibold mt-1 flex items-center gap-1.5 pl-1">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{error}</span>
           </p>
         )}
@@ -954,8 +1045,8 @@ export default function Leads() {
     const error = getFieldError(field);
     const value = (manualForm as any)[field];
     return (
-      <div className="space-y-1 w-full text-left">
-        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide pl-1">
+      <div className="space-y-1.5 w-full text-left font-sans">
+        <label className="block text-[12px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider pl-1">
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
         <textarea
@@ -965,17 +1056,17 @@ export default function Leads() {
           value={value}
           onChange={customChange || (e => handleFieldChange(field, e.target.value))}
           onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
-          className={`w-full border rounded-xl px-3 py-2 bg-slate-50/40 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none resize-none overflow-hidden transition ${
+          className={`w-full border rounded-[14px] px-4 py-3.5 bg-white dark:bg-[#0F172A] text-[14px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none overflow-hidden transition-all duration-250 placeholder-[#94A3B8] focus:ring-4 focus:ring-[#2563EB]/10 focus:border-[#2563EB] ${
             error
-              ? "border-rose-300 focus:ring-4 focus:ring-rose-500/5 focus:border-rose-400"
+              ? "border-rose-400 dark:border-rose-500 focus:ring-rose-500/10 focus:border-rose-500"
               : value && !manualFormErrors[field]
-              ? "border-emerald-200 focus:ring-4 focus:ring-blue-500/5 focus:border-[#0F4FA8]"
-              : "border-slate-200 focus:ring-4 focus:ring-blue-500/5 focus:border-[#0F4FA8]"
+              ? "border-emerald-400 dark:border-emerald-500/60 focus:border-[#2563EB]"
+              : "border-[#CBD5E1] dark:border-white/[0.08] focus:border-[#2563EB]"
           }`}
         />
         {error && (
-          <p className="text-[10px] text-rose-500 font-semibold mt-1 flex items-center gap-1.5 pl-1">
-            <AlertCircle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+          <p className="text-[11px] text-[#EF4444] font-semibold mt-1 flex items-center gap-1.5 pl-1">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{error}</span>
           </p>
         )}
@@ -1048,23 +1139,32 @@ export default function Leads() {
               </button>
 
               {isManager && (
-                <>
-                  <button
-                    onClick={() => setShowImportSection(!showImportSection)}
-                    className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
-                  >
-                    <UploadCloud className="h-4 w-4 text-[#0F4FA8]" />
-                    <span>Import CSV</span>
-                  </button>
+                <button
+                  onClick={() => setShowImportSection(!showImportSection)}
+                  className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
+                >
+                  <UploadCloud className="h-4 w-4 text-[#0F4FA8]" />
+                  <span>Import CSV</span>
+                </button>
+              )}
 
-                  <button
-                    onClick={() => setShowManualModal(true)}
-                    className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-blue-500/25 active:scale-95 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Lead</span>
-                  </button>
-                </>
+              {(isManager || user?.role === "agent") && (
+                <button
+                  onClick={() => {
+                    if (user?.role === "agent") {
+                      setManualForm(prev => ({
+                        ...prev,
+                        pool_id: user.pool_id || "",
+                        assigned_agent_id: user.id
+                      }));
+                    }
+                    setShowManualModal(true);
+                  }}
+                  className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-blue-500/25 active:scale-95 cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Lead</span>
+                </button>
               )}
 
               <button
@@ -1228,45 +1328,45 @@ export default function Leads() {
       {/* 4. MAIN LEADS MANAGEMENT CONTENT (FULL WIDTH TOOLBAR & TABLE) */}
       <div className="space-y-4">
 
-        {/* FILTER TOOLBAR BAR WITH FULL WIDTH SCROLLABLE STATUS CHIPS (NORMAL PAGE FLOW) */}
-        <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-4 shadow-sm border border-slate-200/80 space-y-4">
+        {/* FILTER TOOLBAR BAR WITH FULL WIDTH SCROLLABLE STATUS CHIPS */}
+        <div className="bg-white dark:bg-[#111827] backdrop-blur-md rounded-[24px] p-5 shadow-sm dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/10 space-y-4">
           
-          {/* Top Row: Search Input & Dropdowns */}
+          {/* Top Row: Search Input & Dropdowns (Height 52px) */}
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-            {/* Search Bar (50-60% width on desktop) */}
+            {/* Search Bar (Full width / flex-1) */}
             <div className="relative flex-1 w-full">
-              <Search className="h-5 w-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+              <Search className="h-4.5 w-4.5 text-slate-400 dark:text-[#64748B] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="AI Search leads by name, phone, email, ID... (Ctrl + K)"
+                placeholder="AI Search leads by name, phone, email, ID..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-12 pr-20 border border-slate-200 rounded-[16px] text-xs bg-slate-50/50 backdrop-blur-xs font-semibold text-slate-800 transition-all duration-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-[#0F4FA8] focus:ring-4 focus:ring-blue-500/10 shadow-sm"
+                className="w-full h-[52px] pl-11 pr-20 border border-slate-200 dark:border-white/10 rounded-[14px] text-xs font-semibold bg-slate-50/80 dark:bg-[#111827] text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] transition-all duration-200 focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20"
               />
               {searchQuery ? (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
               ) : (
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5 px-2 py-0.5 border border-slate-200 rounded-md text-[10px] text-slate-400 bg-white font-mono shadow-2xs font-extrabold select-none pointer-events-none">
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-0.5 px-2 py-1 border border-slate-200 dark:border-white/10 rounded-md text-[10px] text-slate-400 dark:text-[#64748B] bg-white dark:bg-[#172033] font-mono font-extrabold select-none pointer-events-none">
                   Ctrl K
                 </span>
               )}
             </div>
 
-            {/* Filter Dropdowns */}
+            {/* Filter Dropdowns (Height 52px, Radius 14px, Equal width on mobile) */}
             <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
               <CustomSelect
                 value={poolFilter}
                 onChange={setPoolFilter}
                 options={poolFilterOptions}
                 placeholder="All Pools"
-                className="w-full sm:w-36 shrink-0"
-                triggerClassName="h-12 rounded-[16px] text-xs"
+                className="w-full sm:w-44 shrink-0"
+                triggerClassName="h-[52px] rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#111827] dark:text-[#F8FAFC] hover:border-[#2563EB] transition-all duration-200"
               />
 
               {isManager && (
@@ -1275,8 +1375,8 @@ export default function Leads() {
                   onChange={setAgentFilter}
                   options={agentFilterOptions}
                   placeholder="All Agents"
-                  className="w-full sm:w-36 shrink-0"
-                  triggerClassName="h-12 rounded-[16px] text-xs"
+                  className="w-full sm:w-44 shrink-0"
+                  triggerClassName="h-[52px] rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#111827] dark:text-[#F8FAFC] hover:border-[#2563EB] transition-all duration-200"
                 />
               )}
 
@@ -1285,14 +1385,14 @@ export default function Leads() {
                 onChange={setPriorityFilter}
                 options={priorityFilterOptions}
                 placeholder="All Priorities"
-                className="w-full sm:w-36 shrink-0"
-                triggerClassName="h-12 rounded-[16px] text-xs"
+                className="w-full sm:w-44 shrink-0"
+                triggerClassName="h-[52px] rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#111827] dark:text-[#F8FAFC] hover:border-[#2563EB] transition-all duration-200"
               />
 
               {(searchQuery || statusFilter || poolFilter || agentFilter || priorityFilter || quickChipFilter !== "all") && (
                 <button
                   onClick={resetFilters}
-                  className="h-12 px-4 text-xs font-black text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100/80 border border-red-200/50 rounded-[16px] transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95 animate-fade-in"
+                  className="h-[52px] px-4 text-xs font-black text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-[14px] transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
                 >
                   <X className="h-4 w-4" />
                   <span>Reset</span>
@@ -1301,12 +1401,12 @@ export default function Leads() {
             </div>
           </div>
 
-          {/* Bottom Row: Full-Width Scrollable Status Chips Bar */}
-          <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 relative">
+          {/* Bottom Row: Premium Segmented Status Filter Chips (Height 46px, Radius 999px) */}
+          <div className="pt-2 border-t border-slate-100 dark:border-white/10 flex items-center gap-2 relative">
             {showScrollLeft && (
               <button
                 onClick={() => handleScrollTabs("left")}
-                className="h-8 w-8 rounded-xl bg-white hover:bg-[#0F4FA8] hover:text-white text-slate-700 transition flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 active:scale-95 z-10"
+                className="h-9 w-9 rounded-full bg-white dark:bg-[#172033] hover:bg-[#2563EB] hover:text-white text-slate-700 dark:text-[#F8FAFC] transition flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 dark:border-white/10 active:scale-95 z-10"
                 title="Scroll Left"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -1317,7 +1417,7 @@ export default function Leads() {
               ref={tabsRef}
               onWheel={handleWheelTabs}
               onScroll={checkScrollability}
-              className="flex items-center gap-2 overflow-x-auto scroll-smooth w-full py-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+              className="flex items-center gap-4 overflow-x-auto scroll-smooth w-full py-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             >
               {[
                 { id: "all", label: "All Leads" },
@@ -1339,15 +1439,17 @@ export default function Leads() {
                       if (chip.id === "all") setStatusFilter("");
                       else setStatusFilter(chip.id);
                     }}
-                    className={`px-4 py-2.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-2 active:scale-95 ${
+                    className={`h-[46px] px-5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-2.5 active:scale-95 ${
                       isActive
-                        ? "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] text-white shadow-md shadow-blue-900/10"
-                        : "bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900 border border-slate-200/40"
+                        ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
+                        : "bg-slate-100 dark:bg-[#111827] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200/80 dark:hover:bg-[#172033] hover:-translate-y-0.5 border border-slate-200/60 dark:border-white/10"
                     }`}
                   >
                     <span>{chip.label}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                      isActive ? "bg-white/20 text-white" : "bg-slate-200/85 text-slate-500"
+                    <span className={`h-6 px-2.5 rounded-full font-black text-[11px] flex items-center justify-center ${
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-200 dark:bg-[#172033] text-slate-700 dark:text-[#F8FAFC]"
                     }`}>
                       {count}
                     </span>
@@ -1359,7 +1461,7 @@ export default function Leads() {
             {showScrollRight && (
               <button
                 onClick={() => handleScrollTabs("right")}
-                className="h-8 w-8 rounded-xl bg-white hover:bg-[#0F4FA8] hover:text-white text-slate-700 transition flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 active:scale-95 z-10"
+                className="h-9 w-9 rounded-full bg-white dark:bg-[#172033] hover:bg-[#2563EB] hover:text-white text-slate-700 dark:text-[#F8FAFC] transition flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 dark:border-white/10 active:scale-95 z-10"
                 title="Scroll Right"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -1367,64 +1469,64 @@ export default function Leads() {
             )}
           </div>
 
-          {/* Bulk Selected Toolbar (Admin & TL / Supervisor only) */}
+          {/* Enterprise Bulk Action Toolbar (Admin & TL / Supervisor only) */}
           {isManager && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/80 backdrop-blur-md border border-slate-200 rounded-[16px] p-4 shadow-lg shadow-slate-900/5 flex flex-col lg:flex-row items-center justify-between gap-4 w-full"
+              className="bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-[16px] p-4 shadow-md flex flex-col lg:flex-row items-center justify-between gap-4 w-full"
             >
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <IndeterminateCheckbox
+                  <CustomCheckbox
                     checked={allPaginatedSelected}
                     indeterminate={isIndeterminate}
                     onChange={toggleSelectAll}
-                    className="h-4.5 w-4.5 text-[#0F4FA8] focus:ring-[#0F4FA8] border-slate-300 rounded cursor-pointer transition"
+                    size={22}
                   />
-                  <span className="text-slate-400 text-xs font-bold select-none">Select Page</span>
+                  <span className="text-slate-500 dark:text-[#94A3B8] text-xs font-bold select-none">Select Page</span>
                 </div>
 
-                <div className="h-5 w-px bg-slate-200" />
+                <div className="h-5 w-px bg-slate-200 dark:bg-white/10" />
 
                 <div className="flex items-center gap-2.5">
-                  <div className={`p-2 rounded-xl transition ${selectedLeadIds.length > 0 ? "bg-blue-50 text-[#0F4FA8]" : "bg-slate-100 text-slate-400"}`}>
+                  <div className={`p-2 rounded-xl transition ${selectedLeadIds.length > 0 ? "bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA]" : "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-[#64748B]"}`}>
                     <CheckSquare className="h-4.5 w-4.5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-slate-800 tracking-tight">
+                      <span className="text-xs font-black text-slate-800 dark:text-[#F8FAFC] tracking-tight">
                         {selectedLeadIds.length} Leads Selected
                       </span>
                       {selectedLeadIds.length > 0 && (
                         <button
                           onClick={() => setSelectedLeadIds([])}
-                          className="text-[10px] font-extrabold text-red-500 hover:text-red-600 transition cursor-pointer"
+                          className="text-[10px] font-extrabold text-rose-500 hover:text-rose-600 transition cursor-pointer"
                         >
                           (Clear)
                         </button>
                       )}
                     </div>
-                    <span className="block text-[10px] text-slate-400 font-semibold">Bulk assignment console</span>
+                    <span className="block text-[10px] text-slate-400 dark:text-[#64748B] font-semibold">Bulk assignment console</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
+              <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
                 <CustomSelect
                   disabled={selectedLeadIds.length === 0}
                   value={assignAgentId}
                   onChange={setAssignAgentId}
                   options={assignAgentOptions}
                   placeholder="-- Choose Target Agent --"
-                  className="w-full sm:w-52 shrink-0 text-xs"
-                  triggerClassName="h-12 rounded-[16px] text-xs"
+                  className="w-full sm:w-56 shrink-0 text-xs"
+                  triggerClassName="h-[52px] rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#111827]"
                 />
 
                 <button
                   disabled={selectedLeadIds.length === 0 || !assignAgentId}
                   onClick={handleBulkAssignAgent}
-                  className="h-12 px-5 bg-amber-400 hover:bg-amber-500 disabled:bg-slate-100 disabled:text-slate-400 text-slate-900 font-extrabold text-xs rounded-[16px] transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 disabled:active:scale-100 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                  className="h-[52px] px-6 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-extrabold text-xs rounded-[14px] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-95 disabled:active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
                 >
                   <UserCheck className="h-4 w-4" />
                   <span>Bulk Assign</span>
@@ -1434,25 +1536,28 @@ export default function Leads() {
           )}
         </div>
 
-        {/* ENTERPRISE LEADS TABLE CARD */}
-        <div className="bg-white/95 backdrop-blur-md rounded-[20px] shadow-sm border border-slate-200/80 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
-                <tr>
+        {/* ── ENTERPRISE LEADS TABLE CARD ── */}
+        <div className="p-5 bg-white dark:bg-[#111827] rounded-[24px] border border-slate-200/80 dark:border-[rgba(255,255,255,0.06)] shadow-xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)] overflow-hidden">
+          <div className="overflow-x-auto rounded-[18px] border border-slate-200/60 dark:border-white/5 custom-scrollbar">
+            <table className="w-full text-sm text-left border-collapse">
+              <thead className="bg-slate-50 dark:bg-gradient-to-b dark:from-[#1B2942] dark:to-[#162033] text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-[0.1em] text-[12px] border-b border-slate-200/80 dark:border-b-white/8 sticky top-0 z-10">
+                <tr className="h-16">
                   {isManager && (
-                    <th className="px-4 py-3.5 w-10">
-                      <IndeterminateCheckbox
-                        checked={allPaginatedSelected}
-                        indeterminate={isIndeterminate}
-                        onChange={toggleSelectAll}
-                        className="h-4 w-4 text-[#0F4FA8] focus:ring-[#0F4FA8] border-slate-300 rounded cursor-pointer"
-                      />
+                    <th className="w-16 min-w-[64px] max-w-[64px] text-center sticky left-0 bg-slate-50 dark:bg-[#1B2942] z-10 border-r border-slate-200/50 dark:border-white/10">
+                      <div className="flex items-center justify-center">
+                        <CustomCheckbox
+                          checked={allPaginatedSelected}
+                          indeterminate={isIndeterminate}
+                          onChange={toggleSelectAll}
+                          size={24}
+                          isHeader={true}
+                        />
+                      </div>
                     </th>
                   )}
                   <th className="px-4 py-3.5">Lead ID</th>
-                  <th className="px-4 py-3.5">Customer & AI Score</th>
-                  <th className="px-4 py-3.5">Phone & Location</th>
+                  <th className="px-4 py-3.5">Customer &amp; AI Score</th>
+                  <th className="px-4 py-3.5">Phone &amp; Location</th>
                   <th className="px-4 py-3.5">Pool</th>
                   <th className="px-4 py-3.5">Assigned Agent</th>
                   <th className="px-4 py-3.5">Priority</th>
@@ -1460,12 +1565,12 @@ export default function Leads() {
                   <th className="px-4 py-3.5 text-right">Quick Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {loading ? (
                   [1, 2, 3, 4, 5].map(i => (
                     <tr key={i} className="animate-pulse">
                       <td colSpan={9} className="px-4 py-4">
-                        <div className="h-4 bg-slate-200 rounded w-full" />
+                        <div className="h-6 bg-slate-200 dark:bg-[#172033] rounded-xl w-full" />
                       </td>
                     </tr>
                   ))
@@ -1474,50 +1579,79 @@ export default function Leads() {
                   const assignedAgent = l.assigned_agent_id ? users.find(u => u.id === l.assigned_agent_id || u.employee_id === l.assigned_agent_id) : undefined;
                   const poolObj = pools.find(p => p.id === l.pool_id || p.name === l.pool_id);
 
+                  // Map Pool Badge Colors
+                  const poolName = (poolObj?.name || l.pool_id || "").toLowerCase();
+                  const poolBadgeClass = poolName.includes("recruitment")
+                    ? "bg-blue-50 dark:bg-[#2563EB]/5 text-[#2563EB] dark:text-[#60A5FA] border-blue-200 dark:border-[#2563EB]/35"
+                    : poolName.includes("credit") || poolName.includes("card") || poolName.includes("sales")
+                    ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-[#FCD34D] border-amber-200 dark:border-amber-500/20"
+                    : "bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-[#A78BFA] border-purple-200 dark:border-purple-500/20";
+
+                  // Map Priority Badge Colors
+                  const priorityVal = (l.priority || "medium").toLowerCase();
+
+                  // Map Status Badge Colors
+                  const statusVal = (l.status || "new").toLowerCase();
+
                   return (
                     <tr
                       key={l.id}
-                      className={`transition-all duration-200 ${
-                        idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
-                      } ${isSelected ? "bg-blue-50/80 font-medium" : "hover:bg-blue-50/40"}`}
+                      onClick={() => toggleSelectLead(l.id)}
+                      className={`h-[86px] transition-all duration-250 cursor-pointer border-l-4 hover:translate-y-[-2px] hover:shadow-[0_4px_12px_rgba(37,99,235,0.08)] ${
+                        idx % 2 === 0
+                          ? "bg-white dark:bg-[#131C2F]"
+                          : "bg-slate-50/40 dark:bg-[#162238]"
+                      } ${
+                        isSelected
+                          ? "border-l-[#2563EB] bg-blue-50/50 dark:bg-gradient-to-r dark:from-[#2563EB]/15 dark:to-transparent shadow-[0_4px_24px_rgba(37,99,235,0.15)] select-row-active"
+                          : "border-l-transparent hover:border-l-[#2563EB] hover:bg-[#2563EB]/5 dark:hover:bg-[#2563EB]/8"
+                      }`}
+                      style={isSelected ? { borderTop: "1px solid rgba(250, 204, 21, 0.4)" } : undefined}
                     >
                       {/* Checkbox (Admin & TL / Supervisor only) */}
                       {isManager && (
-                        <td className="px-4 py-3.5">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelectLead(l.id)}
-                            className="h-4 w-4 text-[#0F4FA8] rounded cursor-pointer"
-                          />
+                        <td className="w-16 min-w-[64px] max-w-[64px] text-center sticky left-0 bg-inherit z-10 border-r border-slate-200/50 dark:border-white/10">
+                          <div className="flex items-center justify-center">
+                            <CustomCheckbox
+                              checked={isSelected}
+                              onChange={() => toggleSelectLead(l.id)}
+                              size={22}
+                            />
+                          </div>
                         </td>
                       )}
 
                       {/* Lead ID */}
                       <td className="px-4 py-3.5">
-                        <span className="font-mono font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md text-[11px]">
+                        <span className="font-mono font-bold text-[#2563EB] dark:text-[#38BDF8] bg-blue-50/80 dark:bg-blue-950/60 border border-blue-200 dark:border-[#38BDF8]/30 px-3 py-1 rounded-full text-[12px] shadow-xs">
                           {l.lead_id}
                         </span>
                       </td>
 
-                      {/* Customer & AI Score */}
+                      {/* Customer & AI Score (56x56 Avatar) */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-[#FFC107] flex items-center justify-center font-black text-xs shadow-2xs shrink-0 border border-blue-400/30">
-                            {l.name[0]?.toUpperCase() || "C"}
+                          <div className="relative group/avatar">
+                            <div className="h-[56px] w-[56px] rounded-[18px] bg-gradient-to-tr from-[#1D4ED8] via-[#2563EB] to-[#3B82F6] text-[#FACC15] flex items-center justify-center font-black text-base shadow-[0_8px_20px_rgba(37,99,235,0.25)] border-t-2 border-l-2 border-r-2 border-b-2 border-l-[#2563EB] border-t-[#2563EB] border-r-[#FACC15] border-b-[#FACC15] shrink-0 hover:scale-106 hover:-translate-y-0.5 transition-all duration-200">
+                              {l.name[0]?.toUpperCase() || "C"}
+                            </div>
+                            <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full bg-[#10B981] border-2 border-white dark:border-[#131C2F] shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
                           </div>
                           <div className="min-w-0">
                             <div 
-                              onClick={() => setDrawerLead(l)}
-                              className="font-extrabold text-slate-900 hover:text-[#0F4FA8] cursor-pointer transition text-xs truncate"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDrawerLead(l);
+                              }}
+                              className="font-bold text-[16px] text-slate-900 dark:text-white hover:text-[#2563EB] dark:hover:text-[#60A5FA] cursor-pointer transition truncate"
                             >
                               {l.name}
                             </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <div className="h-1.5 w-12 bg-slate-200 rounded-full overflow-hidden">
-                                <div className="h-full bg-emerald-500" style={{ width: `${l.ai_score || 85}%` }} />
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <div className="h-2 w-20 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-gradient-to-r from-[#10B981] to-[#06B6D4] rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" style={{ width: `${l.ai_score || 85}%` }} />
                               </div>
-                              <span className="text-[10px] font-bold text-emerald-600 font-mono">{l.ai_score || 85}% AI</span>
+                              <span className="text-[12px] font-bold text-emerald-600 dark:text-[#34D399] font-mono shadow-[0_0_8px_rgba(52,211,153,0.15)]">{l.ai_score || 85}% AI</span>
                             </div>
                           </div>
                         </div>
@@ -1525,88 +1659,115 @@ export default function Leads() {
 
                       {/* Phone & Location */}
                       <td className="px-4 py-3.5">
-                        <div className="font-extrabold text-slate-800 text-xs">{l.phone}</div>
-                        <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
-                          <MapPin className="h-3 w-3 text-slate-300" />
-                          <span>{l.location || (l.extra?.state ? `${l.extra.district ? l.extra.district + ', ' : ''}${l.extra.state}` : '') || "N/A"}</span>
+                        <div className="font-semibold text-slate-900 dark:text-white text-[15px]">{l.phone}</div>
+                        <div className="text-[12px] text-slate-400 dark:text-[#94A3B8]/60 font-medium flex items-center gap-1 mt-1">
+                          <MapPin className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#60A5FA] shrink-0" />
+                          <span className="truncate max-w-[150px]">{l.location || (l.extra?.state ? `${l.extra.district ? l.extra.district + ', ' : ''}${l.extra.state}` : '') || "N/A"}</span>
                         </div>
                       </td>
 
-                      {/* Pool */}
+                      {/* Pool Badge */}
                       <td className="px-4 py-3.5">
-                        <span className="bg-slate-100 text-slate-700 font-extrabold text-[10px] px-2 py-0.5 rounded-md uppercase tracking-wider border border-slate-200">
+                        <span className="font-bold text-[10px] px-3.5 py-1.5 rounded-full uppercase tracking-wider border border-[#2563EB]/35 bg-[#2563EB]/5 text-[#2563EB] dark:text-[#60A5FA] hover:shadow-[0_0_12px_rgba(37,99,235,0.2)] transition-all duration-200">
                           {poolObj?.name.replace(/_/g, " ") || "No Pool"}
                         </span>
                       </td>
 
                       {/* Assigned Agent */}
-                      <td className="px-4 py-3.5">
-                        {assignedAgent ? (
-                          <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                            <span className="font-bold text-slate-800 text-xs">{assignedAgent.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 font-semibold italic">Unassigned</span>
-                        )}
+                      <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
+                        <CustomSelect
+                          disabled={user?.role === "agent"}
+                          value={l.assigned_agent_id || "unassigned"}
+                          onChange={(newAgentId) => handleAssignAgentInline(l.id, newAgentId)}
+                          options={inlineAgentOptions}
+                          triggerClassName="h-[38px] min-w-[130px] rounded-full text-xs font-bold border-slate-200/80 dark:border-white/10 dark:bg-[#111827]"
+                          placeholder="Unassigned"
+                        />
                       </td>
 
                       {/* Priority */}
                       <td className="px-4 py-3.5">
-                        <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${
-                          l.priority === "high"
-                            ? "bg-rose-50 border-rose-200 text-rose-700"
-                            : l.priority === "low"
-                            ? "bg-slate-100 border-slate-200 text-slate-600"
-                            : "bg-amber-50 border-amber-200 text-amber-700"
+                        <span className={`text-[10px] font-bold uppercase px-3.5 py-1.5 rounded-full border tracking-wider ${
+                          priorityVal === "high"
+                            ? "bg-[#EF4444]/12 border-[#EF4444]/35 text-[#EF4444] shadow-[0_0_10px_rgba(239,68,68,0.2)]"
+                            : priorityVal === "low"
+                            ? "bg-[#10B981]/12 border-[#10B981]/30 text-[#10B981]"
+                            : "bg-[#F59E0B]/12 border-[#F59E0B]/30 text-[#F59E0B]"
                         }`}>
                           {l.priority || "Medium"}
                         </span>
                       </td>
 
-                      {/* Status Pill */}
+                      {/* Status */}
                       <td className="px-4 py-3.5">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider ${
-                          STATUS_COLORS[l.status] || "bg-slate-100 text-slate-600"
+                        <span className={`px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1.5 w-fit ${
+                          statusVal === "qualified"
+                            ? "bg-[#10B981]/15 border-[#10B981]/30 text-[#34D399]"
+                            : statusVal === "in_progress" || statusVal === "follow_up"
+                            ? "bg-[#F59E0B]/15 border-[#F59E0B]/30 text-[#FBBF24]"
+                            : statusVal === "closed" || statusVal === "not_interested"
+                            ? "bg-slate-800/80 border-slate-700 text-[#94A3B8]"
+                            : "bg-[#2563EB]/15 border-[#2563EB]/30 text-[#60A5FA]"
                         }`}>
-                          {(l.status || "new").replace("_", " ")}
+                          <span className={`h-1.5 w-1.5 rounded-full ${
+                            statusVal === "qualified"
+                              ? "bg-[#34D399]"
+                              : statusVal === "in_progress" || statusVal === "follow_up"
+                              ? "bg-[#FBBF24]"
+                              : statusVal === "closed" || statusVal === "not_interested"
+                              ? "bg-[#94A3B8]"
+                              : "bg-[#60A5FA]"
+                          } animate-pulse`} />
+                          <span>{(l.status || "new").replace("_", " ")}</span>
                         </span>
                       </td>
 
-                      {/* Quick Actions Toolbar */}
+                      {/* Quick Actions (48x48 rounded-16 buttons with glow) */}
                       <td className="px-4 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => setDrawerLead(l)}
-                            className="p-1.5 text-slate-500 hover:text-[#0F4FA8] hover:bg-blue-50 rounded-lg transition cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDrawerLead(l);
+                            }}
+                            className="h-12 w-12 flex items-center justify-center rounded-[16px] bg-slate-100/80 dark:bg-white/5 hover:bg-[#2563EB]/10 hover:border-[#2563EB]/40 text-slate-600 dark:text-[#94A3B8] hover:text-[#2563EB] border border-slate-200/80 dark:border-white/10 hover:scale-105 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(37,99,235,0.15)] transition-all duration-200 active:scale-95 cursor-pointer"
                             title="View Profile Drawer"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-5 w-5" />
                           </button>
 
                           <button
-                            onClick={() => handleCallCustomer(l)}
-                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCallCustomer(l);
+                            }}
+                            className="h-12 w-12 flex items-center justify-center rounded-[16px] bg-slate-100/80 dark:bg-white/5 hover:bg-[#10B981]/10 hover:border-[#10B981]/40 text-slate-600 dark:text-[#94A3B8] hover:text-[#10B981] border border-slate-200/80 dark:border-white/10 hover:scale-105 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(16,185,129,0.15)] transition-all duration-200 active:scale-95 cursor-pointer"
                             title="Call Customer"
                           >
-                            <Phone className="h-4 w-4" />
+                            <Phone className="h-5 w-5" />
                           </button>
 
                           <button
-                            onClick={() => showToast(`Opening WhatsApp chat with ${l.phone}...`, "info")}
-                            className="p-1.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              showToast(`Opening WhatsApp chat with ${l.phone}...`, "info");
+                            }}
+                            className="h-12 w-12 flex items-center justify-center rounded-[16px] bg-slate-100/80 dark:bg-white/5 hover:bg-cyan-500/10 hover:border-cyan-500/40 text-slate-600 dark:text-[#94A3B8] hover:text-cyan-500 border border-slate-200/80 dark:border-white/10 hover:scale-105 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(6,182,212,0.15)] transition-all duration-200 active:scale-95 cursor-pointer"
                             title="Send WhatsApp Message"
                           >
-                            <MessageSquare className="h-4 w-4" />
+                            <MessageSquare className="h-5 w-5" />
                           </button>
 
                           {isManager && (
                             <button
-                              onClick={() => setLeadToDelete(l)}
-                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLeadToDelete(l);
+                              }}
+                              className="h-12 w-12 flex items-center justify-center rounded-[16px] bg-slate-100/80 dark:bg-white/5 hover:bg-[#EF4444]/10 hover:border-[#EF4444]/40 text-slate-600 dark:text-[#94A3B8] hover:text-[#EF4444] border border-slate-200/80 dark:border-white/10 hover:scale-105 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(239,68,68,0.15)] transition-all duration-200 active:scale-95 cursor-pointer"
                               title="Delete Lead"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
                             </button>
                           )}
                         </div>
@@ -1619,26 +1780,26 @@ export default function Leads() {
           </div>
 
           {/* Pagination Controls */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs">
-            <span className="text-slate-500 font-medium">
+          <div className="p-5 border-t border-slate-100 dark:border-white/10 bg-slate-50/50 dark:bg-[#131C2F]/80 flex justify-between items-center text-xs font-semibold text-slate-500 dark:text-[#94A3B8]">
+            <span>
               Showing {paginatedLeads.length} of {filteredLeads.length} leads
             </span>
 
-            <div className="flex items-center gap-2 font-bold">
+            <div className="flex items-center gap-3 font-bold">
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className="px-3 py-1.5 border rounded-xl bg-white disabled:opacity-40 cursor-pointer hover:bg-slate-100"
+                className="px-4 py-2 border border-slate-200 dark:border-white/5 rounded-[12px] bg-white dark:bg-[#131C2F] text-slate-800 dark:text-[#F8FAFC] disabled:opacity-40 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2563EB]/10 dark:hover:border-[#2563EB]/30 transition hover:shadow-[0_0_12px_rgba(37,99,235,0.15)]"
               >
                 Previous
               </button>
 
-              <span className="px-2 font-mono">{currentPage} / {totalPages}</span>
+              <span className="px-3 py-2 bg-slate-100 dark:bg-[#1B2740] rounded-[10px] font-mono text-slate-800 dark:text-[#F8FAFC] border border-slate-200/50 dark:border-white/5">{currentPage} / {totalPages}</span>
 
               <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className="px-3 py-1.5 border rounded-xl bg-white disabled:opacity-40 cursor-pointer hover:bg-slate-100"
+                className="px-4 py-2 border border-slate-200 dark:border-white/5 rounded-[12px] bg-white dark:bg-[#131C2F] text-slate-800 dark:text-[#F8FAFC] disabled:opacity-40 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2563EB]/10 dark:hover:border-[#2563EB]/30 transition hover:shadow-[0_0_12px_rgba(37,99,235,0.15)]"
               >
                 Next
               </button>
@@ -1669,158 +1830,173 @@ export default function Leads() {
       {/* MANUAL LEAD ENTRY MODAL */}
       <AnimatePresence>
         {showManualModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-sans">
+          <div className="fixed inset-0 z-50 bg-[#000000]/65 backdrop-blur-[10px] flex items-center justify-center p-4 md:p-6 font-sans overflow-hidden">
+            <style dangerouslySetInnerHTML={{__html: `
+              .custom-lead-scroll::-webkit-scrollbar { width: 6px; }
+              .custom-lead-scroll::-webkit-scrollbar-track { background: #0B1220; border-radius: 9999px; }
+              .custom-lead-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #2563EB, #FACC15); border-radius: 9999px; }
+            `}} />
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              className="bg-white rounded-[24px] p-6 max-w-4xl w-full shadow-2xl space-y-4 border border-slate-100"
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              style={{ width: "1180px", maxWidth: "95vw", maxHeight: "90vh" }}
+              className="bg-white dark:bg-[#131C2F] rounded-[24px] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.45)] border border-[#E2E8F0] dark:border-white/[0.08] relative overflow-hidden flex flex-col space-y-6"
             >
-              {/* Header */}
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3.5">
+              {/* Gradient top border (perfectly straight 4px height) */}
+              <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#2563EB] to-[#FACC15] z-30" />
+
+              {/* Header (sticky at top) */}
+              <div className="flex justify-between items-center border-b border-[#E2E8F0] dark:border-white/[0.06] pb-5 shrink-0">
                 <div>
-                  <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
-                    <UserPlus className="h-5 w-5 text-[#0F4FA8]" />
+                  <h3 className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-[30px] leading-tight flex items-center gap-3">
+                    <div className="h-[46px] w-[46px] rounded-[14px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.25)]">
+                      <UserPlus className="h-5 w-5" />
+                    </div>
                     <span>Add Customer Lead</span>
                   </h3>
-                  <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Enterprise customer registration & pipeline classification</p>
+                  <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-2 pl-[58px]">Enterprise customer registration &amp; pipeline classification</p>
                 </div>
-                <button onClick={() => setShowManualModal(false)} className="p-1 hover:bg-slate-100 rounded-lg cursor-pointer transition-colors duration-200">
-                  <X className="h-5 w-5 text-slate-400" />
+                <button 
+                  onClick={() => setShowManualModal(false)} 
+                  className="h-9 w-9 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 rounded-full cursor-pointer transition-all duration-200 text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white shrink-0"
+                >
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
               {/* Form body */}
-              <form onSubmit={handleCreateManualLead} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-1.5 select-none custom-scrollbar">
+              <form onSubmit={handleCreateManualLead} className="flex-1 flex flex-col min-h-0 overflow-hidden space-y-6">
+                
+                {/* 2-Column Responsive Grid (all cards in the same grid so row components align height automatically) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto overflow-x-hidden pr-2 select-none custom-lead-scroll flex-1 pb-2">
                   
-                  {/* LEFT COLUMN */}
-                  <div className="space-y-4">
-                    {/* Card 1: Profile Information */}
-                    <div className="bg-slate-50/40 backdrop-blur-xs border border-slate-100 rounded-[20px] p-5 space-y-4 shadow-sm hover:shadow transition-shadow duration-300">
-                      <div className="flex items-center gap-2 border-b border-slate-100/50 pb-3">
-                        <div className="p-1.5 bg-[#0F4FA8]/5 text-[#0F4FA8] rounded-lg">
-                          <UserPlus className="h-4.5 w-4.5" />
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-slate-800 text-[10.5px] uppercase tracking-wider">Profile Information</h4>
-                          <p className="text-[9.5px] text-slate-400 font-bold">Primary contact identity and enterprise association</p>
-                        </div>
+                  {/* Card 1: Profile Information */}
+                  <div className="bg-[#F8FAFC] dark:bg-[#18243A] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[16px] p-6 space-y-6 shadow-sm hover:shadow-[0_12px_40px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-250 relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
+                    <div className="flex items-center gap-3 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-3.5 shrink-0">
+                      <div className="h-[52px] w-[52px] rounded-[16px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)] ring-2 ring-[#FACC15]/30">
+                        <UserPlus className="h-5 w-5" />
                       </div>
-                      <div className="space-y-3.5">
-                        {renderTextInput("name", "Customer Name", "text", " ", true)}
-                        <div>
-                          <PhoneInput
-                            required
-                            value={manualForm.phone}
-                            onChange={(fullVal) => {
-                              setManualForm(prev => ({ ...prev, phone: fullVal }));
-                              setManualFormTouched(prev => ({ ...prev, phone: true }));
-                            }}
-                            error={getFieldError("phone")}
-                            label="Phone Number"
-                            inputClassName="h-[48px]"
-                          />
-                        </div>
-                        {renderTextInput("email", "Email ID", "email", " ", true)}
-                        {renderTextInput("company_name", "Company Name (Optional)", "text", " ", false)}
+                      <div>
+                        <h4 className="font-bold text-[#0F172A] dark:text-white text-[18px] leading-tight">Profile Information</h4>
+                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Primary contact identity and enterprise association</p>
                       </div>
                     </div>
-
-                    {/* Card 2: Lead Details */}
-                    <div className="bg-slate-50/40 backdrop-blur-xs border border-slate-100 rounded-[20px] p-5 space-y-4 shadow-sm hover:shadow transition-shadow duration-300">
-                      <div className="flex items-center gap-2 border-b border-slate-100/50 pb-3">
-                        <div className="p-1.5 bg-[#0F4FA8]/5 text-[#0F4FA8] rounded-lg">
-                          <Target className="h-4.5 w-4.5 animate-pulse" />
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-slate-800 text-[10.5px] uppercase tracking-wider">Lead Details</h4>
-                          <p className="text-[9.5px] text-slate-400 font-bold">Pipeline classification and routing settings</p>
-                        </div>
+                    <div className="space-y-[18px] flex-1 flex flex-col justify-center">
+                      {renderTextInput("name", "Customer Name", "text", " ", true)}
+                      <div>
+                        <PhoneInput
+                          required
+                          value={manualForm.phone}
+                          onChange={(fullVal) => {
+                            setManualForm(prev => ({ ...prev, phone: fullVal }));
+                            setManualFormTouched(prev => ({ ...prev, phone: true }));
+                          }}
+                          error={getFieldError("phone")}
+                          label="Phone Number"
+                          inputClassName="h-[52px] rounded-[14px]"
+                        />
                       </div>
-                      <div className="space-y-3.5">
-                        {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool")}
-                        {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
-                        {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
-                        {renderSelectInput("priority", "Priority", priorityOptions, "Select Priority")}
-                      </div>
+                      {renderTextInput("email", "Email ID", "email", " ", true)}
+                      {renderTextInput("company_name", "Company Name (Optional)", "text", " ", false)}
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN */}
-                  <div className="space-y-4">
-                    {/* Card 3: Location */}
-                    <div className="bg-slate-50/40 backdrop-blur-xs border border-slate-100 rounded-[20px] p-5 space-y-4 shadow-sm hover:shadow transition-shadow duration-300">
-                      <div className="flex items-center gap-2 border-b border-slate-100/50 pb-3">
-                        <div className="p-1.5 bg-[#0F4FA8]/5 text-[#0F4FA8] rounded-lg">
-                          <MapPin className="h-4.5 w-4.5" />
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-slate-800 text-[10.5px] uppercase tracking-wider">Location</h4>
-                          <p className="text-[9.5px] text-slate-400 font-bold">Operational address and locality details</p>
-                        </div>
-                      </div>
-                      <div className="space-y-3.5">
-                        <div>
-                          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wide pl-1 mb-1">
-                            Country <span className="text-slate-400">(Read-Only)</span>
-                          </label>
-                          <input
-                            readOnly
-                            value="India"
-                            className="w-full h-[48px] border border-slate-200 rounded-xl px-3 bg-slate-100/80 text-xs font-bold text-slate-400 select-none cursor-not-allowed focus:outline-none"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3.5">
-                          {renderSelectInput("state", "State", stateOptions, "Select State")}
-                          {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
-                        </div>
-                        {renderTextInput("pincode", "Pincode", "text", " ", true, 6)}
-                        {renderTextareaInput("address", "Address", "Street address, building, local area...", true, 1, addressRef, handleAddressChange)}
-                      </div>
-                    </div>
-
-                    {/* Card 4: Additional Information */}
-                    <div className="bg-slate-50/40 backdrop-blur-xs border border-slate-100 rounded-[20px] p-5 space-y-4 shadow-sm hover:shadow transition-shadow duration-300">
-                      <div className="flex items-center gap-2 border-b border-slate-100/50 pb-3">
-                        <div className="p-1.5 bg-[#0F4FA8]/5 text-[#0F4FA8] rounded-lg">
-                          <FileText className="h-4.5 w-4.5" />
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-slate-800 text-[10.5px] uppercase tracking-wider">Additional Information</h4>
-                          <p className="text-[9.5px] text-slate-400 font-bold">Extra contextual notes and details</p>
-                        </div>
+                  {/* Card 3: Location */}
+                  <div className="bg-[#F8FAFC] dark:bg-[#18243A] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[16px] p-6 space-y-6 shadow-sm hover:shadow-[0_12px_40px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-250 relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
+                    <div className="flex items-center gap-3 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-3.5 shrink-0">
+                      <div className="h-[52px] w-[52px] rounded-[16px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)] ring-2 ring-[#FACC15]/30">
+                        <MapPin className="h-5 w-5" />
                       </div>
                       <div>
-                        {renderTextareaInput("notes", "Notes (Optional)", "Add any extra notes or requirements...", false, 2)}
+                        <h4 className="font-bold text-[#0F172A] dark:text-white text-[18px] leading-tight">Location</h4>
+                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Operational address and locality details</p>
                       </div>
+                    </div>
+                    <div className="space-y-[18px] flex-1 flex flex-col justify-center">
+                      <div className="space-y-1.5 w-full text-left">
+                        <label className="block text-[12px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider pl-1">
+                          Country <span className="text-[#94A3B8] font-semibold normal-case text-[11px]">(Read-Only)</span>
+                        </label>
+                        <input
+                          readOnly
+                          value="India"
+                          className="w-full h-[52px] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[14px] px-4 bg-[#F1F5F9] dark:bg-[#0F172A]/70 text-[14px] font-bold text-[#64748B] dark:text-slate-400 select-none cursor-not-allowed focus:outline-none"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3.5">
+                        {renderSelectInput("state", "State", stateOptions, "Select State")}
+                        {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
+                      </div>
+                      {renderTextInput("pincode", "Pincode", "text", " ", true, 6)}
+                      {renderTextareaInput("address", "Address", "Street address, building, local area...", true, 1, addressRef, handleAddressChange)}
+                    </div>
+                  </div>
+
+                  {/* Card 2: Lead Details */}
+                  <div className="bg-[#F8FAFC] dark:bg-[#18243A] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[16px] p-6 space-y-6 shadow-sm hover:shadow-[0_12px_40px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-250 relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
+                    <div className="flex items-center gap-3 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-3.5 shrink-0">
+                      <div className="h-[52px] w-[52px] rounded-[16px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)] ring-2 ring-[#FACC15]/30">
+                        <Target className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#0F172A] dark:text-white text-[18px] leading-tight">Lead Details</h4>
+                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Pipeline classification and routing settings</p>
+                      </div>
+                    </div>
+                    <div className="space-y-[18px] flex-1 flex flex-col justify-center">
+                      {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool", user?.role === "agent")}
+                      {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
+                      {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
+                      {renderSelectInput("priority", "Priority", priorityOptions, "Select Priority")}
+                      {renderSelectInput("assigned_agent_id", "Assigned Agent (Optional)", manualAgentOptions, "Select Agent", user?.role === "agent")}
+                    </div>
+                  </div>
+
+                  {/* Card 4: Additional Information */}
+                  <div className="bg-[#F8FAFC] dark:bg-[#18243A] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[16px] p-6 space-y-6 shadow-sm hover:shadow-[0_12px_40px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-250 relative overflow-hidden flex flex-col justify-between">
+                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
+                    <div className="flex items-center gap-3 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-3.5 shrink-0">
+                      <div className="h-[52px] w-[52px] rounded-[16px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)] ring-2 ring-[#FACC15]/30">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-[#0F172A] dark:text-white text-[18px] leading-tight">Additional Information</h4>
+                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Extra contextual notes and details</p>
+                      </div>
+                    </div>
+                    <div className="space-y-[18px] flex-1 flex flex-col justify-center">
+                      {renderTextareaInput("notes", "Notes (Optional)", "Add any extra notes or requirements...", false, 4)}
                     </div>
                   </div>
 
                 </div>
 
-                {/* Sticky Footer Actions */}
-                <div className="flex items-center gap-3 pt-4 border-t border-slate-100 bg-white">
+                {/* Sticky Footer Actions (sticky at bottom) */}
+                <div className="flex items-center gap-3 pt-5 border-t border-[#E2E8F0] dark:border-white/[0.06] shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowManualModal(false)}
-                    className="px-6 h-[44px] bg-slate-100/90 hover:bg-slate-200/80 text-slate-700 rounded-xl text-xs font-extrabold transition cursor-pointer active:scale-95 text-center shrink-0"
+                    className="px-7 h-[52px] bg-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#18243A] dark:hover:bg-[#1E2E4A] border border-[#E2E8F0] dark:border-white/[0.08] text-[#0F172A] dark:text-[#F8FAFC] rounded-[14px] text-[13px] font-extrabold transition-all duration-250 cursor-pointer active:scale-95 text-center shrink-0"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingManual || !isManualFormValid}
-                    className={`flex-1 h-[44px] text-white font-extrabold rounded-xl transition cursor-pointer shadow-md flex items-center justify-center gap-2 ${
+                    className={`flex-1 h-[52px] text-white text-[13px] font-extrabold rounded-[14px] transition-all duration-250 cursor-pointer shadow-lg flex items-center justify-center gap-2 ${
                       isSubmittingManual
-                        ? "bg-slate-400 cursor-not-allowed"
+                        ? "bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed"
                         : !isManualFormValid
-                        ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-                        : "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] shadow-blue-500/20 hover:shadow-blue-900/30 active:scale-95"
+                        ? "bg-slate-200 dark:bg-[#18243A] text-[#94A3B8]/50 cursor-not-allowed shadow-none border border-[#E2E8F0] dark:border-white/[0.05]"
+                        : "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] shadow-blue-500/20 hover:shadow-blue-500/35 hover:-translate-y-0.5 active:scale-95 hover:scale-[1.01]"
                     }`}
                   >
-                    {isSubmittingManual && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isSubmittingManual && <Loader2 className="h-4.5 w-4.5 animate-spin" />}
                     {isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}
                   </button>
                 </div>
