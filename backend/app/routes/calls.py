@@ -24,10 +24,15 @@ from app.services.ws_manager import ws_manager
 router = APIRouter(prefix="/api/calls", tags=["calls"])
 
 
+# pyrefly: ignore [missing-import]
 from fastapi import Form
+# pyrefly: ignore [missing-import]
 from fastapi.responses import PlainTextResponse
+# pyrefly: ignore [missing-import]
 from twilio.jwt.access_token import AccessToken
+# pyrefly: ignore [missing-import]
 from twilio.jwt.access_token.grants import VoiceGrant
+# pyrefly: ignore [missing-import]
 from twilio.twiml.voice_response import VoiceResponse, Dial
 import re
 from app.core.config import settings
@@ -271,6 +276,7 @@ async def evaluate_call_quality(call_id: str, payload: CallQualityEvaluation, us
     return {"status": "success"}
 
 
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel
 
 class OutboundSimulationPayload(BaseModel):
@@ -582,6 +588,7 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
     # Actually trigger Twilio call if configured
     twilio_sid = None
     try:
+        # pyrefly: ignore [missing-import]
         from twilio.rest import Client
         from app.core.config import settings
         if hasattr(settings, 'TWILIO_ACCOUNT_SID') and settings.TWILIO_ACCOUNT_SID:

@@ -1165,7 +1165,6 @@ export default function Leads() {
                   <Plus className="h-4 w-4" />
                   <span>Add Lead</span>
                 </button>
-              )}
 
               <button
                 onClick={() => showToast("Exporting leads database CSV...", "info")}

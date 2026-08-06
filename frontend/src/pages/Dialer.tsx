@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Device } from "@twilio/voice-sdk";
 import { CustomPauseIcon } from "../components/CustomPauseIcon";
 import { CustomSelect } from "../components/CustomSelect";
+import LeadDetailsDrawer from "../components/LeadDetailsDrawer";
 import {
   Phone,
   PhoneCall,
@@ -87,9 +88,9 @@ type Lead = {
 export default function Dialer() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  
+
   const [activeTab, setActiveTab] = useState<Tab>("outbound");
-  
+
   // OUTBOUND DIALER STATE
   const [outboundPhone, setOutboundPhone] = useState("");
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
@@ -138,7 +139,7 @@ export default function Dialer() {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaker, setIsSpeaker] = useState(false);
   const [showInCallKeypad, setShowInCallKeypad] = useState(false);
-  
+
   // POST-CALL OUTCOME
   const [outcome, setOutcome] = useState("answered");
   const [notes, setNotes] = useState("");
@@ -158,6 +159,7 @@ export default function Dialer() {
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setIsLoadingLeads(true);
@@ -208,7 +210,7 @@ export default function Dialer() {
 
         device.on("registered", () => setDeviceReady(true));
         device.on("error", (error) => showToast(`Twilio Error: ${error.message}`, "error"));
-        
+
         await device.register();
         deviceRef.current = device;
       } catch (err: any) {
@@ -233,8 +235,8 @@ export default function Dialer() {
 
   const filteredLeads = useMemo(() => {
     return leads.filter(l => {
-      const matchSearch = (l.name || "").toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (l.phone || "").includes(searchQuery);
+      const matchSearch = (l.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.phone || "").includes(searchQuery);
       const matchStatus = statusFilter === "All" || l.status === statusFilter;
       return matchSearch && matchStatus;
     });
@@ -257,6 +259,10 @@ export default function Dialer() {
 
   const handleDial = async () => {
     if (!isValidMobile) return;
+    if (!deviceRef.current || !deviceReady) {
+      showToast("Softphone is not ready yet.", "error");
+      return;
+    }
 
     setIsCreatingLead(true);
     const fullPhoneNumber = `+91${outboundPhone}`;
@@ -298,7 +304,7 @@ export default function Dialer() {
               source: "Manual Dialer",
               status: "new",
               created_at: new Date().toISOString()
-            };
+            } as any;
           }
         } else {
           showToast(err.message || "Failed to create lead", "error");
@@ -331,7 +337,10 @@ export default function Dialer() {
             setCallStatus("connected");
             showToast("Call connected via WebRTC", "success");
           });
-          twilioCall.on("disconnect", () => setCallStatus("ended"));
+          twilioCall.on("disconnect", () => {
+            setCallStatus("ended");
+            handleHangup();
+          });
         } catch (e) {
           console.warn("WebRTC connect error, using CRM manual dial:", e);
         }
@@ -350,7 +359,6 @@ export default function Dialer() {
 
       setCurrentCallId(res.id || res._id || res.call_id || "call_" + Date.now());
 
-
     } catch (err: any) {
       setCallStatus("idle");
       showToast(err.message || "Dialing failed", "error");
@@ -361,12 +369,12 @@ export default function Dialer() {
 
   const handleHangup = async () => {
     if (callStatus === "idle") return;
-    
+
     if (callRef.current) {
       callRef.current.disconnect();
       callRef.current = null;
     }
-    
+
     setCallStatus("ended");
     try {
       if (currentCallId) {
@@ -440,7 +448,7 @@ export default function Dialer() {
   // ----------------------------------------------------
   // RENDER HELPERS
   // ----------------------------------------------------
-  
+
   const renderKeypad = (inCall = false) => (
     <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full max-w-[280px] mx-auto my-4">
       {[
@@ -475,7 +483,6 @@ export default function Dialer() {
               <p className="text-xs text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Unified Comms &amp; Supervisor Station</p>
             </div>
           </div>
-          
           <div className="flex bg-slate-100 dark:bg-[#172033] p-1.5 rounded-2xl border border-slate-200 dark:border-white/10">
             <button
               onClick={() => setActiveTab("outbound")}
@@ -526,7 +533,7 @@ export default function Dialer() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
-          
+
           {/* ---------------- OUTBOUND DIALER TAB ---------------- */}
           {activeTab === "outbound" && (
             <motion.div
@@ -546,7 +553,7 @@ export default function Dialer() {
                     {callStatus === "connected" && <span className="text-xs font-bold text-[#10B981] dark:text-[#34D399] bg-[#10B981]/10 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Connected {formatTime(callDuration)}</span>}
                     {callStatus === "hold" && <span className="text-xs font-bold text-amber-600 dark:text-[#FCD34D] bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-3 py-1 rounded-full flex items-center gap-1"><Pause className="h-3 w-3" /> On Hold {formatTime(callDuration)}</span>}
                   </div>
-                  
+
                   <div className="relative w-full max-w-xs mx-auto mb-2">
                     <input
                       type="text"
@@ -589,9 +596,9 @@ export default function Dialer() {
                 </div>
 
                 {callStatus === "idle" && renderKeypad()}
-                
+
                 {(callStatus === "connected" || callStatus === "hold") && showInCallKeypad && renderKeypad(true)}
-                
+
                 {(callStatus === "connected" || callStatus === "hold") && !showInCallKeypad && (
                   <div className="my-8 w-full">
                     <div className="h-24 w-24 rounded-full bg-[#2563EB]/10 border-4 border-[#2563EB]/20 mx-auto flex items-center justify-center text-[#2563EB] dark:text-[#60A5FA] mb-6">
@@ -758,7 +765,7 @@ export default function Dialer() {
                               <span className="bg-slate-50 dark:bg-[#111827] px-2.5 py-1 rounded-lg border border-slate-100 dark:border-white/5">Src: <strong className="text-slate-700 dark:text-[#F8FAFC]">{lead.source}</strong></span>
                               <span>Added: {formatDate(lead.created_at)}</span>
                             </div>
-                            
+
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleQuickCall(lead.phone)}
@@ -770,7 +777,9 @@ export default function Dialer() {
                               >
                                 <Phone className="h-4 w-4" /> Quick Call
                               </button>
-                              <button className="px-4 py-2.5 bg-slate-100 dark:bg-[#111827] hover:bg-slate-200 dark:hover:bg-[#1F2B45] text-slate-700 dark:text-[#F8FAFC] rounded-xl font-bold text-xs border border-slate-200 dark:border-white/10 transition cursor-pointer">
+                              <button className="px-4 py-2.5 bg-slate-100 dark:bg-[#111827] hover:bg-slate-200 dark:hover:bg-[#1F2B45] text-slate-700 dark:text-[#F8FAFC] rounded-xl font-bold text-xs border border-slate-200 dark:border-white/10 transition cursor-pointer"
+                                onClick={() => setSelectedLead(lead)}
+                              >
                                 Details
                               </button>
                             </div>
@@ -787,7 +796,7 @@ export default function Dialer() {
                     <h2 className="text-sm font-black text-slate-900 dark:text-[#F8FAFC] uppercase tracking-widest mb-4 flex items-center gap-2">
                       <MessageSquare className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" /> Live Call Notes &amp; Disposition
                     </h2>
-                    
+
                     <div className="flex-1 flex flex-col gap-4">
                       <div className="flex-1 bg-slate-50 dark:bg-[#172033] rounded-2xl border border-slate-100 dark:border-white/10 p-4 relative">
                         <textarea
@@ -797,7 +806,7 @@ export default function Dialer() {
                           className="w-full h-full bg-transparent resize-none outline-none text-sm font-medium text-slate-800 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B]"
                         />
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase mb-1">Call Outcome</label>
@@ -852,10 +861,10 @@ export default function Dialer() {
               </div>
             </motion.div>
           )}
-          
+
           {/* ---------------- SUPERVISOR TAB ---------------- */}
           {activeTab === "supervisor" && isSupervisor && (
-             <motion.div
+            <motion.div
               key="supervisor"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -882,7 +891,7 @@ export default function Dialer() {
                   <div className="text-3xl font-black text-slate-900 dark:text-[#F8FAFC]">2m 14s</div>
                 </div>
               </div>
-              
+
               <div className="bg-white dark:bg-[#111827] rounded-[24px] border border-slate-200 dark:border-white/10 shadow-sm flex-1 p-6 flex flex-col overflow-hidden">
                 <h2 className="text-sm font-black text-slate-800 dark:text-[#F8FAFC] uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Headphones className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" /> Live Agent Monitoring
@@ -895,12 +904,12 @@ export default function Dialer() {
                   </div>
                 </div>
               </div>
-             </motion.div>
+            </motion.div>
           )}
 
           {/* ---------------- HISTORY TAB ---------------- */}
           {activeTab === "history" && (
-             <motion.div
+            <motion.div
               key="history"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -910,7 +919,7 @@ export default function Dialer() {
               <h2 className="text-sm font-black text-slate-800 dark:text-[#F8FAFC] uppercase tracking-widest mb-4 flex items-center gap-2">
                 <History className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" /> My Recent Manual Calls
               </h2>
-              
+
               <div className="flex-1 overflow-y-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 dark:bg-[#172033] text-slate-500 dark:text-[#94A3B8] font-bold text-xs uppercase tracking-wider sticky top-0 border-b border-slate-200 dark:border-white/10">
@@ -932,7 +941,20 @@ export default function Dialer() {
               </div>
             </motion.div>
           )}
-          
+
+        {selectedLead && (
+          <LeadDetailsDrawer
+            lead={selectedLead}
+            onClose={() => setSelectedLead(null)}
+            onUpdateDisposition={async (leadId, status, notes, followUpDate) => {
+              await api.patch(`/api/leads/${leadId}/disposition`, { status, notes, follow_up_at: followUpDate });
+              fetchLeads();
+            }}
+            onCall={(lead) => handleQuickCall(lead.phone)}
+            showToast={showToast}
+          />
+        )}
+
         </AnimatePresence>
       </div>
     </div>

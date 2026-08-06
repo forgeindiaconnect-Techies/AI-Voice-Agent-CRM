@@ -2,8 +2,11 @@ import io
 import re
 import pandas as pd
 from typing import Optional
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+# pyrefly: ignore [missing-import]
 from bson import ObjectId
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field
 from app.core.database import leads_col, imports_col, audit_logs_col, users_col
 from app.core.utils import gen_lead_id, gen_import_id, utcnow, oid_str
@@ -49,7 +52,7 @@ def is_valid_email(email_str: str) -> bool:
     return bool(re.match(pattern, email_str))
 
 
-@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user)):
     normalized = normalize_phone(payload.phone)
     if not normalized:

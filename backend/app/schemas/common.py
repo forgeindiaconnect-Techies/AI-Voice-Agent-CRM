@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+# pyright: ignore[reportMissingImports]
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from datetime import datetime
 
