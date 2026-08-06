@@ -1,7 +1,10 @@
 import logging
 import re
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, status
+# pyrefly: ignore [missing-import]
 from bson import ObjectId
+# pyrefly: ignore [missing-import]
 from app.core.database import users_col, supervisors_col, agents_col, audit_logs_col, pool_transfers_col, pools_col
 from app.core.security import hash_password
 from app.core.utils import gen_employee_id, utcnow, oid_str
@@ -123,7 +126,7 @@ async def create_user(payload: UserCreate, admin_user: dict = Depends(get_curren
         )
 
 
-@router.get("", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.get("", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def list_users(user: dict = Depends(get_current_user), role: str | None = None, pool_id: str | None = None):
     query = {}
     if user["role"] == Role.TEAM_LEADER:

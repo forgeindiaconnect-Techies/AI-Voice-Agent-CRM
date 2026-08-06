@@ -99,27 +99,27 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   }[toast.type || "success"];
 
   useEffect(() => {
+    if (progress <= 0) {
+      onClose();
+    }
+  }, [progress, onClose]);
+
+  useEffect(() => {
     if (isPaused) return;
+    if (progress <= 0) return;
 
     const duration = toast.duration || 4000;
     const intervalTime = 30;
     const step = (intervalTime / duration) * 100;
 
     const timer = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev - step;
-        if (next <= 0) {
-          onClose();
-          return 0;
-        }
-        return next;
-      });
+      setProgress((prev) => Math.max(0, prev - step));
     }, intervalTime);
 
     return () => {
       clearInterval(timer);
     };
-  }, [toast.duration, onClose, isPaused]);
+  }, [toast.duration, isPaused, progress]);
 
   return (
     <motion.div

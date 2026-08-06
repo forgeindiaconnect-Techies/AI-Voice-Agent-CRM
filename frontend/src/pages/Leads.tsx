@@ -1048,7 +1048,6 @@ export default function Leads() {
               </button>
 
               {isManager && (
-                <>
                   <button
                     onClick={() => setShowImportSection(!showImportSection)}
                     className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
@@ -1056,16 +1055,15 @@ export default function Leads() {
                     <UploadCloud className="h-4 w-4 text-[#0F4FA8]" />
                     <span>Import CSV</span>
                   </button>
-
-                  <button
-                    onClick={() => setShowManualModal(true)}
-                    className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-blue-500/25 active:scale-95 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Add Lead</span>
-                  </button>
-                </>
               )}
+
+              <button
+                onClick={() => setShowManualModal(true)}
+                className="h-10 px-5 bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs rounded-2xl transition flex items-center justify-center gap-2 shadow-md hover:shadow-blue-500/25 active:scale-95 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Lead</span>
+              </button>
 
               <button
                 onClick={() => showToast("Exporting leads database CSV...", "info")}

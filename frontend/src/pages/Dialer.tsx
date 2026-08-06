@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Device } from "@twilio/voice-sdk";
 import { CustomPauseIcon } from "../components/CustomPauseIcon";
 import { CustomSelect } from "../components/CustomSelect";
+import LeadDetailsDrawer from "../components/LeadDetailsDrawer";
 import {
   Phone,
   PhoneCall,
@@ -158,6 +159,7 @@ export default function Dialer() {
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setIsLoadingLeads(true);
@@ -690,7 +692,7 @@ export default function Dialer() {
                       ) : (
                         filteredLeads.map((lead, idx) => (
                           <div
-                            key={lead._id || lead.id || lead.lead_id || `lead-${idx}`}
+                            key={lead._id || (lead as any).id || (lead as any).lead_id || `lead-${idx}`}
                             className={`bg-white rounded-2xl border ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'border-[#0F4FA8] ring-2 ring-[#0F4FA8]/10' : 'border-slate-200'} p-4 shadow-sm hover:shadow-md transition group`}
                           >
                             <div className="flex justify-between items-start mb-3">
@@ -722,7 +724,9 @@ export default function Dialer() {
                               >
                                 <Phone className="h-4 w-4" /> Quick Call
                               </button>
-                              <button className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl font-bold text-sm border border-slate-200 transition">
+                              <button 
+                                onClick={() => setSelectedLead(lead)}
+                                className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl font-bold text-sm border border-slate-200 transition">
                                 Details
                               </button>
                             </div>
@@ -883,6 +887,19 @@ export default function Dialer() {
               </div>
             </motion.div>
           )}
+
+        {selectedLead && (
+          <LeadDetailsDrawer
+            lead={selectedLead}
+            onClose={() => setSelectedLead(null)}
+            onUpdateDisposition={async (leadId, status, notes, followUpDate) => {
+              await api.patch(`/api/leads/${leadId}/disposition`, { status, notes, follow_up_at: followUpDate });
+              fetchLeads();
+            }}
+            onCall={(lead) => handleQuickCall(lead.phone)}
+            showToast={showToast}
+          />
+        )}
 
         </AnimatePresence>
       </div>
