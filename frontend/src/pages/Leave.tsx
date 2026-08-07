@@ -58,19 +58,26 @@ export default function Leave() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Header Wrapper (Normal Flow) */}
-      <div className="bg-[#f4f6fb] -mx-4 md:-mx-6 px-4 md:px-6 py-2 md:py-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div>
-            <h1 className="text-2xl font-black text-gray-800 tracking-tight flex items-center gap-2">
-              <Calendar className="h-6 w-6 text-forgeBlue" />
-              <span>Leave Approval Console</span>
-            </h1>
-            <p className="text-sm text-gray-500 font-medium">Review and decide on agent shift leave requests</p>
+      <div className="bg-white dark:bg-[#1E293B] p-6 rounded-[16px] shadow-sm border border-slate-200/80 dark:border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200/80 dark:from-amber-500/20 dark:to-amber-500/10 text-[#1D4ED8] dark:text-[#FDE047] flex items-center justify-center font-bold shrink-0 shadow-2xs border border-amber-300/60 dark:border-amber-500/30">
+            <Calendar className="h-6 w-6 text-[#1D4ED8] dark:text-[#FDE047]" />
           </div>
-          <span className="bg-blue-50 text-forgeBlue text-xs font-bold border border-blue-200 px-3 py-1.5 rounded-full flex items-center gap-1.5">
-            <Clock className="h-4 w-4" />
-            <span>{requests.length} Pending</span>
-          </span>
+          <div>
+            <div className="flex items-center gap-3 flex-wrap min-w-0">
+              <div className="flex flex-col items-start">
+                <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Leave Approval</span>
+                  <span className="text-[#F4B400] font-extrabold">Console</span>
+                </h1>
+              </div>
+              <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
+                {requests.length} PENDING
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">Review and decide on agent shift leave requests</p>
+          </div>
         </div>
       </div>
 

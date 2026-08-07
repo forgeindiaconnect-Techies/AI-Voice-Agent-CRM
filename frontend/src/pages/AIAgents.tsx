@@ -309,10 +309,19 @@ export default function AIAgents() {
                 </div>
               </div>
               <div>
-                <h1 className="text-[34px] font-bold text-[#0F172A] dark:text-[#F8FAFC] tracking-tight leading-none">
-                  AI Voice Agents Directory
-                </h1>
-                <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8]/75 font-medium mt-1.5">
+                <div className="flex items-center gap-3 flex-wrap min-w-0">
+                  <div className="flex flex-col items-start">
+                    <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                      <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">AI Voice</span>
+                      <span className="text-[#F4B400] font-extrabold">Agents Directory</span>
+                    </h1>
+                  </div>
+                  <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
+                    NEURAL STUDIO
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">
                   Manage neural speech bots, personas, speech parameters, and live telemetry
                 </p>
               </div>
@@ -686,10 +695,13 @@ export default function AIAgents() {
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#151F32] rounded-[24px] p-6 max-w-lg w-full shadow-2xl space-y-4 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-[#F8FAFC]">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/10 pb-3">
-              <h3 className="font-black text-base flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
-                <span>{editingAgent ? `Edit AI Agent (${editingAgent.agent_id})` : "Create New AI Agent"}</span>
-              </h3>
+              <div className="flex flex-col items-start">
+                <h3 className="text-lg font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <Sparkles className="h-5 w-5 text-[#2563EB] dark:text-[#3B82F6] shrink-0" />
+                  <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">{editingAgent ? "Edit AI" : "Create New"}</span>
+                  <span className="text-[#F4B400] font-extrabold">{editingAgent ? `Agent (${editingAgent.agent_id})` : "AI Agent"}</span>
+                </h3>
+              </div>
               <button onClick={() => setShowCreateModal(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-[#1B2740] rounded-lg">
                 <X className="h-5 w-5 text-slate-400" />
               </button>

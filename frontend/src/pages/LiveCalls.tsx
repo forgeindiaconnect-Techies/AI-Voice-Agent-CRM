@@ -939,16 +939,19 @@ export default function LiveCalls() {
               <Radio className="h-7 w-7 animate-pulse text-white drop-shadow-xs" />
             </div>
             <div>
-              <div className="flex items-center gap-3.5 flex-wrap">
-                <h1 className="text-[34px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">
-                  Live Call Console
-                </h1>
-                <span className="text-[11px] font-extrabold bg-emerald-50 dark:bg-emerald-500/15 text-[#047857] dark:text-[#34D399] border border-[#A7F3D0] dark:border-emerald-500/30 px-3.5 py-1 rounded-full uppercase tracking-wider shadow-xs shadow-emerald-500/10 flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-                  LIVE · 300ms
+              <div className="flex items-center gap-3 flex-wrap min-w-0">
+                <div className="flex flex-col items-start">
+                  <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Live Call</span>
+                    <span className="text-[#F4B400] font-extrabold">Console</span>
+                  </h1>
+                </div>
+                <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
+                  LIVE TELEMETRY
                 </span>
               </div>
-              <p className="text-[13px] font-medium text-slate-500 dark:text-[#94A3B8]/75 mt-1.5">
+              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">
                 Real-time contact center channels &amp; AI telemetry
               </p>
             </div>
@@ -1016,19 +1019,21 @@ export default function LiveCalls() {
                   <button
                     key={chip.id}
                     onClick={() => setChipFilter(chip.id)}
-                    className={`h-[54px] px-6 rounded-[18px] text-xs font-extrabold whitespace-nowrap transition-all duration-250 cursor-pointer shrink-0 flex items-center justify-center gap-2 ${
+                    className={`h-[48px] px-6 rounded-[16px] text-[13.5px] font-semibold whitespace-nowrap transition-all duration-200 ease-in-out cursor-pointer shrink-0 flex items-center justify-center gap-3 active:scale-95 ${
                       chipFilter === chip.id
-                        ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white font-black shadow-md shadow-blue-500/25 scale-[1.03]"
-                        : "bg-slate-100 dark:bg-[#18243A] text-slate-600 dark:text-[#94A3B8]/80 border border-slate-200/60 dark:border-white/10 hover:bg-slate-200/80 dark:hover:bg-[#202F4B] hover:text-slate-900 dark:hover:text-white hover:-translate-y-0.5"
+                        ? "bg-gradient-to-r from-[#FACC15] to-[#EAB308] text-slate-950 font-semibold shadow-[0_4px_16px_rgba(234,179,8,0.3)] border border-amber-300/40 scale-[1.01]"
+                        : "bg-white dark:bg-[#182233] text-slate-700 dark:text-[#F8FAFC] border border-amber-200/80 dark:border-amber-500/20 hover:bg-amber-50/70 dark:hover:bg-amber-500/10 hover:border-amber-300 dark:hover:border-amber-500/40 hover:-translate-y-0.5 shadow-xs"
                     }`}
                   >
                     <span>{chip.label}</span>
                     {count > 0 && (
-                      <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] ${
-                        chipFilter === chip.id
-                          ? "bg-white/20 text-white"
-                          : "bg-slate-200 dark:bg-[#131C2F] text-slate-700 dark:text-[#94A3B8]"
-                      }`}>
+                      <span
+                        className={`h-6.5 min-w-[26px] px-2 rounded-full font-bold text-[11px] flex items-center justify-center ${
+                          chipFilter === chip.id
+                            ? "bg-amber-700/20 text-slate-950 shadow-2xs"
+                            : "bg-amber-100/90 dark:bg-amber-500/15 text-amber-900 dark:text-[#FDE047]"
+                        }`}
+                      >
                         {count}
                       </span>
                     )}

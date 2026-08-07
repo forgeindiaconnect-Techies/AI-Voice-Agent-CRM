@@ -610,17 +610,20 @@ export default function Users() {
                 <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[#10B981] border-2 border-white dark:border-[#111827] shadow-xs z-20 animate-pulse" />
               </div>
 
-              <div className="space-y-1.5 min-w-0">
-                <div className="flex items-center gap-3.5 flex-wrap">
-                  <h1 className="text-[34px] font-bold text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none truncate">
-                    Team Agent Directory
-                  </h1>
-                  <span className="text-xs font-mono font-extrabold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200 dark:border-blue-500/30 px-3.5 py-1 rounded-full uppercase tracking-wider shadow-xs shadow-blue-500/10 flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-[#2563EB] dark:bg-[#60A5FA] animate-ping" />
-                    <span>{myAgents.length} MAPPED AGENTS</span>
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap min-w-0">
+                  <div className="flex flex-col items-start">
+                    <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                      <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Team Agent</span>
+                      <span className="text-[#F4B400] font-extrabold">Directory</span>
+                    </h1>
+                  </div>
+                  <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
+                    {myAgents.length} MAPPED AGENTS
                   </span>
                 </div>
-                <p className="text-[13px] text-slate-500 dark:text-[#94A3B8]/75 font-medium tracking-tight truncate leading-tight">
+                <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">
                   Monitor active workloads, agent status, and submit transfer requests
                 </p>
               </div>
@@ -665,7 +668,7 @@ export default function Users() {
                           idx % 2 === 0
                             ? "bg-white dark:bg-[#111827]"
                             : "bg-slate-50/50 dark:bg-[#151F32]"
-                        } hover:bg-blue-50/50 dark:hover:bg-[#1C2740] hover:-translate-y-0.5 hover:border-l-4 hover:border-l-[#2563EB] transition-all duration-250 group`}
+                        } hover:bg-amber-50/40 dark:hover:bg-[#1C2740] hover:-translate-y-0.5 hover:border-l-4 hover:border-l-[#F4B400] transition-all duration-250 group`}
                       >
                         <td className="px-5 py-4 font-mono font-bold text-xs">
                           <span className="bg-slate-100 dark:bg-[#172033] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-[#94A3B8] px-3 py-1.5 rounded-full font-extrabold shadow-2xs">
@@ -968,10 +971,16 @@ export default function Users() {
                   <UsersIcon className="h-6 w-6 text-[#2563EB] dark:text-[#60A5FA]" />
                 </div>
                 <div>
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">Registered Personnel</h2>
-                    <span className="text-[11px] font-extrabold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200 dark:border-blue-500/30 px-3 py-1 rounded-full uppercase tracking-wider">
-                      {users.filter(u => u.is_active).length} Active Personnel
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-col items-start">
+                      <h2 className="text-lg sm:text-xl lg:text-[22px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                        <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Registered</span>
+                        <span className="text-[#F4B400] font-extrabold">Personnel</span>
+                      </h2>
+                    </div>
+                    <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
+                      {users.filter(u => u.is_active).length} ACTIVE PERSONNEL
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-[#94A3B8] font-semibold mt-1">Manage team directory, roles, pool assignments, and security accounts</p>
@@ -1071,7 +1080,7 @@ export default function Users() {
                             isNewlyCreated
                               ? "bg-emerald-50/90 dark:bg-emerald-500/20 font-semibold"
                               : "bg-white dark:bg-[#111827]"
-                          } hover:bg-blue-50/50 dark:hover:bg-[#1C2740] hover:border-l-4 hover:border-l-[#2563EB] group`}
+                          } hover:bg-amber-50/40 dark:hover:bg-[#1C2740] hover:border-l-4 hover:border-l-[#F4B400] group`}
                         >
                           {/* Employee ID */}
                           <td className="px-5 py-4">
@@ -1088,7 +1097,14 @@ export default function Users() {
                                 <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#111827]" />
                               </div>
                               <div className="flex flex-col">
-                                <span className="font-black text-slate-900 dark:text-[#F8FAFC] text-sm leading-tight">{u.name}</span>
+                                <span className="font-black text-sm leading-tight flex items-center gap-1.5">
+                                  <span className="text-[#1D4ED8] dark:text-[#3B82F6]">
+                                    {u.role === "team_leader" ? "Supervisor" : u.role === "admin" ? "Admin" : "Agent"}
+                                  </span>
+                                  <span className="text-[#F4B400]">
+                                    {u.name}
+                                  </span>
+                                </span>
                                 <span className="text-[11px] font-semibold text-slate-400 dark:text-[#64748B]">{u.email}</span>
                               </div>
                             </div>
@@ -1113,9 +1129,9 @@ export default function Users() {
                           {/* Pool Pill */}
                           <td className="px-5 py-4">
                             {poolObj ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-[#818CF8] border border-indigo-200 dark:border-indigo-500/30 uppercase">
-                                <Layers className="h-3.5 w-3.5" />
-                                <span>{poolObj.name === "credit_card_sales" ? "SALES" : poolObj.name.replace(/_/g, " ")}</span>
+                              <span className="inline-flex items-center gap-2 px-[14px] py-[6px] rounded-[12px] text-xs font-semibold bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/15 dark:to-indigo-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200/80 dark:border-blue-500/30 shadow-2xs">
+                                <Layers className="h-3.5 w-3.5 shrink-0 text-[#2563EB] dark:text-[#60A5FA]" />
+                                <span>{poolObj.name === "credit_card_sales" ? "Sales Team" : poolObj.name.replace(/_/g, " ")}</span>
                               </span>
                             ) : (
                               <span className="text-[11px] font-semibold text-slate-400 dark:text-[#64748B] italic">No Pool Assigned</span>
@@ -1191,9 +1207,10 @@ export default function Users() {
       {activeTab === "pools" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
           <div className="bg-white dark:bg-[#111827] backdrop-blur-xl rounded-[20px] p-6 shadow-md border border-slate-200/80 dark:border-white/10 h-fit lg:col-span-1 space-y-4">
-            <h2 className="text-base font-black text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+            <h2 className="text-base font-black tracking-tight flex items-center gap-2">
               <Folder className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
-              <span>Create Call Pool</span>
+              <span className="text-[#1D4ED8] dark:text-[#3B82F6]">Create </span>
+              <span className="text-[#F4B400]">Call Pool</span>
             </h2>
             <form onSubmit={handleCreatePool} className="space-y-4 text-xs font-semibold">
               <div>
@@ -1225,9 +1242,10 @@ export default function Users() {
           </div>
 
           <div className="bg-white dark:bg-[#111827] backdrop-blur-xl rounded-[20px] p-6 shadow-md border border-slate-200/80 dark:border-white/10 lg:col-span-2 space-y-4">
-            <h2 className="text-base font-black text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+            <h2 className="text-base font-black tracking-tight flex items-center gap-2">
               <Layers className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
-              <span>Active System Pools</span>
+              <span className="text-[#1D4ED8] dark:text-[#3B82F6]">Active </span>
+              <span className="text-[#F4B400]">System Pools</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {pools.map(p => (

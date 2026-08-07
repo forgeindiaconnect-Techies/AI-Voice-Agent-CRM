@@ -460,12 +460,12 @@ export default function LiveCallModal({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 flex-1 items-center">
+                  <div className="grid grid-cols-3 gap-2.5 flex-1 items-center">
                     {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
                       <button
                         key={digit}
                         onClick={() => onSendDTMF(digit)}
-                        className="bg-slate-900 border border-slate-800 hover:bg-slate-800 active:bg-blue-600 text-white font-black h-11 w-full rounded-xl flex items-center justify-center transition text-sm shadow-sm"
+                        className="bg-slate-900 border-2 border-blue-500/30 hover:border-[#60A5FA] dark:hover:shadow-[0_0_14px_rgba(59,130,246,0.4)] active:scale-95 active:bg-gradient-to-br active:from-[#1D4ED8] active:via-[#2563EB] active:to-[#F4B400] text-white font-extrabold h-11 w-full rounded-full flex items-center justify-center transition-all duration-200 text-sm shadow-sm cursor-pointer"
                       >
                         {digit}
                       </button>

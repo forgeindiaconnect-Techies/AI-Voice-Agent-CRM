@@ -450,7 +450,7 @@ export default function Dialer() {
   // ----------------------------------------------------
 
   const renderKeypad = (inCall = false) => (
-    <div className="grid grid-cols-3 gap-3 sm:gap-4 w-full max-w-[280px] mx-auto my-4">
+    <div className="grid grid-cols-3 gap-3 sm:gap-4.5 w-full max-w-[300px] mx-auto my-5">
       {[
         { d: "1", l: "" }, { d: "2", l: "ABC" }, { d: "3", l: "DEF" },
         { d: "4", l: "GHI" }, { d: "5", l: "JKL" }, { d: "6", l: "MNO" },
@@ -460,10 +460,16 @@ export default function Dialer() {
         <button
           key={key.d}
           onClick={() => handleKeypadPress(key.d)}
-          className="h-[64px] w-[64px] sm:h-[70px] sm:w-[70px] mx-auto flex flex-col items-center justify-center rounded-full bg-slate-100 dark:bg-[#172033] hover:bg-blue-50 dark:hover:bg-blue-500/20 active:scale-95 transition-all duration-200 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-[#F8FAFC] shadow-sm hover:border-blue-500/40 cursor-pointer"
+          className="h-[68px] w-[68px] sm:h-[72px] sm:w-[72px] mx-auto flex flex-col items-center justify-center rounded-full bg-white dark:bg-[#151F32] border-2 border-blue-200/80 dark:border-blue-500/30 hover:border-[#F4B400]/70 dark:hover:border-[#60A5FA]/80 shadow-sm hover:shadow-[0_4px_22px_rgba(244,180,0,0.35)] dark:hover:shadow-[0_0_24px_rgba(59,130,246,0.45)] hover:scale-[1.04] active:scale-95 active:bg-gradient-to-br active:from-[#1D4ED8] active:via-[#2563EB] active:to-[#F4B400] active:border-transparent active:shadow-[0_0_25px_rgba(244,180,0,0.6)] transition-all duration-200 ease-in-out cursor-pointer group relative overflow-hidden select-none"
         >
-          <span className="text-xl sm:text-2xl font-light leading-none">{key.d}</span>
-          {key.l && <span className="text-[9px] font-extrabold text-slate-400 dark:text-[#64748B] tracking-widest leading-none mt-0.5">{key.l}</span>}
+          <span className="text-2xl sm:text-3xl font-extrabold text-[#123E8A] dark:text-white group-active:text-white leading-none transition-colors duration-150">
+            {key.d}
+          </span>
+          {key.l && (
+            <span className="text-[10px] font-black text-[#F4B400] dark:text-[#FACC15] group-active:text-white/90 tracking-[0.18em] leading-none mt-1 uppercase transition-colors duration-150">
+              {key.l}
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -479,27 +485,38 @@ export default function Dialer() {
               <PhoneCall className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight">Manual Dialer</h1>
-              <p className="text-xs text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Unified Comms &amp; Supervisor Station</p>
+              <div className="flex items-center gap-3 flex-wrap min-w-0">
+                <div className="flex flex-col items-start">
+                  <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Manual</span>
+                    <span className="text-[#F4B400] font-extrabold">Dialer</span>
+                  </h1>
+                </div>
+                <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
+                  UNIFIED COMMS
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">Unified Comms &amp; Supervisor Station</p>
             </div>
           </div>
-          <div className="flex bg-slate-100 dark:bg-[#172033] p-1.5 rounded-2xl border border-slate-200 dark:border-white/10">
+          <div className="h-[52px] flex items-center bg-slate-100/90 dark:bg-[#182233] p-1.5 rounded-[18px] border border-slate-200/80 dark:border-white/10 shadow-inner">
             <button
               onClick={() => setActiveTab("outbound")}
-              className={`px-4 py-2 text-xs font-extrabold rounded-xl transition ${
+              className={`h-[44px] px-5 rounded-[14px] text-xs font-extrabold transition-all duration-200 ease-in-out cursor-pointer shrink-0 whitespace-nowrap flex items-center justify-center gap-2 active:scale-95 ${
                 activeTab === "outbound"
-                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
-                  : "text-slate-500 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-gradient-to-r from-[#FFD54A] to-[#F4B400] text-[#123E8A] shadow-[0_4px_16px_rgba(244,180,0,0.35)] border border-amber-300/50 scale-[1.02]"
+                  : "text-slate-700 dark:text-[#F8FAFC] hover:text-[#123E8A] hover:bg-gradient-to-r hover:from-amber-100/90 hover:to-amber-200/90 dark:hover:from-amber-500/20 dark:hover:to-amber-500/30 hover:-translate-y-0.5"
               }`}
             >
               Outbound
             </button>
             <button
               onClick={() => setActiveTab("inbound")}
-              className={`px-4 py-2 text-xs font-extrabold rounded-xl transition ${
+              className={`h-[44px] px-5 rounded-[14px] text-xs font-extrabold transition-all duration-200 ease-in-out cursor-pointer shrink-0 whitespace-nowrap flex items-center justify-center gap-2 active:scale-95 ${
                 activeTab === "inbound"
-                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
-                  : "text-slate-500 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-gradient-to-r from-[#FFD54A] to-[#F4B400] text-[#123E8A] shadow-[0_4px_16px_rgba(244,180,0,0.35)] border border-amber-300/50 scale-[1.02]"
+                  : "text-slate-700 dark:text-[#F8FAFC] hover:text-[#123E8A] hover:bg-gradient-to-r hover:from-amber-100/90 hover:to-amber-200/90 dark:hover:from-amber-500/20 dark:hover:to-amber-500/30 hover:-translate-y-0.5"
               }`}
             >
               Inbound
@@ -507,10 +524,10 @@ export default function Dialer() {
             {isSupervisor && (
               <button
                 onClick={() => setActiveTab("supervisor")}
-                className={`px-4 py-2 text-xs font-extrabold rounded-xl transition ${
+                className={`h-[44px] px-5 rounded-[14px] text-xs font-extrabold transition-all duration-200 ease-in-out cursor-pointer shrink-0 whitespace-nowrap flex items-center justify-center gap-2 active:scale-95 ${
                   activeTab === "supervisor"
-                    ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
-                    : "text-slate-500 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
+                    ? "bg-gradient-to-r from-[#FFD54A] to-[#F4B400] text-[#123E8A] shadow-[0_4px_16px_rgba(244,180,0,0.35)] border border-amber-300/50 scale-[1.02]"
+                    : "text-slate-700 dark:text-[#F8FAFC] hover:text-[#123E8A] hover:bg-gradient-to-r hover:from-amber-100/90 hover:to-amber-200/90 dark:hover:from-amber-500/20 dark:hover:to-amber-500/30 hover:-translate-y-0.5"
                 }`}
               >
                 Supervisor
@@ -518,10 +535,10 @@ export default function Dialer() {
             )}
             <button
               onClick={() => setActiveTab("history")}
-              className={`px-4 py-2 text-xs font-extrabold rounded-xl transition ${
+              className={`h-[44px] px-5 rounded-[14px] text-xs font-extrabold transition-all duration-200 ease-in-out cursor-pointer shrink-0 whitespace-nowrap flex items-center justify-center gap-2 active:scale-95 ${
                 activeTab === "history"
-                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
-                  : "text-slate-500 dark:text-[#94A3B8] hover:text-slate-900 dark:hover:text-white"
+                  ? "bg-gradient-to-r from-[#FFD54A] to-[#F4B400] text-[#123E8A] shadow-[0_4px_16px_rgba(244,180,0,0.35)] border border-amber-300/50 scale-[1.02]"
+                  : "text-slate-700 dark:text-[#F8FAFC] hover:text-[#123E8A] hover:bg-gradient-to-r hover:from-amber-100/90 hover:to-amber-200/90 dark:hover:from-amber-500/20 dark:hover:to-amber-500/30 hover:-translate-y-0.5"
               }`}
             >
               History
@@ -633,22 +650,50 @@ export default function Dialer() {
                     </div>
                   ) : (
                     <div className="space-y-4 w-full">
-                      <div className="grid grid-cols-4 gap-2">
-                        <button onClick={() => handleAction(isMuted ? "resume" : "mute")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${isMuted ? "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-[#FCD34D]" : "bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200"}`}>
+                      <div className="grid grid-cols-4 gap-2.5">
+                        <button
+                          onClick={() => handleAction(isMuted ? "resume" : "mute")}
+                          className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
+                            isMuted
+                              ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white border-amber-400 shadow-md shadow-amber-500/25"
+                              : "bg-blue-50/90 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#1D4ED8] dark:text-[#60A5FA] hover:bg-[#1D4ED8] hover:text-white dark:hover:bg-[#2563EB] hover:border-transparent"
+                          }`}
+                        >
                           {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                          <span className="text-[10px] font-bold uppercase">Mute</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider">Mute</span>
                         </button>
-                        <button onClick={() => handleAction(callStatus === "hold" ? "resume" : "hold")} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${callStatus === "hold" ? "bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-[#FCD34D]" : "bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200"}`}>
+                        <button
+                          onClick={() => handleAction(callStatus === "hold" ? "resume" : "hold")}
+                          className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
+                            callStatus === "hold"
+                              ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white border-amber-400 shadow-md shadow-amber-500/25"
+                              : "bg-blue-50/90 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#1D4ED8] dark:text-[#60A5FA] hover:bg-[#1D4ED8] hover:text-white dark:hover:bg-[#2563EB] hover:border-transparent"
+                          }`}
+                        >
                           {callStatus === "hold" ? <Play className="h-5 w-5" /> : <CustomPauseIcon size={22} />}
-                          <span className="text-[10px] font-bold uppercase">Hold</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider">Hold</span>
                         </button>
-                        <button onClick={() => setShowInCallKeypad(!showInCallKeypad)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${showInCallKeypad ? "bg-blue-50 dark:bg-blue-500/20 text-[#2563EB] dark:text-[#60A5FA]" : "bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200"}`}>
+                        <button
+                          onClick={() => setShowInCallKeypad(!showInCallKeypad)}
+                          className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
+                            showInCallKeypad
+                              ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white border-blue-400 shadow-md shadow-blue-500/25"
+                              : "bg-blue-50/90 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#1D4ED8] dark:text-[#60A5FA] hover:bg-[#1D4ED8] hover:text-white dark:hover:bg-[#2563EB] hover:border-transparent"
+                          }`}
+                        >
                           <Hash className="h-5 w-5" />
-                          <span className="text-[10px] font-bold uppercase">Keypad</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider">Keypad</span>
                         </button>
-                        <button onClick={() => setIsSpeaker(!isSpeaker)} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition ${isSpeaker ? "bg-blue-50 dark:bg-blue-500/20 text-[#2563EB] dark:text-[#60A5FA]" : "bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200"}`}>
+                        <button
+                          onClick={() => setIsSpeaker(!isSpeaker)}
+                          className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
+                            isSpeaker
+                              ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white border-blue-400 shadow-md shadow-blue-500/25"
+                              : "bg-blue-50/90 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#1D4ED8] dark:text-[#60A5FA] hover:bg-[#1D4ED8] hover:text-white dark:hover:bg-[#2563EB] hover:border-transparent"
+                          }`}
+                        >
                           {isSpeaker ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
-                          <span className="text-[10px] font-bold uppercase">Speaker</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider">Speaker</span>
                         </button>
                       </div>
                       <button
@@ -670,9 +715,13 @@ export default function Dialer() {
                     {/* Workspace Header / Counters */}
                     <div className="flex justify-between items-end mb-4">
                       <div>
-                        <h2 className="text-lg font-black text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
-                          <UserCheck className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" /> Assigned Leads Workspace
-                        </h2>
+                        <div className="flex flex-col items-start">
+                          <h2 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                            <UserCheck className="h-5 w-5 text-[#2563EB] dark:text-[#3B82F6] shrink-0" />
+                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Assigned Leads</span>
+                            <span className="text-[#F4B400] font-extrabold">Workspace</span>
+                          </h2>
+                        </div>
                         <p className="text-xs font-bold text-slate-400 dark:text-[#64748B] uppercase tracking-widest mt-1">Real-time Lead Sync Active</p>
                       </div>
                       <button onClick={fetchLeads} className="p-2 hover:bg-white dark:hover:bg-[#172033] rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-white/10 text-slate-500 dark:text-[#94A3B8] transition cursor-pointer">
@@ -741,7 +790,7 @@ export default function Dialer() {
                         filteredLeads.map((lead, idx) => (
                           <div 
                             key={lead._id || `lead-${idx}`}
-                            className={`bg-white dark:bg-[#172033] rounded-[18px] border ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'border-[#2563EB] ring-2 ring-[#2563EB]/20' : 'border-slate-200 dark:border-white/10'} p-4 shadow-sm hover:shadow-lg dark:hover:shadow-blue-500/10 hover:border-l-4 hover:border-l-[#2563EB] transition-all duration-250 group`}
+                            className={`bg-white dark:bg-[#172033] rounded-[18px] border ${outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone ? 'border-[#F4B400] ring-2 ring-[#F4B400]/20' : 'border-slate-200 dark:border-white/10'} p-4 shadow-sm hover:shadow-lg dark:hover:shadow-amber-500/10 hover:border-l-4 hover:border-l-[#F4B400] transition-all duration-250 group`}
                           >
                             <div className="flex justify-between items-start mb-3">
                               <div>
@@ -850,7 +899,10 @@ export default function Dialer() {
                   <div className="absolute inset-0 bg-[#2563EB] rounded-full animate-ping opacity-20"></div>
                   <Ear className="h-10 w-10 text-[#2563EB] dark:text-[#60A5FA]" />
                 </div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-[#F8FAFC] mb-2">Inbound Queue Active</h2>
+                <h2 className="text-2xl font-black mb-2 tracking-tight">
+                  <span className="text-[#1D4ED8] dark:text-[#3B82F6]">Inbound </span>
+                  <span className="text-[#F4B400]">Queue Active</span>
+                </h2>
                 <p className="text-slate-500 dark:text-[#94A3B8] font-medium text-sm">You are currently available to receive incoming manual and AI transferred calls.</p>
                 <div className="mt-8 p-4 bg-slate-50 dark:bg-[#172033] rounded-2xl border border-slate-100 dark:border-white/10">
                   <p className="text-xs font-bold text-slate-400 dark:text-[#64748B] uppercase tracking-widest mb-2">Simulate Incoming Call</p>

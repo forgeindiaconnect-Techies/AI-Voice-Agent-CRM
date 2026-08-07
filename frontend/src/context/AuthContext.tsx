@@ -6,6 +6,7 @@ type User = {
   name: string;
   role: "admin" | "team_leader" | "agent";
   employee_id: string;
+  email?: string;
   pool_id?: string | null;
   shift?: string | null;
 };

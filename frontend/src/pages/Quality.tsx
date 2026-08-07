@@ -163,15 +163,19 @@ export default function Quality() {
               </div>
             </div>
             <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-[#F8FAFC] tracking-tight leading-none">
-                  Call Quality Auditing Console
-                </h1>
-                <span className="text-[11px] font-extrabold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200 dark:border-blue-500/30 px-3 py-1 rounded-full uppercase tracking-wider hidden sm:inline-block">
+              <div className="flex items-center gap-3 flex-wrap min-w-0">
+                <div className="flex flex-col items-start">
+                  <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Call Quality</span>
+                    <span className="text-[#F4B400] font-extrabold">Auditing Console</span>
+                  </h1>
+                </div>
+                <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
                   AUDIT SUITE
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-[#94A3B8] font-semibold mt-1.5">
+              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">
                 Audit agent conversations, inspect speech transcripts, and rate guidelines compliance
               </p>
             </div>
@@ -210,8 +214,8 @@ export default function Quality() {
                     onClick={() => selectCallToAudit(c)}
                     className={`p-4 border rounded-[18px] transition-all duration-200 cursor-pointer text-left space-y-2.5 ${
                       isSelected
-                        ? "border-[#2563EB] dark:border-[#2563EB] bg-blue-50/70 dark:bg-blue-500/15 shadow-md shadow-blue-500/10 border-l-4 border-l-[#2563EB]"
-                        : "bg-slate-50 dark:bg-[#172033] hover:bg-white dark:hover:bg-[#1C2740] border-slate-200/80 dark:border-white/10 hover:shadow-xs hover:border-l-4 hover:border-l-[#2563EB]"
+                        ? "border-[#F4B400] dark:border-[#F4B400] bg-amber-50/70 dark:bg-amber-500/15 shadow-md shadow-amber-500/10 border-l-4 border-l-[#F4B400]"
+                        : "bg-slate-50 dark:bg-[#172033] hover:bg-white dark:hover:bg-[#1C2740] border-slate-200/80 dark:border-white/10 hover:shadow-xs hover:border-l-4 hover:border-l-[#F4B400]"
                     }`}
                   >
                     <div className="flex justify-between items-center">

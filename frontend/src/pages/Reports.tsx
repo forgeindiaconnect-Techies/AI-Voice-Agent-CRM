@@ -242,19 +242,25 @@ export default function Reports() {
       className="space-y-6 max-w-7xl mx-auto font-sans"
     >
       {/* 1. TOP GLASSMORPHISM PAGE HEADER & EXPORT TOOLBAR */}
-      <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-slate-200/80 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-[#0F4FA8] to-blue-500 text-white flex items-center justify-center font-bold shrink-0 shadow-md border border-blue-400/30">
-            <BarChart3 className="h-6 w-6 text-white" />
+      <div className="bg-white dark:bg-[#1E293B] backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 dark:border-white/10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200/80 dark:from-amber-500/20 dark:to-amber-500/10 text-[#1D4ED8] dark:text-[#FDE047] flex items-center justify-center font-bold shrink-0 shadow-2xs border border-amber-300/60 dark:border-amber-500/30">
+            <BarChart3 className="h-6 w-6 text-[#1D4ED8] dark:text-[#FDE047]" />
           </div>
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-tight">Reports & Analytics Engine</h1>
-              <span className="bg-blue-50 text-[#0F4FA8] border border-blue-200 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex flex-col items-start">
+                <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Reports &</span>
+                  <span className="text-[#F4B400] font-extrabold">Analytics Engine</span>
+                </h1>
+              </div>
+              <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
                 ENTERPRISE V1.0
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-semibold mt-0.5">Export and inspect operational voice performance metrics and lead analytics</p>
+            <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">Export and inspect operational voice performance metrics and lead analytics</p>
           </div>
         </div>
 
@@ -375,14 +381,14 @@ export default function Reports() {
         {/* Header Toolbar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-6">
           <div className="flex items-center gap-3.5">
-            <div className="h-12 w-12 rounded-[14px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)]">
-              <Activity className="h-6 w-6" />
-            </div>
             <div>
-              <h3 className="font-bold text-[#0F172A] dark:text-white text-[24px] leading-tight capitalize">
-                <span>{reportType.replace("_", " ")} Preview</span>
-              </h3>
-              <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">Real-time aggregated analytics data table</p>
+              <div className="flex flex-col items-start">
+                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">{reportType === "call_analytics" ? "Call" : reportType === "agent_performance" ? "Agent" : "Campaign"}</span>
+                  <span className="text-[#F4B400] font-extrabold">Analytics Preview</span>
+                </h3>
+              </div>
+              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">Real-time aggregated analytics data table</p>
             </div>
           </div>
 

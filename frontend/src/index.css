@@ -18,11 +18,17 @@
 
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f4f6fb;
-    color: #0f172a;
+    background-color: #F6F8FC;
+    color: #111827;
     line-height: 1.5;
     letter-spacing: -0.01em;
+    transition: background-color 200ms ease, color 200ms ease;
   }
+}
+
+.dark body {
+  background-color: #0B1220;
+  color: #F9FAFB;
 }
 
 /* Global Search Bar */
@@ -196,9 +202,18 @@
   background: rgba(100, 116, 139, 1);
 }
 
-/* Hide scrollbars for tab bars while maintaining scrollability */
+/* Hide scrollbars while maintaining scrollability */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+.no-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.no-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
@@ -840,3 +855,190 @@ html.dark * {
   background: linear-gradient(90deg, #2563EB 0%, #FACC15 100%) !important;
   border-radius: 99px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ENTERPRISE CRM MENU BADGE SYSTEM (Salesforce / HubSpot Grade)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.crm-menu-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  transition: all 200ms ease-in-out;
+  cursor: pointer;
+  border: 1px solid #E2E8F0;
+  background-color: #F8FAFC;
+  color: #1E293B;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.crm-menu-badge:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 14px rgba(37,99,235,0.12);
+  border-color: #93C5FD;
+}
+
+.crm-menu-badge.active {
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  color: #FFFFFF;
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 4px 16px rgba(37,99,235,0.35);
+}
+
+.dark .crm-menu-badge {
+  background-color: #182233;
+  border-color: rgba(255,255,255,0.08);
+  color: #F8FAFC;
+}
+
+.dark .crm-menu-badge:hover {
+  background-color: #1F2937;
+  border-color: rgba(59,130,246,0.4);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.dark .crm-menu-badge.active {
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  color: #FFFFFF;
+  border-color: rgba(255,255,255,0.2);
+  box-shadow: 0 4px 20px rgba(37,99,235,0.45);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ENTERPRISE CRM DROPDOWN & POPOVER SYSTEM (Forge India Brand Grade)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.crm-dropdown-popover {
+  background-color: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+  transition: all 200ms ease-in-out;
+}
+
+.dark .crm-dropdown-popover {
+  background-color: #0F172A;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+}
+
+.crm-dropdown-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  color: #1E293B;
+  transition: all 200ms ease-in-out;
+  cursor: pointer;
+}
+
+.crm-dropdown-option:hover {
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+}
+
+.crm-dropdown-option.active {
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  color: #FFFFFF;
+  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+}
+
+.dark .crm-dropdown-option {
+  color: #FFFFFF;
+}
+
+.dark .crm-dropdown-option:hover,
+.dark .crm-dropdown-option.active {
+  background: linear-gradient(135deg, #FFD54A 0%, #F4B400 100%);
+  color: #123E8A;
+  font-weight: 800;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(244, 180, 0, 0.35);
+}
+
+/* Smooth Scroll Behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Galaxy & Nebula Background Particles & Keyframe Animations */
+@keyframes nebulaPulse {
+  0%, 100% {
+    transform: scale(1) translate(0, 0);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.14) translate(20px, -20px);
+    opacity: 1;
+  }
+}
+
+@keyframes nebulaPulseDelayed {
+  0%, 100% {
+    transform: scale(1.05) translate(0, 0);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scale(1.2) translate(-25px, 20px);
+    opacity: 1;
+  }
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.96); }
+  50% { opacity: 0.85; transform: scale(1.04); }
+}
+
+.animate-nebula-pulse {
+  animation: nebulaPulse 18s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.animate-nebula-pulse-delayed {
+  animation: nebulaPulseDelayed 22s ease-in-out infinite 3s;
+  will-change: transform, opacity;
+}
+
+/* Starfield Micro-Particle Generator */
+.bg-galaxy-stars {
+  background-image: 
+    radial-gradient(1.5px 1.5px at 12px 24px, rgba(255, 255, 255, 0.95), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 45px 75px, rgba(244, 180, 0, 0.85), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 95px 42px, rgba(96, 165, 250, 0.9), rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 165px 125px, rgba(255, 255, 255, 0.9), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 235px 195px, rgba(244, 180, 0, 0.8), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 315px 85px, rgba(147, 197, 253, 0.9), rgba(0,0,0,0)),
+    radial-gradient(1.5px 1.5px at 385px 245px, rgba(255, 255, 255, 0.85), rgba(0,0,0,0)),
+    radial-gradient(2px 2px at 465px 155px, rgba(244, 180, 0, 0.75), rgba(0,0,0,0)),
+    radial-gradient(1px 1px at 535px 305px, rgba(96, 165, 250, 0.85), rgba(0,0,0,0));
+  background-size: 550px 550px;
+  animation: starTwinkle 12s ease-in-out infinite;
+}
+
+/* ── Hero Banner Fade-In Slide-Up Animation ── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+

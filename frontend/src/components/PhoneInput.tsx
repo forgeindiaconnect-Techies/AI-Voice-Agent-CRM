@@ -100,20 +100,21 @@ export function PhoneInput({
   }
 
   const displayError = externalError || (touched ? validationMessage : "");
+  const showError = displayError;
 
   return (
-    <div className={`space-y-1 font-sans ${className}`}>
+    <div className={`flex flex-col gap-1 w-full text-left font-sans ${className}`}>
       {label && (
-        <label className="block text-[10px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wide">
-          {label} {required && <span className="text-rose-500">*</span>}
+        <label className="text-[12px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">
+          {label} {required && <span className="text-rose-500 ml-0.5">*</span>}
         </label>
       )}
 
       <div className="relative flex items-center">
         {/* Fixed Non-editable Country Code Badge + Icon */}
         <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none select-none z-10">
-          <Phone className="h-4 w-4 text-[#64748B] dark:text-slate-500" />
-          <span className="text-xs font-black text-[#0F172A] dark:text-[#F8FAFC] bg-[#F1F5F9] dark:bg-[#1E293B] border border-[#CBD5E1] dark:border-white/10 px-2 py-0.5 rounded-md font-mono">
+          <Phone className="h-3.5 w-3.5 text-[#64748B] dark:text-slate-500" />
+          <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] bg-[#F1F5F9] dark:bg-slate-800 border border-[#D9E2EC] dark:border-slate-700 px-1.5 py-0.5 rounded-[6px] font-mono">
             {countryCode}
           </span>
         </div>
@@ -129,14 +130,14 @@ export function PhoneInput({
           onPaste={handlePaste}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
-          className={`w-full pl-[80px] pr-10 bg-white dark:bg-[#0F172A] border rounded-[14px] text-[14px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#94A3B8] focus:outline-none transition focus:ring-4 ${
-            inputClassName || "h-[52px]"
+          className={`w-full pl-[76px] pr-10 bg-white dark:bg-[#09111E] border rounded-[10px] text-[15px] font-medium text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#94A3B8] dark:placeholder-slate-600 focus:outline-none transition-colors duration-150 hover:border-[#2563EB] ${
+            inputClassName || "h-[46px]"
           } ${
-            displayError
-              ? "border-rose-400 dark:border-rose-500 focus:ring-rose-500/10 focus:border-rose-500"
+            showError
+              ? "border-rose-500 focus:ring-2 focus:ring-rose-500/15 focus:border-rose-500"
               : isValid
-              ? "border-emerald-400 dark:border-emerald-500 focus:ring-emerald-500/10 focus:border-emerald-500"
-              : "border-[#CBD5E1] dark:border-white/[0.08] focus:ring-[#2563EB]/10 focus:border-[#2563EB]"
+              ? "border-emerald-500 focus:ring-2 focus:ring-emerald-500/15 focus:border-emerald-500"
+              : "border-[#D9E2EC] dark:border-slate-700/80 focus:ring-2 focus:ring-[#2563EB]/15 focus:border-[#2563EB]"
           }`}
         />
 
@@ -144,22 +145,19 @@ export function PhoneInput({
         <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
           {isValid ? (
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          ) : displayError ? (
+          ) : showError ? (
             <AlertCircle className="h-4 w-4 text-rose-500" />
           ) : null}
         </div>
       </div>
 
-      {/* Real-time Validation / Success Message */}
-      {displayError ? (
-        <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1">
-          <span>{displayError}</span>
+      {/* Real-time Validation Message - Displayed only below field */}
+      {showError && (
+        <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+          <AlertCircle className="h-[11px] w-[11px] shrink-0" />
+          <span>{showError}</span>
         </p>
-      ) : isValid ? (
-        <p className="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
-          <span>Valid 10-digit Indian mobile number ({countryCode} {mobileNumber})</span>
-        </p>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -298,6 +298,26 @@ export default function Dashboard() {
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [aiIntent, setAiIntent] = useState("Determining customer intent...");
 
+  // Additional softphone & filter states
+  const [isMuted, setIsMuted] = useState(false);
+  const [isOnHold, setIsOnHold] = useState(false);
+  const [showKeypad, setShowKeypad] = useState(false);
+  const [keypadInput, setKeypadInput] = useState("");
+  const [historyFilterTab, setHistoryFilterTab] = useState<"today" | "yesterday" | "week">("today");
+  const [historySearchTerm, setHistorySearchTerm] = useState("");
+  const [leadsSearchTerm, setLeadsSearchTerm] = useState("");
+  const [leadsPriorityFilter, setLeadsPriorityFilter] = useState<"all" | "high" | "medium" | "low">("all");
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (activeLead || activeCallId) {
+      timer = setInterval(() => {
+        setCallDurationSeconds((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [activeLead, activeCallId]);
+
   const fetchDashboardData = useCallback(async () => {
     try {
       const summaryData = await api.get("/api/reports/summary");
@@ -431,192 +451,600 @@ export default function Dashboard() {
 
   // --- AGENT WORKSPACE ---
   if (user?.role === "agent") {
+    // Filtered agent leads
+    const filteredLeads = agentLeads.filter((l) => {
+      const matchQuery =
+        !leadsSearchTerm ||
+        l.name.toLowerCase().includes(leadsSearchTerm.toLowerCase()) ||
+        l.phone.includes(leadsSearchTerm);
+      return matchQuery;
+    });
+
+    // Filtered call history
+    const filteredHistory = agentCallHistory.filter((c) => {
+      const matchQuery =
+        !historySearchTerm ||
+        c.id.toLowerCase().includes(historySearchTerm.toLowerCase()) ||
+        c.outcome.toLowerCase().includes(historySearchTerm.toLowerCase());
+      return matchQuery;
+    });
+
+    const successRate =
+      agentCallHistory.length > 0
+        ? Math.round(
+            (agentCallHistory.filter(
+              (c) => c.outcome === "qualified" || c.outcome === "answered"
+            ).length /
+              agentCallHistory.length) *
+              100
+          )
+        : 0;
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="space-y-6 max-w-7xl mx-auto w-full font-sans"
+        transition={{ duration: 0.3 }}
+        className="space-y-6 max-w-7xl mx-auto w-full font-sans pb-8"
       >
-        {/* AGENT KPI SUMMARY CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 p-4 rounded-[20px] shadow-sm flex items-center justify-between border-t-4 border-t-[#0F4FA8]">
-            <div>
-              <span className="text-2xl font-black text-slate-900 font-mono">{agentLeads.length}</span>
-              <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Assigned Leads</span>
+        {/* ── 1. STAT CARDS GRID ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Card 1: Assigned Leads */}
+          <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 p-6 rounded-[16px] shadow-sm hover:shadow-md hover:-translate-y-1 hover:scale-[1.02] transition-all duration-200 ease-in-out flex flex-col justify-between h-[150px]">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-500 dark:text-[#9CA3AF] uppercase tracking-wider">
+                  Assigned Leads
+                </span>
+                <div className="text-3xl font-extrabold text-slate-900 dark:text-[#F9FAFB] tracking-tight">
+                  {agentLeads.length}
+                </div>
+              </div>
+              <div className="h-11 w-11 rounded-[12px] bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center font-bold border border-blue-100 dark:border-blue-500/20">
+                <Users className="h-5 w-5" />
+              </div>
             </div>
-            <div className="p-2.5 bg-blue-50 text-[#0F4FA8] rounded-xl border border-blue-100">
-              <Users className="h-5 w-5" />
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-emerald-600 dark:text-[#22C55E] font-semibold flex items-center gap-1">
+                  <ArrowUpRight className="h-3.5 w-3.5" /> +12 Today
+                </span>
+                <span className="text-slate-400 dark:text-slate-500 font-medium">Goal: 20</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#2563EB] rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (agentLeads.length / 20) * 100)}%` }}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 p-4 rounded-[20px] shadow-sm flex items-center justify-between border-t-4 border-t-emerald-500">
-            <div>
-              <span className="text-2xl font-black text-slate-900 font-mono">{agentCallHistory.length}</span>
-              <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Shift Calls Made</span>
+          {/* Card 2: Shift Calls Made */}
+          <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 p-6 rounded-[16px] shadow-sm hover:shadow-md hover:-translate-y-1 hover:scale-[1.02] transition-all duration-200 ease-in-out flex flex-col justify-between h-[150px]">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-500 dark:text-[#9CA3AF] uppercase tracking-wider">
+                  Shift Calls Made
+                </span>
+                <div className="text-3xl font-extrabold text-slate-900 dark:text-[#F9FAFB] tracking-tight">
+                  {agentCallHistory.length}
+                </div>
+              </div>
+              <div className="h-11 w-11 rounded-[12px] bg-emerald-50 dark:bg-emerald-500/15 text-[#10B981] dark:text-[#22C55E] flex items-center justify-center font-bold border border-emerald-100 dark:border-emerald-500/20">
+                <PhoneCall className="h-5 w-5" />
+              </div>
             </div>
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
-              <PhoneCall className="h-5 w-5" />
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-emerald-600 dark:text-[#22C55E] font-semibold flex items-center gap-1">
+                  <ArrowUpRight className="h-3.5 w-3.5" /> +8 Active Shift
+                </span>
+                <span className="text-slate-400 dark:text-slate-500 font-medium">Target: 30</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#10B981] rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (agentCallHistory.length / 30) * 100)}%` }}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 p-4 rounded-[20px] shadow-sm flex items-center justify-between border-t-4 border-t-purple-600">
-            <div>
-              <span className="text-2xl font-black text-slate-900 font-mono">
-                {agentCallHistory.filter(c => c.outcome === "answered" || c.outcome === "qualified").length}
-              </span>
-              <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Connected Calls</span>
+          {/* Card 3: Connected Calls */}
+          <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 p-6 rounded-[16px] shadow-sm hover:shadow-md hover:-translate-y-1 hover:scale-[1.02] transition-all duration-200 ease-in-out flex flex-col justify-between h-[150px]">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-500 dark:text-[#9CA3AF] uppercase tracking-wider">
+                  Connected Calls
+                </span>
+                <div className="text-3xl font-extrabold text-slate-900 dark:text-[#F9FAFB] tracking-tight">
+                  {agentCallHistory.filter((c) => c.outcome === "answered" || c.outcome === "qualified").length}
+                </div>
+              </div>
+              <div className="h-11 w-11 rounded-[12px] bg-purple-50 dark:bg-purple-500/15 text-[#8B5CF6] dark:text-[#A855F7] flex items-center justify-center font-bold border border-purple-100 dark:border-purple-500/20">
+                <Headphones className="h-5 w-5" />
+              </div>
             </div>
-            <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl border border-purple-100">
-              <Headphones className="h-5 w-5" />
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-purple-600 dark:text-[#A855F7] font-semibold flex items-center gap-1">
+                  <Sparkles className="h-3.5 w-3.5" /> High Engagement
+                </span>
+                <span className="text-slate-400 dark:text-slate-500 font-medium">85% Rate</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-[#8B5CF6] rounded-full w-[85%] transition-all duration-500" />
+              </div>
             </div>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/80 p-4 rounded-[20px] shadow-sm flex items-center justify-between border-t-4 border-t-amber-500">
-            <div>
-              <span className="text-2xl font-black text-slate-900 font-mono">
-                {agentCallHistory.length > 0
-                  ? `${Math.round((agentCallHistory.filter(c => c.outcome === "qualified" || c.outcome === "answered").length / agentCallHistory.length) * 100)}%`
-                  : "0%"}
-              </span>
-              <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-0.5">Call Success Rate</span>
+          {/* Card 4: Call Success Rate */}
+          <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 p-6 rounded-[16px] shadow-sm hover:shadow-md hover:-translate-y-1 hover:scale-[1.02] transition-all duration-200 ease-in-out flex flex-col justify-between h-[150px]">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-slate-500 dark:text-[#9CA3AF] uppercase tracking-wider">
+                  Call Success Rate
+                </span>
+                <div className="text-3xl font-extrabold text-slate-900 dark:text-[#F9FAFB] tracking-tight">
+                  {successRate}%
+                </div>
+              </div>
+              <div className="h-11 w-11 rounded-[12px] bg-amber-50 dark:bg-amber-500/15 text-[#F59E0B] flex items-center justify-center font-bold border border-amber-100 dark:border-amber-500/20">
+                <Zap className="h-5 w-5" />
+              </div>
             </div>
-            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl border border-amber-100">
-              <Zap className="h-5 w-5" />
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-amber-600 dark:text-[#F59E0B] font-semibold flex items-center gap-1">
+                  <CheckCircle className="h-3.5 w-3.5" /> Optimal Performance
+                </span>
+                <span className="text-slate-400 dark:text-slate-500 font-medium">Benchmark 60%</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#F59E0B] rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, successRate)}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-slate-200/80 lg:col-span-2 flex flex-col min-h-[460px]">
-            <h2 className="text-base font-extrabold text-slate-900 mb-4 flex items-center gap-2">
-              <PhoneCall className="h-4 w-4 text-[#0F4FA8]" />
-              <span>Softphone Dialer Console</span>
-            </h2>
+        {/* ── 2. MAIN CONTENT GRID (8 Cols Softphone + Leads / 4 Cols Call History) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* LEFT 8 COLUMNS: Softphone Console & Leads Panel */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
+            {/* SOFTPHONE WIDGET CARD */}
+            <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-[16px] p-6 shadow-sm flex flex-col">
+              <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 dark:border-white/10">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="flex flex-col items-start">
+                    <h2 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                      <PhoneCall className="h-5 w-5 text-[#2563EB] dark:text-[#3B82F6] shrink-0" />
+                      <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Softphone</span>
+                      <span className="text-[#F4B400] font-extrabold">Dialer Console</span>
+                    </h2>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-[#22C55E] font-semibold border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    WebRTC Audio Live
+                  </span>
+                </div>
+              </div>
 
-            {activeLead ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-                <div className="space-y-4">
-                  <div className="bg-slate-50 border border-slate-200/80 p-4 rounded-xl">
-                    <div className="text-sm font-extrabold text-slate-900">{activeLead.name}</div>
-                    <div className="text-xs text-slate-500 font-semibold mt-0.5">Phone: {activeLead.phone}</div>
-                    <div className="text-xs text-[#0F4FA8] font-black mt-3 flex items-center gap-1.5 font-mono">
-                      <Clock className="h-4 w-4 animate-spin text-[#0F4FA8]" />
-                      <span>Duration: {Math.floor(callDurationSeconds / 60)}:{String(callDurationSeconds % 60).padStart(2, "0")}</span>
+              {activeLead ? (
+                /* ACTIVE CALL WIDGET */
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                  {/* Left Column: Call Controls & Live Details */}
+                  <div className="md:col-span-7 space-y-4">
+                    {/* Call Status & Caller Header */}
+                    <div className="p-4 rounded-[12px] bg-slate-50 dark:bg-[#0B1220]/60 border border-slate-200/80 dark:border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-extrabold text-base flex items-center justify-center shadow-sm">
+                            {activeLead.name ? activeLead.name.charAt(0).toUpperCase() : "L"}
+                          </div>
+                          <div>
+                            <h3 className="text-base font-extrabold text-slate-900 dark:text-[#F9FAFB]">
+                              {activeLead.name}
+                            </h3>
+                            <p className="text-xs text-slate-500 dark:text-[#9CA3AF] font-mono">
+                              {activeLead.phone}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-[#22C55E] border border-emerald-300 dark:border-emerald-500/30 flex items-center gap-1.5">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                          Connected
+                        </span>
+                      </div>
+
+                      {/* Timer & Voice Soundwave Animation */}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-white/10">
+                        <div className="flex items-center gap-2 font-mono text-sm font-bold text-[#2563EB] dark:text-[#3B82F6]">
+                          <Clock className="h-4 w-4 animate-spin" />
+                          <span>
+                            {Math.floor(callDurationSeconds / 60)
+                              .toString()
+                              .padStart(2, "0")}
+                            :
+                            {(callDurationSeconds % 60)
+                              .toString()
+                              .padStart(2, "0")}
+                          </span>
+                        </div>
+
+                        {/* Sound Wave Animation */}
+                        <div className="flex items-center gap-1 h-6">
+                          {[14, 22, 10, 26, 18, 12, 24, 16].map((h, i) => (
+                            <span
+                              key={i}
+                              className="w-1 bg-[#2563EB] dark:bg-[#3B82F6] rounded-full animate-pulse"
+                              style={{
+                                height: isMuted ? "4px" : `${h}px`,
+                                animationDuration: `${0.4 + (i % 4) * 0.2}s`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Bar Buttons */}
+                    <div className="grid grid-cols-4 gap-2">
+                      <button
+                        onClick={() => setIsMuted(!isMuted)}
+                        className={`h-11 rounded-[12px] text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer ${
+                          isMuted
+                            ? "bg-amber-500 text-white shadow-sm"
+                            : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-[#F9FAFB] hover:bg-slate-200 dark:hover:bg-white/20"
+                        }`}
+                      >
+                        <Mic className="h-4 w-4" />
+                        <span>{isMuted ? "Muted" : "Mute"}</span>
+                      </button>
+
+                      <button
+                        onClick={() => setIsOnHold(!isOnHold)}
+                        className={`h-11 rounded-[12px] text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer ${
+                          isOnHold
+                            ? "bg-amber-500 text-white shadow-sm"
+                            : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-[#F9FAFB] hover:bg-slate-200 dark:hover:bg-white/20"
+                        }`}
+                      >
+                        <Volume2 className="h-4 w-4" />
+                        <span>{isOnHold ? "On Hold" : "Hold"}</span>
+                      </button>
+
+                      <button
+                        onClick={() => setShowKeypad(!showKeypad)}
+                        className={`h-11 rounded-[12px] text-xs font-semibold flex flex-col items-center justify-center gap-1 transition-all duration-200 cursor-pointer ${
+                          showKeypad
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-[#F9FAFB] hover:bg-slate-200 dark:hover:bg-white/20"
+                        }`}
+                      >
+                        <SlidersHorizontal className="h-4 w-4" />
+                        <span>Keypad</span>
+                      </button>
+
+                      <button
+                        onClick={handleHangUp}
+                        className="h-11 rounded-[12px] text-xs font-semibold bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-600 text-white flex flex-col items-center justify-center gap-1 transition-all duration-200 shadow-md cursor-pointer active:scale-95"
+                      >
+                        <PhoneOff className="h-4 w-4" />
+                        <span>End Call</span>
+                      </button>
+                    </div>
+
+                    {/* Interactive Keypad Drawer */}
+                    {showKeypad && (
+                      <div className="p-4 rounded-[18px] bg-slate-50 dark:bg-[#0B1220] border border-slate-200 dark:border-white/10 space-y-3 shadow-inner">
+                        <div className="text-center font-mono font-black text-base h-7 text-[#123E8A] dark:text-[#F8FAFC]">
+                          {keypadInput || "Enter digits..."}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2.5 max-w-[240px] mx-auto">
+                          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
+                            <button
+                              key={digit}
+                              onClick={() => setKeypadInput((prev) => prev + digit)}
+                              className="h-12 rounded-full bg-white dark:bg-[#151F32] text-[#123E8A] dark:text-white font-extrabold text-base border-2 border-blue-200/80 dark:border-blue-500/30 hover:border-[#F4B400]/70 dark:hover:border-[#60A5FA]/80 shadow-xs hover:shadow-[0_2px_12px_rgba(244,180,0,0.3)] dark:hover:shadow-[0_0_14px_rgba(59,130,246,0.4)] active:scale-95 active:bg-gradient-to-br active:from-[#1D4ED8] active:via-[#2563EB] active:to-[#F4B400] active:text-white active:border-transparent transition-all duration-200 cursor-pointer"
+                            >
+                              {digit}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Call Notes & Disposition */}
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 dark:text-[#9CA3AF] mb-1">
+                          Call Disposition Outcome
+                        </label>
+                        <select
+                          value={callOutcome}
+                          onChange={(e) => setCallOutcome(e.target.value)}
+                          className="w-full h-10 px-3 rounded-[12px] bg-slate-50 dark:bg-[#0B1220] border border-slate-200 dark:border-white/10 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        >
+                          <option value="answered">Answered - Follow Up Required</option>
+                          <option value="qualified">Qualified - Demo Scheduled</option>
+                          <option value="voicemail">Left Voicemail</option>
+                          <option value="busy">Line Busy / Callback</option>
+                          <option value="rejected">Not Interested</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-600 dark:text-[#9CA3AF] mb-1">
+                          Session Call Notes
+                        </label>
+                        <textarea
+                          placeholder="Record key details discussed during call..."
+                          value={callNotes}
+                          onChange={(e) => setCallNotes(e.target.value)}
+                          className="w-full p-3 h-20 rounded-[12px] bg-slate-50 dark:bg-[#0B1220] border border-slate-200 dark:border-white/10 text-xs font-normal text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] text-slate-400 font-extrabold uppercase mb-1">Session Call Notes</label>
-                    <textarea
-                      placeholder="Type details of conversation outcome..."
-                      value={callNotes}
-                      onChange={e => setCallNotes(e.target.value)}
-                      className="w-full border border-slate-200/80 rounded-xl px-3 py-2 text-xs h-24 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-normal text-slate-800"
+                  {/* Right Column: AI Live Copilot */}
+                  <div className="md:col-span-5 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-500/20 rounded-[12px] p-4 space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-[#F9FAFB] flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-[#2563EB] dark:text-[#3B82F6] animate-pulse" />
+                        <span>AI Live Copilot Suggestions</span>
+                      </h4>
+
+                      <div className="space-y-1">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase block">
+                          Detected Intent
+                        </span>
+                        <div className="text-xs bg-white dark:bg-[#182233] border border-blue-200 dark:border-blue-500/30 p-2.5 rounded-[12px] font-semibold text-slate-800 dark:text-slate-200 shadow-2xs">
+                          {aiIntent}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold uppercase block">
+                          Recommended Talking Points
+                        </span>
+                        <div className="space-y-2 max-h-[180px] overflow-y-auto softphone-scrollbar">
+                          {aiSuggestions.map((s, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white dark:bg-[#182233] border border-blue-100 dark:border-blue-500/20 p-2.5 rounded-[12px] text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2 shadow-2xs"
+                            >
+                              <ChevronRight className="h-4 w-4 text-[#2563EB] shrink-0 mt-0.5" />
+                              <span>{s}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* INACTIVE / STANDBY SOFTPHONE WIDGET */
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-[12px] bg-slate-50/60 dark:bg-[#0B1220]/40 border border-dashed border-slate-200 dark:border-white/10">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-full bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center font-bold shrink-0 border border-blue-100 dark:border-blue-500/30">
+                      <Headphones className="h-7 w-7" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-base font-extrabold text-slate-900 dark:text-[#F9FAFB]">
+                        Softphone Standby Mode
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-[#9CA3AF] max-w-sm">
+                        Select an allocated lead below to trigger the WebRTC outbound softphone dialer, or enter a number directly.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 w-full md:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Enter phone number..."
+                      value={keypadInput}
+                      onChange={(e) => setKeypadInput(e.target.value)}
+                      className="h-11 px-4 text-xs rounded-[12px] bg-white dark:bg-[#182233] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-[#2563EB] w-full md:w-48"
+                    />
+                    <button
+                      onClick={() => {
+                        if (keypadInput) {
+                          handleDialLead({
+                            id: "manual",
+                            lead_id: "L-MANUAL",
+                            name: "Direct Number",
+                            phone: keypadInput,
+                            status: "new",
+                          });
+                        }
+                      }}
+                      className="h-11 px-5 rounded-[12px] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer shrink-0 active:scale-95 transition-all duration-200"
+                    >
+                      <Phone className="h-4 w-4" />
+                      <span>Dial Now</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* LEADS QUEUE PANEL */}
+            <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-[16px] p-6 shadow-sm flex flex-col space-y-4">
+              {/* Header with Search & Filter */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-100 dark:border-white/10">
+                <div>
+                  <h3 className="text-base font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                    <Users className="h-5 w-5 text-[#2563EB] dark:text-[#3B82F6] shrink-0" />
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Allocated</span>
+                    <span className="text-[#F4B400] font-extrabold">Callback Queue</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-[#9CA3AF] mt-0.5">
+                    Assigned prospects waiting for phone follow-up
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-initial">
+                    <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search leads..."
+                      value={leadsSearchTerm}
+                      onChange={(e) => setLeadsSearchTerm(e.target.value)}
+                      className="h-9 pl-9 pr-3 text-xs rounded-[12px] bg-slate-50 dark:bg-[#0B1220] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] w-full sm:w-44"
                     />
                   </div>
+                </div>
+              </div>
 
-                  <button
-                    onClick={handleHangUp}
-                    className="w-full bg-rose-600 hover:bg-rose-700 text-white text-xs py-2.5 rounded-xl font-extrabold transition flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95"
+              {/* Lead Cards List */}
+              <div className="space-y-3 max-h-[320px] overflow-y-auto softphone-scrollbar pr-1">
+                {filteredLeads.map((l) => (
+                  <div
+                    key={l.id}
+                    className="p-4 rounded-[12px] bg-slate-50/70 dark:bg-[#0B1220]/60 border border-slate-200/80 dark:border-white/10 flex items-center justify-between hover:bg-white dark:hover:bg-[#1F2937] hover:border-blue-300 dark:hover:border-blue-500/40 hover:-translate-y-0.5 transition-all duration-200 shadow-2xs group"
                   >
-                    <PhoneOff className="h-4 w-4" />
-                    <span>End Call & Save Session</span>
-                  </button>
-                </div>
-
-                <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 space-y-3 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-[#0F4FA8] animate-pulse" />
-                      <span>AI Live Copilot Suggestions</span>
-                    </h3>
-                    
-                    <div className="space-y-1">
-                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block">Detected Intent</span>
-                      <div className="text-xs bg-white border border-blue-200/60 px-3 py-2 rounded-xl font-bold text-slate-800 shadow-2xs">
-                        {aiIntent}
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-500/20 text-[#2563EB] dark:text-[#3B82F6] font-bold text-sm flex items-center justify-center shrink-0">
+                        {l.name ? l.name.charAt(0).toUpperCase() : "L"}
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block">Recommended Responses</span>
-                      <div className="space-y-2 max-h-44 overflow-y-auto">
-                        {aiSuggestions.map((s, idx) => (
-                          <div key={idx} className="bg-white border border-blue-100 p-2.5 rounded-xl text-xs font-semibold text-slate-700 flex items-start gap-1.5 shadow-2xs">
-                            <ChevronRight className="h-4 w-4 text-[#0F4FA8] shrink-0 mt-0.5" />
-                            <span>{s}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-                <div className="border border-slate-200/80 rounded-xl p-4 flex flex-col max-h-[340px]">
-                  <h3 className="font-extrabold text-slate-900 text-xs mb-3 uppercase tracking-wider">Leads Allocation List</h3>
-                  <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-                    {agentLeads.map(l => (
-                      <div key={l.id} className="p-3 border border-slate-200/70 bg-slate-50/60 rounded-xl flex justify-between items-center hover:bg-white transition shadow-2xs">
-                        <div>
-                          <div className="font-bold text-slate-900 text-xs">{l.name}</div>
-                          <div className="text-[10px] text-slate-500 font-medium mt-0.5">{l.phone}</div>
+                      <div>
+                        <div className="font-bold text-sm text-slate-900 dark:text-[#F9FAFB] flex items-center gap-2">
+                          <span>{l.name}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] border border-blue-200 dark:border-blue-500/30 uppercase">
+                            High Priority
+                          </span>
                         </div>
-                        <button
-                          onClick={() => handleDialLead(l)}
-                          className="bg-[#0F4FA8] text-white text-xs px-3 py-1.5 rounded-lg font-extrabold hover:bg-blue-900 transition flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
-                        >
-                          <Phone className="h-3 w-3" />
-                          <span>Dial</span>
-                        </button>
+                        <div className="text-xs text-slate-500 dark:text-[#9CA3AF] font-mono mt-0.5">
+                          {l.phone}
+                        </div>
                       </div>
-                    ))}
-                    {agentLeads.length === 0 && (
-                      <p className="text-xs text-slate-400 text-center py-12 font-medium">No assigned leads awaiting callback.</p>
-                    )}
-                  </div>
-                </div>
+                    </div>
 
-                <div className="border border-dashed border-slate-200 rounded-xl p-6 flex flex-col justify-center items-center text-center text-slate-400 space-y-3 bg-slate-50/40">
-                  <PhoneCall className="h-9 w-9 text-slate-300" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-extrabold text-slate-700">Ready to Accept Calls</p>
-                    <p className="text-xs max-w-xs font-semibold leading-relaxed">Select a lead from the queue list to trigger the softphone outbound dialer.</p>
+                    <button
+                      onClick={() => handleDialLead(l)}
+                      className="h-9 px-4 rounded-[12px] bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 transition-all duration-200"
+                    >
+                      <Phone className="h-3.5 w-3.5" />
+                      <span>Dial Lead</span>
+                    </button>
                   </div>
-                </div>
+                ))}
+
+                {/* EMPTY STATE ILLUSTRATION */}
+                {filteredLeads.length === 0 && (
+                  <div className="py-10 text-center space-y-3 flex flex-col items-center justify-center">
+                    <div className="h-16 w-16 rounded-full bg-blue-50 dark:bg-blue-500/10 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center">
+                      <Users className="h-8 w-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                        No Leads Assigned
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">
+                        There are currently no new callback leads assigned to your queue.
+                      </p>
+                    </div>
+                    <button
+                      onClick={fetchDashboardData}
+                      className="h-9 px-4 rounded-[12px] bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-200 dark:hover:bg-white/20 transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span>Refresh Queue</span>
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
-          <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 shadow-sm border border-slate-200/80 lg:col-span-1 flex flex-col max-h-[460px]">
-            <h2 className="text-sm font-extrabold text-slate-900 mb-3 flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-[#0F4FA8]" />
-              <span>Shift Call History</span>
-            </h2>
-            
-            <div className="space-y-2 overflow-y-auto flex-1 pr-1">
-              {agentCallHistory.map(c => (
+          {/* RIGHT 4 COLUMNS: Shift Call History */}
+          <div className="lg:col-span-4 bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-[16px] p-6 shadow-sm flex flex-col space-y-4 max-h-[720px]">
+            {/* Header & Filter Tabs */}
+            <div className="space-y-3 pb-3 border-b border-slate-100 dark:border-white/10">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col items-start">
+                  <h3 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                    <Clock className="h-5 w-5 text-[#2563EB] dark:text-[#3B82F6] shrink-0" />
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Shift Call</span>
+                    <span className="text-[#F4B400] font-extrabold">History</span>
+                  </h3>
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300">
+                  {agentCallHistory.length} Calls
+                </span>
+              </div>
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter call logs..."
+                  value={historySearchTerm}
+                  onChange={(e) => setHistorySearchTerm(e.target.value)}
+                  className="h-9 pl-9 pr-3 w-full text-xs rounded-[12px] bg-slate-50 dark:bg-[#0B1220] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                />
+              </div>
+            </div>
+
+            {/* Call History List */}
+            <div className="space-y-2.5 overflow-y-auto softphone-scrollbar flex-1 pr-1">
+              {filteredHistory.map((c) => (
                 <div
                   key={c.id}
-                  className="p-2.5 border border-slate-200/80 rounded-xl bg-slate-50/50 hover:bg-blue-50/40 transition cursor-pointer flex justify-between items-center text-xs shadow-2xs"
+                  className="p-3.5 rounded-[12px] bg-slate-50/70 dark:bg-[#0B1220]/60 border border-slate-200/80 dark:border-white/10 flex items-center justify-between hover:bg-white dark:hover:bg-[#1F2937] hover:-translate-y-0.5 transition-all duration-200 shadow-2xs cursor-pointer"
                 >
-                  <div>
-                    <div className="font-bold text-slate-900 font-mono">Call #{c.id.slice(-6).toUpperCase()}</div>
-                    <div className="text-[10px] text-slate-400 font-semibold mt-0.5 font-mono">
-                      Duration: {Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-full bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center font-bold text-xs shrink-0">
+                      <PhoneCall className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="font-mono font-bold text-xs text-slate-900 dark:text-[#F9FAFB]">
+                        Call #{c.id.slice(-6).toUpperCase()}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-[#9CA3AF] font-mono mt-0.5">
+                        Duration: {Math.floor(c.duration_seconds / 60)}m {c.duration_seconds % 60}s
+                      </div>
                     </div>
                   </div>
-                  <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase ${
-                    c.outcome === "qualified" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-700"
-                  }`}>
+
+                  <span
+                    className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase border ${
+                      c.outcome === "qualified"
+                        ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-[#22C55E] border-emerald-200 dark:border-emerald-500/30"
+                        : "bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10"
+                    }`}
+                  >
                     {c.outcome}
                   </span>
                 </div>
               ))}
-              {agentCallHistory.length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-12 font-medium">No recorded calls completed during current shift.</p>
+
+              {/* EMPTY HISTORY ILLUSTRATION */}
+              {filteredHistory.length === 0 && (
+                <div className="py-12 text-center space-y-3 flex flex-col items-center justify-center">
+                  <div className="h-14 w-14 rounded-full bg-slate-100 dark:bg-white/10 text-slate-400 flex items-center justify-center">
+                    <Clock className="h-7 w-7" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      No Calls Recorded Yet
+                    </h4>
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 max-w-xs">
+                      Shift calls will appear here as soon as you complete dial sessions.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -642,10 +1070,13 @@ export default function Dashboard() {
             <Activity className="h-7 w-7" style={{ animation:"dk-spin-slow 8s linear infinite" }} />
           </div>
           <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-[22px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC]">
-                Forge Voice Engine Status
-              </h2>
+            <div className="flex items-center gap-3.5 flex-wrap">
+              <div className="flex flex-col items-start">
+                <h2 className="text-lg sm:text-xl lg:text-[22px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Forge Voice</span>
+                  <span className="text-[#F4B400] font-extrabold">Engine Status</span>
+                </h2>
+              </div>
               <span className="dk-healthy">HEALTHY</span>
             </div>
             <p className="text-[13px] font-medium mt-1.5 flex items-center gap-2 text-slate-500 dark:text-[#94A3B8]/75">
@@ -841,11 +1272,13 @@ export default function Dashboard() {
         <div className="col-span-12 lg:col-span-8 dk-chart-card space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-4">
             <div>
-              <h3 className="font-extrabold text-base flex items-center gap-2 text-slate-900 dark:text-[#F8FAFC]">
-                <Activity className="h-4 w-4 text-blue-600 dark:text-[#60A5FA]" />
-                <span>Hourly Call Volume &amp; Velocity</span>
-              </h3>
-              <p className="text-xs font-semibold mt-0.5 text-slate-500 dark:text-[#64748B]">
+              <div className="flex flex-col items-start">
+                <h3 className="text-lg font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Hourly Call</span>
+                  <span className="text-[#F4B400] font-extrabold">Volume &amp; Velocity</span>
+                </h3>
+              </div>
+              <p className="text-xs text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">
                 Real-time dialer throughput across active AI voice channels
               </p>
             </div>
@@ -855,7 +1288,7 @@ export default function Dashboard() {
           </div>
 
           <div className="relative w-full overflow-visible pt-2">
-            <svg viewBox="0 0 600 200" className="w-full h-56 overflow-visible">
+            <svg viewBox="0 0 600 230" className="w-full h-56 overflow-visible">
               <defs>
                 <linearGradient id="dashboardChartGradDk" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
@@ -863,13 +1296,13 @@ export default function Dashboard() {
                 </linearGradient>
               </defs>
               {[40, 80, 120, 160].map((val, idx) => {
-                const y = 170 - (val / 160) * 140;
+                const y = 180 - (val / 160) * 135;
                 return (
                   <g key={idx}>
                     <line x1="40" y1={y} x2="560" y2={y}
                           className="stroke-slate-100 dark:stroke-white/5" strokeDasharray="4 4" strokeWidth="1" />
                     <text x="32" y={y + 3} textAnchor="end"
-                          className="text-[9px] fill-slate-400 dark:fill-[#475569] font-mono font-bold">
+                          className="text-[10px] fill-slate-400 dark:fill-[#475569] font-mono font-bold">
                       {val}
                     </text>
                   </g>
@@ -887,8 +1320,8 @@ export default function Dashboard() {
                   <circle cx={pt.x} cy={pt.y}
                           r={hoveredVolumePoint?.label === pt.label ? "6" : "4"}
                           className="fill-[#2563EB] stroke-white stroke-2 transition-all duration-150" />
-                  <text x={pt.x} y="192" textAnchor="middle"
-                        className="text-[9px] fill-slate-400 dark:fill-[#475569] font-bold uppercase">
+                  <text x={pt.x} y="215" textAnchor="middle"
+                        className="text-[11px] fill-slate-500 dark:fill-[#94A3B8] font-black uppercase tracking-wider">
                     {pt.label}
                   </text>
                 </g>
@@ -922,10 +1355,13 @@ export default function Dashboard() {
         {/* Quick Actions — 4 cols */}
         <div className="col-span-12 lg:col-span-4 dk-panel">
           <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-3.5 mb-4">
-            <h3 className="font-extrabold text-base flex items-center gap-2 text-slate-900 dark:text-[#F8FAFC]">
-              <Zap className="h-4 w-4 text-amber-500 dark:text-[#FCD34D]" />
-              <span>Quick Actions</span>
-            </h3>
+            <div className="flex flex-col items-start">
+              <h3 className="text-base font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                <Zap className="h-4 w-4 text-[#2563EB] dark:text-[#3B82F6] shrink-0" />
+                <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Quick</span>
+                <span className="text-[#F4B400] font-extrabold">Actions</span>
+              </h3>
+            </div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               2×3 Grid
             </span>
@@ -980,12 +1416,12 @@ export default function Dashboard() {
               <Radio className="h-5 w-5 animate-pulse" />
             </div>
             <div>
-              <h3 className="font-black text-base flex items-center gap-2 text-slate-900 dark:text-[#F8FAFC]">
-                <span>Active Live Call Telemetry</span>
-                <span className="bg-rose-50 text-rose-700 border border-rose-200 dark:bg-[rgba(239,68,68,0.14)] dark:border-[rgba(239,68,68,0.3)] dark:text-[#F87171] text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  {liveCallsList.length} LIVE
-                </span>
-              </h3>
+              <div className="flex flex-col items-start">
+                <h3 className="text-base font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Active Live</span>
+                  <span className="text-[#F4B400] font-extrabold">Call Telemetry</span>
+                </h3>
+              </div>
               <p className="text-xs font-semibold mt-0.5 text-slate-500 dark:text-[#64748B]">
                 Real-time Asterisk SIP channels with whisper, barge, and transfer control.
               </p>
@@ -1038,10 +1474,10 @@ export default function Dashboard() {
                   key={chip.id}
                   data-active={chipFilter === chip.id}
                   onClick={() => setChipFilter(chip.id)}
-                  className={`h-[38px] px-4 rounded-xl text-xs font-extrabold whitespace-nowrap cursor-pointer shrink-0 active:scale-95 flex items-center justify-center transition-all duration-200 ${
+                  className={`h-[48px] px-6 rounded-[16px] text-[13.5px] font-semibold whitespace-nowrap transition-all duration-200 ease-in-out cursor-pointer shrink-0 flex items-center justify-center gap-3 active:scale-95 ${
                     chipFilter === chip.id
-                      ? "bg-[#2563EB] text-white shadow-md shadow-blue-500/20 dark:bg-gradient-to-r dark:from-[#1D4ED8] dark:to-[#2563EB]"
-                      : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-[rgba(27,39,64,0.7)] dark:text-[#64748B] dark:border-white/10"
+                      ? "bg-gradient-to-r from-[#FACC15] to-[#EAB308] text-slate-950 font-semibold shadow-[0_4px_16px_rgba(234,179,8,0.3)] border border-amber-300/40 scale-[1.01]"
+                      : "bg-white dark:bg-[#182233] text-slate-700 dark:text-[#F8FAFC] border border-amber-200/80 dark:border-amber-500/20 hover:bg-amber-50/70 dark:hover:bg-amber-500/10 hover:border-amber-300 dark:hover:border-amber-500/40 hover:-translate-y-0.5 shadow-xs"
                   }`}
                 >
                   {chip.label}

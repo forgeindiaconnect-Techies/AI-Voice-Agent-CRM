@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ForgeLogo from "./ForgeLogo";
+import GalaxyBackground3D from "./GalaxyBackground3D";
 import {
   Menu,
   X,
@@ -61,6 +62,7 @@ export default function Layout() {
   // Ctrl + B keybinding to toggle sidebar expansion
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.body.classList.contains("lead-modal-active")) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
         setIsSidebarCollapsed((prev: boolean) => {
@@ -77,6 +79,7 @@ export default function Layout() {
   // Ctrl + K keybinding to focus global search
   useEffect(() => {
     const handleSearchKey = (e: KeyboardEvent) => {
+      if (document.body.classList.contains("lead-modal-active")) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         searchInputRef.current?.focus();
@@ -198,8 +201,8 @@ export default function Layout() {
 
   const getCurrentPageTitle = () => {
     const path = location.pathname;
-    if (path === "/") return "Overview";
-    if (path === "/ai-agents") return "AI Voice Agents";
+    if (path === "/") return "CRM Overview Dashboard";
+    if (path === "/ai-agents") return "AI Agent Engine & Voice Command Center";
     if (path === "/leads") return "Leads Management";
     if (path === "/campaigns" || path === "/campaigns-list") return "Campaigns";
     if (path === "/users") return "Recruitment & Access Control";
@@ -213,10 +216,12 @@ export default function Layout() {
 
   return (
     <div
-      className={`h-screen w-screen overflow-hidden flex flex-col md:flex-row ${
-        darkMode ? "bg-[#0B1220] text-white" : "bg-[#F5F7FB] text-slate-800"
+      className={`h-screen w-screen overflow-hidden flex flex-col md:flex-row relative bg-transparent ${
+        darkMode ? "text-white" : "text-slate-800"
       }`}
     >
+      {/* ── 3D INTERACTIVE GALAXY & NEBULA BACKGROUND ── */}
+      <GalaxyBackground3D darkMode={darkMode} />
       {/* Mobile Top Bar */}
       <header className="md:hidden flex items-center justify-between px-5 py-3 bg-[#081D38] text-white shadow-md z-40">
         <div className="flex items-center gap-3">
@@ -229,8 +234,13 @@ export default function Layout() {
           </button>
           <ForgeLogo size="sm" variant="full" />
         </div>
-        <div className="text-xs font-bold text-right text-[#FFC107]">
-          {user?.name?.split(" ")[0] || "User"}
+        <div className="text-xs font-extrabold text-right flex items-center gap-1.5">
+          <span className="text-[#3B82F6]">
+            {user?.role === "team_leader" ? "Supervisor" : user?.role === "admin" ? "Admin" : "Agent"}
+          </span>
+          <span className="text-[#F4B400]">
+            {user?.name?.split(" ")[0] || "User"}
+          </span>
         </div>
       </header>
 
@@ -252,13 +262,15 @@ export default function Layout() {
         style={
           darkMode
             ? {
-                background: "linear-gradient(180deg, #101B2D 0%, #0D1826 100%)",
+                background: "rgba(16, 27, 45, 0.85)",
+                backdropFilter: "blur(12px)",
                 borderRight: "1px solid rgba(255,255,255,0.06)",
                 boxShadow: "4px 0 24px rgba(0,0,0,0.35)",
                 color: "#F8FAFC",
               }
             : {
-                background: "#FFFFFF",
+                background: "rgba(255,255,255,0.92)",
+                backdropFilter: "blur(12px)",
                 borderRight: "1px solid #E2E8F0",
                 boxShadow: "4px 0 20px rgba(15,23,42,0.04)",
                 color: "#0F172A",
@@ -323,16 +335,24 @@ export default function Layout() {
         <nav
           className={`flex-1 ${
             isSidebarCollapsed ? "px-2 py-3 space-y-4" : "px-3 py-4 space-y-5"
-          } overflow-y-auto softphone-scrollbar`}
+          } overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
         >
           {navGroups.map((group, gIdx) => (
             <div key={gIdx} className="space-y-0.5">
               {!isSidebarCollapsed ? (
-                <div
-                  className="px-3 pb-1.5 text-[10px] font-extrabold tracking-widest uppercase"
-                  style={{ color: darkMode ? "rgba(100,116,139,0.75)" : "#94A3B8" }}
-                >
-                  {group.title}
+                <div className="px-3 pb-1.5 text-[11px] font-extrabold tracking-widest uppercase flex items-center gap-1.5 select-none">
+                  {(() => {
+                    const words = group.title.split(" ");
+                    const halfIndex = Math.ceil(words.length / 2);
+                    const firstHalf = words.slice(0, halfIndex).join(" ");
+                    const secondHalf = words.slice(halfIndex).join(" ");
+                    return (
+                      <>
+                        <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-black">{firstHalf}</span>
+                        {secondHalf && <span className="text-[#F4B400] font-black">{secondHalf}</span>}
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 gIdx > 0 && (
@@ -350,20 +370,20 @@ export default function Layout() {
                   end={item.to === "/"}
                   onClick={() => setIsMobileOpen(false)}
                   className={({ isActive }) =>
-                    `group relative flex items-center h-[44px] rounded-[14px] transition-all duration-200 ${
+                    `group relative flex items-center h-[48px] rounded-[12px] transition-all duration-200 ${
                       isSidebarCollapsed
                         ? `w-11 mx-auto justify-center ${
                             isActive
                               ? "text-white"
                               : darkMode
-                              ? "text-white/50 hover:text-white"
-                              : "text-slate-600 hover:text-slate-900"
+                              ? "text-white/50 hover:text-white hover:bg-white/5"
+                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                           }`
-                        : `gap-3 px-3.5 text-[15px] font-medium ${
+                        : `gap-3 px-3.5 text-[14px] font-medium ${
                             isActive
-                              ? "text-white font-bold"
+                              ? "text-white font-semibold shadow-md"
                               : darkMode
-                              ? "text-white/65 hover:text-white"
+                              ? "text-slate-300 hover:text-white hover:bg-white/5"
                               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                           }`
                     }`
@@ -371,8 +391,8 @@ export default function Layout() {
                   style={({ isActive }) =>
                     isActive
                       ? {
-                          background: "linear-gradient(135deg,#2563EB 0%,#1D4ED8 100%)",
-                          boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
+                          background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+                          boxShadow: "0 4px 14px 0 rgba(37,99,235,0.39)",
                           color: "#FFFFFF",
                         }
                       : {}
@@ -380,6 +400,10 @@ export default function Layout() {
                 >
                   {({ isActive }) => (
                     <>
+                      {/* Left accent bar on active menu (Blue + Yellow Gradient) */}
+                      {isActive && (
+                        <span className="absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-b from-[#2563EB] via-[#3B82F6] to-[#F4B400] rounded-r-full shadow-[0_0_10px_rgba(244,180,0,0.6)]" />
+                      )}
                       {/* Hover bg (non-active only) */}
                       {!isActive && (
                         <span
@@ -481,13 +505,16 @@ export default function Layout() {
                   {user?.name ? user.name[0].toUpperCase() : "A"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className={`font-bold text-xs truncate ${darkMode ? "text-white" : "text-slate-900"}`}>
-                    {user?.name || "Admin User"}
+                  <div className="font-extrabold text-xs truncate flex items-center gap-1.5">
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6]">
+                      {user?.role === "team_leader" ? "Supervisor" : user?.role === "admin" ? "Admin" : "Agent"}
+                    </span>
+                    <span className="text-[#F4B400]">
+                      {user?.name || "Admin User"}
+                    </span>
                   </div>
-                  <div className="text-[11px] font-semibold truncate text-[#F59E0B] dark:text-[#FFC107]">
-                    {user?.role === "admin"
-                      ? "Admin"
-                      : user?.role?.replace("_", " ") || "Admin"}
+                  <div className="text-[10px] font-bold truncate text-slate-400 dark:text-[#94A3B8]">
+                    {user?.email || user?.employee_id || "admin@forge.in"}
                   </div>
                 </div>
               </div>
@@ -553,14 +580,14 @@ export default function Layout() {
           style={
             darkMode
               ? {
-                  background: "rgba(10,16,28,0.95)",
+                  background: "rgba(10,16,28,0.85)",
                   borderBottom: "1px solid rgba(255,255,255,0.07)",
-                  backdropFilter: "blur(24px) saturate(180%)",
-                  WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                  backdropFilter: "blur(16px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(16px) saturate(180%)",
                   boxShadow: "0 1px 0 rgba(255,255,255,0.04), 0 4px 20px rgba(0,0,0,0.3)",
                 }
               : {
-                  background: "rgba(255,255,255,0.96)",
+                  background: "rgba(255,255,255,0.88)",
                   borderBottom: "1px solid #E7ECF5",
                   backdropFilter: "blur(16px)",
                   boxShadow: "0 1px 0 rgba(0,0,0,0.04), 0 2px 12px rgba(0,0,0,0.06)",
@@ -837,16 +864,16 @@ export default function Layout() {
               }}
             />
 
-            {/* User Avatar */}
-            <div className="flex items-center gap-2">
+            {/* User Profile Pill */}
+            <div className="flex items-center gap-2.5 bg-slate-100/90 dark:bg-[#151F32] px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 shadow-2xs">
               <div
-                className="h-8 w-8 rounded-xl font-bold text-xs flex items-center justify-center"
+                className="h-7 w-7 rounded-lg font-bold text-xs flex items-center justify-center shrink-0"
                 style={
                   darkMode
                     ? {
                         background: "linear-gradient(135deg,#1D4ED8 0%,#2563EB 100%)",
                         color: "#FFC107",
-                        boxShadow: "0 0 0 2px rgba(37,99,235,0.35), 0 4px 12px rgba(37,99,235,0.25)",
+                        boxShadow: "0 0 0 2px rgba(37,99,235,0.35)",
                       }
                     : {
                         background: "#0F4FA8",
@@ -856,12 +883,20 @@ export default function Layout() {
               >
                 {user?.name ? user.name[0].toUpperCase() : "U"}
               </div>
+              <div className="flex items-center gap-1.5 text-xs font-black">
+                <span className="text-[#1D4ED8] dark:text-[#3B82F6]">
+                  {user?.role === "team_leader" ? "Supervisor" : user?.role === "admin" ? "Admin" : "Agent"}
+                </span>
+                <span className="text-[#F4B400]">
+                  {user?.name || "User"}
+                </span>
+              </div>
             </div>
           </div>
         </header>
 
         {/* Scrollable Content Viewport */}
-        <main className="flex-1 overflow-y-auto p-6 softphone-scrollbar">
+        <main className="flex-1 overflow-y-auto p-6 softphone-scrollbar relative z-10">
           <Outlet />
         </main>
       </div>

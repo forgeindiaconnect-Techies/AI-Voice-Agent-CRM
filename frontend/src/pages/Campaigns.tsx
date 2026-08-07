@@ -153,12 +153,13 @@ function HourlyCallVolumeChart() {
   };
 
   const points = dataMap[timeRange];
-  const maxVal = Math.max(...points.map(p => p.val)) * 1.15;
+  const rawMax = Math.max(...points.map(p => p.val));
+  const maxVal = rawMax * 1.2;
   const avgVal = Math.round(points.reduce((a, b) => a + b.val, 0) / points.length);
   const width = 640;
-  const height = 190;
-  const paddingX = 35;
-  const paddingY = 25;
+  const height = 230;
+  const paddingX = 48;
+  const paddingY = 35;
 
   const pathPoints = points.map((p, idx) => {
     const x = paddingX + (idx / (points.length - 1)) * (width - 2 * paddingX);
@@ -226,7 +227,7 @@ function HourlyCallVolumeChart() {
         </div>
       </div>
 
-      <div className="relative w-full pt-1">
+      <div className="relative w-full pt-1 pb-3">
         {/* Interactive Tooltip Overlay */}
         {hoveredPoint && (
           <div
@@ -238,10 +239,10 @@ function HourlyCallVolumeChart() {
           </div>
         )}
 
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-48 overflow-visible">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-56 overflow-visible">
           <defs>
             <linearGradient id="chartGradientMain" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.18" />
+              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.2" />
               <stop offset="100%" stopColor="#2563EB" stopOpacity="0.0" />
             </linearGradient>
             <linearGradient id="chartLineGrad" x1="0" y1="0" x2="1" y2="0">
@@ -250,14 +251,14 @@ function HourlyCallVolumeChart() {
             </linearGradient>
           </defs>
 
-          {/* Grid lines (15% opacity in dark mode) */}
+          {/* Grid lines */}
           {[0.25, 0.5, 0.75, 1.0].map((frac, idx) => {
-            const val = Math.round(maxVal * frac);
+            const val = Math.round(rawMax * frac);
             const y = height - paddingY - (val / maxVal) * (height - 2 * paddingY);
             return (
               <g key={idx}>
                 <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} className="stroke-slate-100 dark:stroke-white/[0.08]" strokeDasharray="4 4" strokeWidth="1" />
-                <text x={paddingX - 8} y={y + 3} textAnchor="end" className="text-[12px] fill-slate-400 dark:fill-[#94A3B8] font-mono font-semibold">{val}</text>
+                <text x={paddingX - 10} y={y + 4} textAnchor="end" className="text-[11px] fill-slate-400 dark:fill-[#94A3B8] font-mono font-bold">{val}</text>
               </g>
             );
           })}
@@ -268,9 +269,9 @@ function HourlyCallVolumeChart() {
 
           {/* Area & Line */}
           <path d={areaD} fill="url(#chartGradientMain)" />
-          <path d={d} fill="none" stroke="url(#chartLineGrad)" strokeWidth="2" strokeLinecap="round" />
+          <path d={d} fill="none" stroke="url(#chartLineGrad)" strokeWidth="3" strokeLinecap="round" />
 
-          {/* Points */}
+          {/* Points & Hour Labels */}
           {pathPoints.map((pt, idx) => (
             <g
               key={idx}
@@ -284,7 +285,7 @@ function HourlyCallVolumeChart() {
                 r={hoveredPoint?.hour === pt.hour ? "7" : "5"}
                 className="fill-[#2563EB] dark:fill-[#3B82F6] stroke-white dark:stroke-[#131C2F] stroke-2 transition-all duration-150 shadow-[0_0_8px_rgba(37,99,235,0.6)]"
               />
-              <text x={pt.x} y={height - 4} textAnchor="middle" className="text-[12px] fill-slate-400 dark:fill-[#94A3B8] font-bold uppercase">{pt.hour}</text>
+              <text x={pt.x} y={height - 8} textAnchor="middle" className="text-[11px] fill-slate-500 dark:fill-[#94A3B8] font-black uppercase tracking-wider">{pt.hour}</text>
             </g>
           ))}
         </svg>
@@ -353,9 +354,10 @@ function ActiveCampaignTimeline() {
   return (
     <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-6 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-5">
       <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-3">
-        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
-          <Clock className="h-5 w-5 text-purple-600 dark:text-[#A78BFA]" />
-          <span>Active Campaign Timeline</span>
+        <h3 className="text-[20px] font-bold tracking-tight flex items-center gap-2">
+          <Clock className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
+          <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Active Campaign</span>
+          <span className="text-[#F4B400] font-extrabold">Timeline</span>
         </h3>
         <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-blue-500/10 text-[#2563EB] dark:text-[#60A5FA] border border-blue-500/20 shadow-[0_0_12px_rgba(37,99,235,0.15)] shrink-0">
           <span className="relative flex h-1.5 w-1.5">
@@ -403,9 +405,10 @@ function SupervisorAlertsPanel() {
   return (
     <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
       <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
-        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
-          <Bell className="h-5 w-5 text-[#0F4FA8] dark:text-[#60A5FA]" />
-          <span>Supervisor Alerts</span>
+        <h3 className="text-[20px] font-bold tracking-tight flex items-center gap-2">
+          <Bell className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
+          <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Supervisor</span>
+          <span className="text-[#F4B400] font-extrabold">Alerts</span>
         </h3>
         <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider animate-pulse">
           3 Active
@@ -462,9 +465,10 @@ function QuickActionsPanel({
   return (
     <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
       <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
-        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+        <h3 className="text-[20px] font-bold tracking-tight flex items-center gap-2">
           <Zap className="h-5 w-5 text-[#FFC107] dark:text-[#FACC15]" />
-          <span>Quick Actions</span>
+          <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Quick</span>
+          <span className="text-[#F4B400] font-extrabold">Actions</span>
         </h3>
         <span className="text-[10px] font-bold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">
           2×3 Grid
@@ -551,9 +555,10 @@ function LiveCampaignStatusPanel({ campaigns }: { campaigns: Campaign[] }) {
   return (
     <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
       <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
-        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+        <h3 className="text-[20px] font-bold tracking-tight flex items-center gap-2">
           <Activity className="h-5 w-5 text-emerald-600 dark:text-[#34D399]" />
-          <span>Status Breakdown</span>
+          <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Status</span>
+          <span className="text-[#F4B400] font-extrabold">Breakdown</span>
         </h3>
         <span className="text-[10px] font-bold text-slate-400 dark:text-[#64748B]">Total: {campaigns.length || 6}</span>
       </div>
@@ -582,9 +587,10 @@ function RecentActivityFeed() {
   return (
     <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
       <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
-        <h3 className="text-[20px] font-bold tracking-tight text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+        <h3 className="text-[20px] font-bold tracking-tight flex items-center gap-2">
           <FileText className="h-5 w-5 text-[#0F4FA8] dark:text-[#60A5FA]" />
-          <span>Activity Audit</span>
+          <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Activity</span>
+          <span className="text-[#F4B400] font-extrabold">Audit</span>
         </h3>
         <span className="text-[10px] font-bold text-slate-400 dark:text-[#64748B]">Real-time</span>
       </div>
@@ -820,81 +826,181 @@ export default function Campaigns() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto font-sans pb-16">
-      
-      {/* 1. PREMIUM HERO SECTION WITH GRADIENT BORDER & GLASSMORPHISM */}
-      <div className="p-0.5 rounded-[24px] bg-gradient-to-r from-[#0F4FA8] via-[#1E6AD7] to-[#FFC107] shadow-lg shadow-blue-900/5">
-        <div className="bg-white/95 backdrop-blur-md rounded-[23px] p-6 space-y-4">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            
-            {/* Title & Subtitle */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#0F4FA8]/10 text-[#0F4FA8] rounded-xl border border-[#0F4FA8]/20">
-                  <Megaphone className="h-6 w-6" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">Campaign Management</h1>
-                  <p className="text-xs text-slate-500 font-semibold">Enterprise AI outbound dialers & IVR queue routing workspace</p>
-                </div>
-              </div>
 
-              {/* Four KPI Chips replacing single badge */}
-              <div className="flex items-center gap-2 pt-2 flex-wrap text-xs font-bold">
-                <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200/80">
-                  {totalCount} Total
-                </span>
-                <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">
-                  {activeCount} Active
-                </span>
-                <span className="bg-blue-50 text-[#0F4FA8] px-3 py-1 rounded-full border border-blue-200 flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[#0F4FA8] animate-ping" />
-                  2 Running
-                </span>
-                <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full border border-purple-200">
-                  1 Scheduled
-                </span>
-              </div>
+      {/* ══════════════════════════════════════════════════════════════════
+          PREMIUM ENTERPRISE CRM HERO BANNER
+          110px height · 24px radius · 36px padding · Forge India Blue & Gold
+          Dual Light/Dark mode · Glassmorphism · Ambient Glows · Circuit Grid
+      ══════════════════════════════════════════════════════════════════ */}
+      <div
+        className="
+          relative overflow-hidden
+          h-[110px]
+          rounded-[24px]
+          px-9 py-0
+          flex items-center
+          border
+
+          /* ── DARK MODE ── */
+          dark:bg-gradient-to-r dark:from-[#0F172A] dark:via-[#1E293B] dark:to-[#0F172A]
+          dark:border-white/[.08]
+          dark:shadow-[0_16px_48px_rgba(29,78,216,0.20),0_0_30px_rgba(244,180,0,0.08)]
+
+          /* ── LIGHT MODE ── */
+          bg-gradient-to-r from-[#EFF6FF] via-white to-[#FFF8E1]
+          border-[#E5E7EB]
+          shadow-[0_12px_40px_rgba(15,23,42,.08)]
+
+          transition-all duration-300 ease-in-out
+          animate-fadeInUp
+        "
+      >
+        {/* 4px Blue→Gold Top Accent Line */}
+        <div className="absolute top-0 left-0 right-0 h-[4px] rounded-t-[24px] bg-gradient-to-r from-[#1D4ED8] via-[#2563EB] to-[#F4B400] z-20" />
+
+        {/* Faint AI Circuit Grid Pattern (3% opacity) */}
+        <svg
+          className="absolute inset-0 w-full h-full opacity-[0.03] pointer-events-none dark:text-blue-300 text-blue-600"
+          xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 200 110"
+        >
+          <defs>
+            <pattern id="campaigns-hero-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="0.6" />
+              <circle cx="0" cy="0" r="1.2" fill="currentColor" />
+              <circle cx="10" cy="10" r="0.7" fill="currentColor" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#campaigns-hero-grid)" />
+        </svg>
+
+        {/* Left Blue Ambient Glow */}
+        <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-56 h-56 bg-[#1D4ED8]/20 dark:bg-[#1D4ED8]/30 blur-3xl rounded-full pointer-events-none" />
+        {/* Right Gold Ambient Glow */}
+        <div className="absolute -right-16 top-1/2 -translate-y-1/2 w-56 h-56 bg-[#F4B400]/10 dark:bg-[#F4B400]/18 blur-3xl rounded-full pointer-events-none" />
+
+        {/* ── CONTENT ROW ── */}
+        <div className="relative z-10 w-full flex items-center justify-between gap-6">
+
+          {/* LEFT: Icon + Title block */}
+          <div className="flex items-center gap-5 min-w-0">
+
+            {/* 56×56px Glass Circular Icon Container */}
+            <div className="
+              h-14 w-14 rounded-full shrink-0
+              bg-white/20 dark:bg-white/10
+              backdrop-blur-xl
+              border border-white/30 dark:border-white/15
+              shadow-[0_0_24px_rgba(29,78,216,0.45)] dark:shadow-[0_0_28px_rgba(29,78,216,0.55)]
+              flex items-center justify-center
+              group cursor-pointer
+              hover:scale-105 hover:shadow-[0_0_32px_rgba(29,78,216,0.6)]
+              transition-all duration-250 ease-out
+            ">
+              <Megaphone className="h-7 w-7 text-[#F4B400] group-hover:rotate-6 transition-transform duration-250" />
             </div>
 
-            {/* Actions: Segmented Control & Create Campaign Button */}
-            <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end flex-wrap">
-              
-              {/* Segmented Control with active sliding highlight */}
-              <div className="bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex items-center gap-1 text-xs font-bold shadow-inner">
-                <button
-                  onClick={() => { setActiveTab("outbound"); loadData(); }}
-                  className={`px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer ${
-                    activeTab === "outbound"
-                      ? "bg-[#0F4FA8] text-white shadow-md font-extrabold"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Outbound Dialers
-                </button>
-                <button
-                  onClick={() => { setActiveTab("inbound"); loadData(); }}
-                  className={`px-4 py-2 rounded-xl transition-all duration-200 cursor-pointer ${
-                    activeTab === "inbound"
-                      ? "bg-[#0F4FA8] text-white shadow-md font-extrabold"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Inbound IVR Queue
-                </button>
+            {/* Title + Subtitle + Badge */}
+            <div className="min-w-0">
+              {/* Title row: Campaigns + Badge */}
+              <div className="flex items-center gap-3 flex-nowrap">
+                {/* Two-Tone "Campaigns" Title */}
+                <h1 className="text-[28px] sm:text-[34px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-none whitespace-nowrap flex items-baseline gap-0">
+                  <span className="text-[#2563EB] dark:text-[#3B82F6]">Camp</span>
+                  <span className="text-[#F4B400]">aigns</span>
+                </h1>
+
+                {/* Enterprise CRM Pill Badge */}
+                <span className="
+                  inline-flex items-center gap-1.5 shrink-0
+                  px-2.5 py-[3px] rounded-full
+                  text-[9px] font-extrabold uppercase tracking-widest
+                  bg-blue-500/10 dark:bg-blue-400/15
+                  border border-blue-400/40 dark:border-blue-400/30
+                  text-[#2563EB] dark:text-[#60A5FA]
+                  backdrop-blur-sm
+                ">
+                  <span className="h-[6px] w-[6px] rounded-full bg-[#F4B400] animate-pulse" />
+                  Enterprise CRM
+                </span>
               </div>
 
-              {/* Create Campaign Button with Brand Gradient */}
-              {!isSupervisor && activeTab === "outbound" && (
-                <button
-                  onClick={() => setShowLaunchModal(true)}
-                  className="bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-md hover:shadow-blue-500/25 transition-all duration-200 flex items-center gap-2 active:scale-95 cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Create Campaign</span>
-                </button>
-              )}
+              {/* Subtitle */}
+              <p className="text-[13px] sm:text-sm font-medium text-[#64748B] dark:text-[#9CA3AF] mt-1 whitespace-nowrap">
+                Manage AI Voice Campaigns &amp; Automation
+              </p>
+            </div>
+          </div>
+
+          {/* RIGHT: Segmented Control + Create Button */}
+          <div className="flex items-center gap-3 shrink-0">
+
+            {/* 56px Glass Segmented Control */}
+            <div className="
+              h-14 flex items-center gap-1 p-1.5
+              rounded-[16px]
+              bg-black/10 dark:bg-[#0F172A]/70
+              border border-white/20 dark:border-white/10
+              backdrop-blur-xl
+              shadow-inner
+            ">
+              {/* Outbound Dialers Tab */}
+              <button
+                onClick={() => { setActiveTab("outbound"); loadData(); }}
+                className={`
+                  h-[44px] px-5 rounded-[12px]
+                  text-xs font-bold whitespace-nowrap
+                  transition-all duration-250 ease-in-out
+                  cursor-pointer flex items-center justify-center gap-2
+                  active:scale-95
+                  ${activeTab === "outbound"
+                    ? "bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-[0_4px_18px_rgba(29,78,216,0.45)]"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/15 dark:hover:bg-white/8"
+                  }
+                `}
+              >
+                Outbound Dialers
+              </button>
+
+              {/* Inbound IVR Tab */}
+              <button
+                onClick={() => { setActiveTab("inbound"); loadData(); }}
+                className={`
+                  h-[44px] px-5 rounded-[12px]
+                  text-xs font-bold whitespace-nowrap
+                  transition-all duration-250 ease-in-out
+                  cursor-pointer flex items-center justify-center gap-2
+                  active:scale-95
+                  ${activeTab === "inbound"
+                    ? "bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-[0_4px_18px_rgba(29,78,216,0.45)]"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/15 dark:hover:bg-white/8"
+                  }
+                `}
+              >
+                Inbound IVR Queue
+              </button>
             </div>
 
+            {/* Create Campaign Button */}
+            {!isSupervisor && activeTab === "outbound" && (
+              <button
+                onClick={() => setShowLaunchModal(true)}
+                className="
+                  h-14 px-6 rounded-[16px]
+                  bg-gradient-to-r from-[#1D4ED8] via-[#2563EB] to-[#3B82F6]
+                  hover:from-[#1E40AF] hover:via-[#1D4ED8] hover:to-[#2563EB]
+                  text-white font-extrabold text-xs whitespace-nowrap
+                  shadow-[0_8px_22px_rgba(29,78,216,0.38)]
+                  hover:shadow-[0_10px_28px_rgba(29,78,216,0.52)]
+                  hover:-translate-y-0.5
+                  active:scale-95
+                  transition-all duration-250 ease-out
+                  flex items-center gap-2 cursor-pointer
+                "
+              >
+                <Plus className="h-4 w-4" />
+                <span>Create Campaign</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1049,49 +1155,51 @@ export default function Campaigns() {
           </div>
 
           {/* 4. SEARCH, FILTERS & SORT BAR */}
-          <div className="bg-white/95 backdrop-blur-md rounded-[20px] p-4 shadow-sm border border-slate-200/80 flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="bg-white/95 dark:bg-[#1E293B]/90 backdrop-blur-xl rounded-[18px] p-4 shadow-md border border-slate-200/80 dark:border-white/[0.08] flex flex-col md:flex-row gap-4 items-center justify-between transition-all duration-200">
             <div className="relative w-full md:w-96">
-              <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <Search className="h-4 w-4 text-slate-400 dark:text-[#64748B] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search campaigns by name, ID, or pool..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/70 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8] font-semibold text-slate-800 transition"
+                className="w-full h-12 pl-11 pr-10 border border-slate-200 dark:border-white/10 rounded-[14px] text-xs font-semibold bg-slate-50/80 dark:bg-[#0F172A] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#64748B] transition-all duration-200 focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">
-                  <X className="h-3.5 w-3.5" />
+                <button onClick={() => setSearchQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+                  <X className="h-4 w-4" />
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+            <div className="flex items-center gap-3 w-full md:w-auto flex-wrap justify-end text-xs font-bold">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-slate-400" />
+                <SlidersHorizontal className="h-4 w-4 text-blue-600 dark:text-[#60A5FA]" />
                 <CustomSelect
                   value={statusFilter}
                   onChange={statusFilter => setStatusFilter(statusFilter)}
                   options={STATUS_FILTER_OPTIONS}
                   placeholder="All Statuses"
-                  className="w-48"
+                  className="w-48 shrink-0"
+                  triggerClassName="h-12 rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#0F172A] dark:text-white"
                 />
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400 hidden sm:inline">Sort:</span>
+                <span className="text-xs font-bold text-slate-400 dark:text-[#64748B] hidden sm:inline">Sort:</span>
                 <CustomSelect
                   value={sortBy}
                   onChange={val => setSortBy(val as any)}
                   options={SORT_BY_OPTIONS}
                   placeholder="Sort by"
-                  className="w-36"
+                  className="w-36 shrink-0"
+                  triggerClassName="h-12 rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#0F172A] dark:text-white"
                 />
               </div>
 
               <button
                 onClick={loadData}
-                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition flex items-center justify-center shadow-2xs cursor-pointer"
+                className="h-12 w-12 rounded-[14px] bg-slate-100 hover:bg-slate-200 dark:bg-[#0F172A] dark:hover:bg-slate-800 text-[#2563EB] dark:text-[#60A5FA] border border-slate-200 dark:border-white/10 flex items-center justify-center transition-all duration-200 shadow-2xs cursor-pointer active:scale-95"
                 title="Refresh Campaigns Data"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -1100,7 +1208,7 @@ export default function Campaigns() {
           </div>
 
           {/* 5. CAMPAIGNS CARDS LIST */}
-          <div className="space-y-4">
+          <div className="space-y-5">
             {filteredCampaigns.map((c) => {
               const poolObj = pools.find(p => p.id === c.pool_id);
               const isExpanded = expandedCampaignId === c.id;
@@ -1109,48 +1217,65 @@ export default function Campaigns() {
               return (
                 <div
                   key={c.id}
-                  className="bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-[20px] p-5 shadow-sm hover:shadow-md transition-all space-y-4"
+                  className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-white/[0.08] rounded-[18px] p-6 shadow-sm hover:shadow-xl dark:hover:shadow-blue-500/10 dark:hover:bg-[#273549] transition-all duration-200 ease-in-out hover:-translate-y-1 space-y-5 relative overflow-hidden group hover:border-blue-500/40 dark:hover:border-blue-500/40"
                 >
-                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                    <div className="flex items-start gap-4 min-w-0">
-                      <div className="h-12 w-12 rounded-2xl bg-blue-50 border border-blue-100 text-[#0F4FA8] flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
-                        <Megaphone className="h-6 w-6" />
+                  {/* Subtle Top Gold/Blue Accent Line on Hover */}
+                  <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#F4B400] opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5">
+                    <div className="flex items-start gap-4.5 min-w-0">
+                      {/* Icon Box with Gradient Border */}
+                      <div className="h-10 w-10 rounded-xl p-[2px] bg-gradient-to-br from-[#2563EB] to-[#FACC15] shrink-0 shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform duration-200">
+                        <div className="h-full w-full rounded-[10px] bg-blue-50 dark:bg-[#0F172A] flex items-center justify-center text-[#2563EB] dark:text-[#60A5FA]">
+                          <Megaphone className="h-4.5 w-4.5" />
+                        </div>
                       </div>
-                      <div className="space-y-1 min-w-0">
+
+                      <div className="space-y-1.5 min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <h4 className="text-base font-black text-slate-900 tracking-tight">{c.name}</h4>
-                          <span className="font-mono font-bold text-[11px] bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200">
+                          <h4 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight group-hover:text-[#2563EB] dark:group-hover:text-[#60A5FA] transition-colors">{c.name}</h4>
+                          <span className="font-mono font-bold text-xs bg-slate-100 dark:bg-[#0F172A] text-slate-700 dark:text-[#94A3B8] px-3 py-1 rounded-full border border-slate-200 dark:border-white/10">
                             {c.campaign_id}
                           </span>
-                          <span className={`px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                            c.status === "active"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : c.status === "paused"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : "bg-rose-50 text-rose-700 border border-rose-200"
-                          }`}>
-                            {c.status}
-                          </span>
+                          
+                          {/* Premium Status Chips */}
+                          {c.status === "active" ? (
+                            <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-[#34D399] dark:border-emerald-500/30 flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                              Active
+                            </span>
+                          ) : c.status === "paused" ? (
+                            <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-[#FCD34D] dark:border-amber-500/30 flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                              Paused
+                            </span>
+                          ) : (
+                            <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-50 text-[#0F4FA8] border border-blue-200 dark:bg-blue-500/15 dark:text-[#60A5FA] dark:border-blue-500/30 flex items-center gap-1.5">
+                              <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                              Stopped
+                            </span>
+                          )}
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
-                          <span>Target Pool: <strong>{poolObj?.name.replace(/_/g, " ") || "No Pool"}</strong></span>
-                          <span>·</span>
-                          <span>Voice: <strong>{c.ai_voice || "Neural-Female-IN"}</strong></span>
-                          <span>·</span>
-                          <span>Calling Hours: <strong>{c.calling_hours || "9 AM - 6 PM"}</strong></span>
+                        {/* Secondary Information */}
+                        <div className="flex items-center gap-3.5 text-xs text-slate-500 dark:text-[#94A3B8] font-medium flex-wrap">
+                          <span>Target Pool: <strong className="text-slate-800 dark:text-white font-bold">{poolObj?.name.replace(/_/g, " ") || "No Pool"}</strong></span>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
+                          <span>Voice: <strong className="text-slate-800 dark:text-white font-bold">{c.ai_voice || "Neural-Female-IN"}</strong></span>
+                          <span className="text-slate-300 dark:text-slate-700">·</span>
+                          <span>Calling Hours: <strong className="text-slate-800 dark:text-white font-bold">{c.calling_hours || "9 AM - 6 PM"}</strong></span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Action Bar */}
-                    <div className="flex items-center gap-2 w-full lg:w-auto justify-end flex-wrap">
+                    {/* Action Bar with Visual Weights */}
+                    <div className="flex items-center gap-2.5 w-full lg:w-auto justify-end flex-wrap">
                       {!isSupervisor && (
                         <>
                           {c.status === "active" ? (
                             <button
                               onClick={() => handleUpdateStatus(c.id, "paused")}
-                              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 dark:text-[#FCD34D] dark:border-amber-500/30 text-xs font-extrabold rounded-xl transition-all duration-200 flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95"
                             >
                               <CustomPauseIcon size={18} />
                               <span>Pause</span>
@@ -1158,9 +1283,9 @@ export default function Campaigns() {
                           ) : (
                             <button
                               onClick={() => handleUpdateStatus(c.id, "active")}
-                              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                              className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 dark:text-[#34D399] dark:border-emerald-500/30 text-xs font-extrabold rounded-xl transition-all duration-200 flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95"
                             >
-                              <Play className="h-3.5 w-3.5" />
+                              <Play className="h-4 w-4 fill-emerald-600 dark:fill-[#34D399]" />
                               <span>Resume</span>
                             </button>
                           )}
@@ -1171,9 +1296,9 @@ export default function Campaigns() {
                               setTempAgentIds(c.agent_ids || []);
                               setIsAssignModalOpen(true);
                             }}
-                            className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-[#0F4FA8] border border-blue-200 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-[#2563EB] border border-blue-200 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 dark:text-[#60A5FA] dark:border-blue-500/30 text-xs font-extrabold rounded-xl transition-all duration-200 flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95"
                           >
-                            <UserCog className="h-3.5 w-3.5" />
+                            <UserCog className="h-4 w-4" />
                             <span>Assign Agents ({c.agent_ids?.length || 0})</span>
                           </button>
                         </>
@@ -1181,41 +1306,41 @@ export default function Campaigns() {
 
                       <button
                         onClick={() => handleExpandCampaign(c.id)}
-                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 dark:bg-[#0F172A] dark:hover:bg-slate-800 dark:text-[#94A3B8] dark:hover:text-white dark:border-white/10 text-xs font-bold rounded-xl transition-all duration-200 flex items-center gap-2 shadow-2xs cursor-pointer active:scale-95"
                       >
-                        <BarChart2 className="h-3.5 w-3.5" />
+                        <BarChart2 className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" />
                         <span>{isExpanded ? "Hide Metrics" : "View Metrics"}</span>
-                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
 
                   {/* Expanded Telemetry Stats Panel */}
                   {isExpanded && stats && (
-                    <div className="pt-4 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
-                      <div className="p-3 bg-slate-50 border rounded-xl">
-                        <span className="text-[10px] font-extrabold text-slate-400 uppercase">Total Leads</span>
-                        <span className="block text-lg font-black text-slate-900 mt-0.5">{stats.total_leads}</span>
+                    <div className="pt-5 border-t border-slate-100 dark:border-white/10 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 text-xs">
+                      <div className="p-3.5 bg-slate-50 dark:bg-[#0F172A] border border-slate-100 dark:border-white/5 rounded-xl">
+                        <span className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">Total Leads</span>
+                        <span className="block text-lg font-black text-slate-900 dark:text-white mt-0.5 font-mono">{stats.total_leads}</span>
                       </div>
-                      <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl">
-                        <span className="text-[10px] font-extrabold text-[#0F4FA8] uppercase">Pending Queue</span>
-                        <span className="block text-lg font-black text-[#0F4FA8] mt-0.5">{stats.pending_leads}</span>
+                      <div className="p-3.5 bg-blue-50/70 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-xl">
+                        <span className="text-[10px] font-extrabold text-[#2563EB] dark:text-[#60A5FA] uppercase tracking-wider">Pending Queue</span>
+                        <span className="block text-lg font-black text-[#2563EB] dark:text-[#60A5FA] mt-0.5 font-mono">{stats.pending_leads}</span>
                       </div>
-                      <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl">
-                        <span className="text-[10px] font-extrabold text-emerald-700 uppercase">Completed</span>
-                        <span className="block text-lg font-black text-emerald-700 mt-0.5">{stats.completed_leads}</span>
+                      <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-xl">
+                        <span className="text-[10px] font-extrabold text-emerald-700 dark:text-[#34D399] uppercase tracking-wider">Completed</span>
+                        <span className="block text-lg font-black text-emerald-700 dark:text-[#34D399] mt-0.5 font-mono">{stats.completed_leads}</span>
                       </div>
-                      <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl">
-                        <span className="text-[10px] font-extrabold text-emerald-700 uppercase">Qualified</span>
-                        <span className="block text-lg font-black text-emerald-700 mt-0.5">{stats.qualified}</span>
+                      <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-xl">
+                        <span className="text-[10px] font-extrabold text-emerald-700 dark:text-[#34D399] uppercase tracking-wider">Qualified</span>
+                        <span className="block text-lg font-black text-emerald-700 dark:text-[#34D399] mt-0.5 font-mono">{stats.qualified}</span>
                       </div>
-                      <div className="p-3 bg-amber-50/70 border border-amber-100 rounded-xl">
-                        <span className="text-[10px] font-extrabold text-amber-700 uppercase">Retry Queue</span>
-                        <span className="block text-lg font-black text-amber-700 mt-0.5">{stats.retry_queue}</span>
+                      <div className="p-3.5 bg-amber-50/70 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl">
+                        <span className="text-[10px] font-extrabold text-amber-700 dark:text-[#FCD34D] uppercase tracking-wider">Retry Queue</span>
+                        <span className="block text-lg font-black text-amber-700 dark:text-[#FCD34D] mt-0.5 font-mono">{stats.retry_queue}</span>
                       </div>
-                      <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl">
-                        <span className="text-[10px] font-extrabold text-indigo-700 uppercase">Success Rate</span>
-                        <span className="block text-lg font-black text-indigo-700 mt-0.5">{stats.success_rate}%</span>
+                      <div className="p-3.5 bg-indigo-50/70 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-xl">
+                        <span className="text-[10px] font-extrabold text-indigo-700 dark:text-[#A78BFA] uppercase tracking-wider">Success Rate</span>
+                        <span className="block text-lg font-black text-indigo-700 dark:text-[#A78BFA] mt-0.5 font-mono">{stats.success_rate}%</span>
                       </div>
                     </div>
                   )}
@@ -1260,55 +1385,60 @@ export default function Campaigns() {
 
       {/* LAUNCH CAMPAIGN MODAL */}
       {showLaunchModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-lg w-full shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
-                <Rocket className="h-5 w-5 text-[#0F4FA8]" />
-                <span>Launch New AI Campaign</span>
-              </h3>
-              <button onClick={() => setShowLaunchModal(false)} className="p-1 hover:bg-slate-100 rounded-lg">
-                <X className="h-5 w-5 text-slate-400" />
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#1E293B] rounded-[24px] p-6 max-w-lg w-full shadow-2xl space-y-5 border border-slate-200/80 dark:border-white/[0.1] text-slate-900 dark:text-white my-auto">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/10 pb-4">
+              <div className="flex flex-col items-start">
+                <h3 className="text-lg font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <Rocket className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA] shrink-0" />
+                  <span className="text-[#1D4ED8] dark:text-[#60A5FA] font-extrabold">Launch New</span>
+                  <span className="text-[#F4B400] font-extrabold">AI Campaign</span>
+                </h3>
+              </div>
+              <button onClick={() => setShowLaunchModal(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#0F172A] rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateCampaign} className="space-y-3 text-xs font-semibold">
+            <form onSubmit={handleCreateCampaign} className="space-y-4 text-xs font-semibold">
               <div>
-                <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Campaign Name</label>
+                <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1.5">Campaign Name</label>
                 <input
                   required
                   placeholder="e.g. Q3 Credit Card Sales Campaign"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]"
+                  className="w-full border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-3 bg-slate-50 dark:bg-[#0F172A] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">Target Lead Pool</label>
+                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1.5">Target Lead Pool</label>
                   <CustomSelect
                     value={form.pool_id}
                     onChange={val => setForm({ ...form, pool_id: val })}
                     options={poolFilterOptions}
                     placeholder="Select Pool"
+                    triggerClassName="h-11 rounded-xl text-xs dark:bg-[#0F172A] dark:border-white/10 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">AI Voice Model</label>
+                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1.5">AI Voice Model</label>
                   <CustomSelect
                     value={form.ai_voice}
                     onChange={val => setForm({ ...form, ai_voice: val })}
                     options={AI_VOICE_OPTIONS}
                     placeholder="Select Voice"
+                    triggerClassName="h-11 rounded-xl text-xs dark:bg-[#0F172A] dark:border-white/10 dark:text-white"
                   />
                 </div>
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#0F4FA8] hover:bg-blue-900 text-white font-extrabold py-3 rounded-xl transition mt-2 cursor-pointer shadow-md"
+                className="w-full bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white font-extrabold py-3.5 rounded-xl transition-all duration-200 mt-2 cursor-pointer shadow-lg shadow-blue-500/25 active:scale-95 text-xs"
               >
                 Create & Initialize Dialer
               </button>
@@ -1319,22 +1449,22 @@ export default function Campaigns() {
 
       {/* IMPORT LEADS MODAL */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-                <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#1E293B] rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-5 border border-slate-200/80 dark:border-white/[0.1] text-slate-900 dark:text-white my-auto">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/10 pb-4">
+              <h3 className="font-black text-slate-900 dark:text-white text-base flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-emerald-600 dark:text-[#34D399]" />
                 <span>Import Lead Contacts CSV</span>
               </h3>
-              <button onClick={() => setShowImportModal(false)} className="p-1 hover:bg-slate-100 rounded-lg">
-                <X className="h-5 w-5 text-slate-400" />
+              <button onClick={() => setShowImportModal(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#0F172A] rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-6 border-2 border-dashed border-slate-300 rounded-2xl text-center space-y-2 bg-slate-50/50">
-              <FileSpreadsheet className="h-8 w-8 text-slate-400 mx-auto" />
-              <div className="text-xs font-extrabold text-slate-700">Drag and drop CSV or Excel file</div>
-              <div className="text-[11px] text-slate-400">Supports .csv, .xlsx up to 50,000 records</div>
+            <div className="p-6 border-2 border-dashed border-slate-300 dark:border-white/10 rounded-2xl text-center space-y-2 bg-slate-50/50 dark:bg-[#0F172A]/50">
+              <FileSpreadsheet className="h-8 w-8 text-slate-400 dark:text-[#64748B] mx-auto" />
+              <div className="text-xs font-extrabold text-slate-800 dark:text-white">Drag and drop CSV or Excel file</div>
+              <div className="text-[11px] text-slate-400 dark:text-[#64748B]">Supports .csv, .xlsx up to 50,000 records</div>
             </div>
 
             <button
@@ -1342,7 +1472,7 @@ export default function Campaigns() {
                 showToast("Leads imported into target pool successfully!", "success");
                 setShowImportModal(false);
               }}
-              className="w-full bg-emerald-600 text-white font-extrabold py-3 rounded-xl hover:bg-emerald-700 transition cursor-pointer"
+              className="w-full bg-emerald-600 dark:bg-emerald-500 hover:bg-emerald-700 dark:hover:bg-emerald-600 text-white font-extrabold py-3.5 rounded-xl transition cursor-pointer shadow-lg shadow-emerald-500/25 active:scale-95 text-xs"
             >
               Upload & Process Batch
             </button>
@@ -1352,31 +1482,36 @@ export default function Campaigns() {
 
       {/* ASSIGN AGENTS MODAL */}
       {isAssignModalOpen && selectedCampaign && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-black text-slate-900 text-base">Assign Agents to {selectedCampaign.name}</h3>
-              <button onClick={() => setIsAssignModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg">
-                <X className="h-5 w-5 text-slate-400" />
+        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#1E293B] rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-5 border border-slate-200/80 dark:border-white/[0.1] text-slate-900 dark:text-white my-auto">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/10 pb-4">
+              <div className="space-y-0.5">
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Assign Agents</h3>
+                <p className="text-xs text-[#2563EB] dark:text-[#60A5FA] font-bold">{selectedCampaign.name}</p>
+              </div>
+              <button onClick={() => setIsAssignModalOpen(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-[#0F172A] rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="max-h-60 overflow-y-auto space-y-2 text-xs">
+            <div className="max-h-64 overflow-y-auto space-y-2 text-xs pr-1">
               {agentsList.map(agent => {
                 const isSelected = tempAgentIds.includes(agent.id);
                 return (
                   <div
                     key={agent.id}
                     onClick={() => toggleSelectAgent(agent.id)}
-                    className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition ${
-                      isSelected ? "bg-blue-50 border-blue-200 text-[#0F4FA8] font-extrabold" : "bg-slate-50 border-slate-200 text-slate-700"
+                    className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all duration-150 ${
+                      isSelected
+                        ? "bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#2563EB] dark:text-[#60A5FA] font-extrabold shadow-2xs"
+                        : "bg-slate-50 dark:bg-[#0F172A] border-slate-200 dark:border-white/5 text-slate-700 dark:text-[#94A3B8] hover:bg-slate-100 dark:hover:bg-[#273549]"
                     }`}
                   >
                     <div>
-                      <div>{agent.name}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">{agent.employee_id}</div>
+                      <div className="font-bold text-slate-900 dark:text-white">{agent.name}</div>
+                      <div className="text-[10px] text-slate-400 dark:text-[#64748B] font-mono mt-0.5">{agent.employee_id}</div>
                     </div>
-                    {isSelected && <CheckCircle2 className="h-4 w-4 text-[#0F4FA8]" />}
+                    {isSelected && <CheckCircle2 className="h-4.5 w-4.5 text-[#2563EB] dark:text-[#60A5FA]" />}
                   </div>
                 );
               })}
@@ -1384,7 +1519,7 @@ export default function Campaigns() {
 
             <button
               onClick={handleSaveCampaignAgents}
-              className="w-full bg-[#0F4FA8] text-white font-extrabold py-3 rounded-xl hover:bg-blue-900 transition cursor-pointer"
+              className="w-full bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white font-extrabold py-3.5 rounded-xl shadow-lg shadow-blue-500/25 transition cursor-pointer active:scale-95 text-xs"
             >
               Save Allocations
             </button>

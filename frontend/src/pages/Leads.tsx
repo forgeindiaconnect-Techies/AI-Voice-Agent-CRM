@@ -261,15 +261,18 @@ export default function Leads() {
   const [showManualModal, setShowManualModal] = useState(false);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
 
-  // Prevent background scrolling when manual lead modal is open
+  // Prevent background scrolling and disable header/page interaction when manual lead modal is open
   useEffect(() => {
     if (showManualModal) {
       document.body.style.overflow = "hidden";
+      document.body.classList.add("lead-modal-active");
     } else {
       document.body.style.overflow = "";
+      document.body.classList.remove("lead-modal-active");
     }
     return () => {
       document.body.style.overflow = "";
+      document.body.classList.remove("lead-modal-active");
     };
   }, [showManualModal]);
 
@@ -955,11 +958,13 @@ export default function Leads() {
     maxLength?: number
   ) => {
     const error = getFieldError(field);
+    const touched = (manualFormTouched as any)[field];
     const value = (manualForm as any)[field];
+    const showError = error && touched;
     return (
-      <div className="space-y-1.5 w-full text-left font-sans">
-        <label className="block text-[12px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider pl-1">
-          {label} {required && <span className="text-rose-500">*</span>}
+      <div className="flex flex-col gap-1 w-full text-left font-sans">
+        <label className="text-[12px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">
+          {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
         </label>
         <div className="relative">
           <input
@@ -969,19 +974,17 @@ export default function Leads() {
             value={value}
             onChange={e => handleFieldChange(field, e.target.value)}
             onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
-            className={`w-full h-[52px] px-4 border rounded-[14px] bg-white dark:bg-[#0F172A] text-[14px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#94A3B8] focus:outline-none transition-all duration-250 ${
-              error
-                ? "border-rose-400 dark:border-rose-500 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10"
-                : value && !manualFormErrors[field]
-                ? "border-emerald-400 dark:border-emerald-500/60 focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-                : "border-[#CBD5E1] dark:border-white/[0.08] focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
+            className={`w-full h-[46px] px-4 border rounded-[10px] bg-white dark:bg-[#09111E] text-[15px] font-medium text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#94A3B8] dark:placeholder-slate-600 focus:outline-none transition-colors duration-150 hover:border-[#2563EB] ${
+              showError
+                ? "border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15"
+                : "border-[#D9E2EC] dark:border-slate-700/80 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
             }`}
           />
         </div>
-        {error && (
-          <p className="text-[11px] text-[#EF4444] font-semibold mt-1 flex items-center gap-1 pl-1">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>{error}</span>
+        {showError && (
+          <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+            <AlertCircle className="h-[11px] w-[11px] shrink-0" />
+            {error}
           </p>
         )}
       </div>
@@ -996,11 +999,13 @@ export default function Leads() {
     disabled = false
   ) => {
     const error = getFieldError(field);
+    const touched = (manualFormTouched as any)[field];
     const value = (manualForm as any)[field];
+    const showError = error && touched;
     return (
-      <div className="space-y-1.5 w-full text-left font-sans">
-        <label className="block text-[12px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider pl-1">
-          {label} <span className="text-rose-500">*</span>
+      <div className="flex flex-col gap-1 w-full text-left font-sans">
+        <label className="text-[12px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">
+          {label}<span className="text-rose-500 ml-0.5">*</span>
         </label>
         <CustomSelect
           disabled={disabled}
@@ -1015,18 +1020,16 @@ export default function Leads() {
           options={options}
           placeholder={placeholder}
           searchable={true}
-          triggerClassName={`h-[52px] rounded-[14px] text-[14px] font-semibold border transition-all duration-250 bg-white dark:bg-[#0F172A] ${
-            error
-              ? "border-rose-400 dark:border-rose-500 ring-4 ring-rose-500/10"
-              : value
-              ? "border-emerald-400 dark:border-emerald-500/60"
-              : "border-[#CBD5E1] dark:border-white/[0.08]"
+          triggerClassName={`h-[46px] rounded-[10px] text-[15px] font-medium border transition-colors duration-150 bg-white dark:bg-[#09111E] hover:border-[#2563EB] ${
+            showError
+              ? "border-rose-500 focus:border-rose-500 ring-2 ring-rose-500/15"
+              : "border-[#D9E2EC] dark:border-slate-700/80"
           }`}
         />
-        {error && (
-          <p className="text-[11px] text-[#EF4444] font-semibold mt-1 flex items-center gap-1.5 pl-1">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>{error}</span>
+        {showError && (
+          <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+            <AlertCircle className="h-[11px] w-[11px] shrink-0" />
+            {error}
           </p>
         )}
       </div>
@@ -1038,36 +1041,35 @@ export default function Leads() {
     label: string,
     placeholder = "Enter text...",
     required = false,
-    rows = 1,
+    _rows = 1,
     customRef?: React.RefObject<HTMLTextAreaElement>,
     customChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   ) => {
     const error = getFieldError(field);
+    const touched = (manualFormTouched as any)[field];
     const value = (manualForm as any)[field];
+    const showError = error && touched;
     return (
-      <div className="space-y-1.5 w-full text-left font-sans">
-        <label className="block text-[12px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider pl-1">
-          {label} {required && <span className="text-rose-500">*</span>}
+      <div className="flex flex-col gap-1 w-full text-left font-sans">
+        <label className="text-[12px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">
+          {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
         </label>
         <textarea
           ref={customRef}
-          rows={rows}
           placeholder={placeholder}
           value={value}
           onChange={customChange || (e => handleFieldChange(field, e.target.value))}
           onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
-          className={`w-full border rounded-[14px] px-4 py-3.5 bg-white dark:bg-[#0F172A] text-[14px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none overflow-hidden transition-all duration-250 placeholder-[#94A3B8] focus:ring-4 focus:ring-[#2563EB]/10 focus:border-[#2563EB] ${
-            error
-              ? "border-rose-400 dark:border-rose-500 focus:ring-rose-500/10 focus:border-rose-500"
-              : value && !manualFormErrors[field]
-              ? "border-emerald-400 dark:border-emerald-500/60 focus:border-[#2563EB]"
-              : "border-[#CBD5E1] dark:border-white/[0.08] focus:border-[#2563EB]"
+          className={`w-full h-[120px] px-4 py-3 border rounded-[10px] bg-white dark:bg-[#09111E] text-[15px] font-medium text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none transition-colors duration-150 placeholder-[#94A3B8] dark:placeholder-slate-600 hover:border-[#2563EB] ${
+            showError
+              ? "border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/15"
+              : "border-[#D9E2EC] dark:border-slate-700/80 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15"
           }`}
         />
-        {error && (
-          <p className="text-[11px] text-[#EF4444] font-semibold mt-1 flex items-center gap-1.5 pl-1">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-            <span>{error}</span>
+        {showError && (
+          <p className="text-[11px] text-rose-500 font-medium flex items-center gap-1">
+            <AlertCircle className="h-[11px] w-[11px] shrink-0" />
+            {error}
           </p>
         )}
       </div>
@@ -1084,19 +1086,24 @@ export default function Leads() {
             
             {/* Title & AI Badge */}
             <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-[#0F4FA8]/10 text-[#0F4FA8] rounded-xl border border-[#0F4FA8]/20">
-                  <Users className="h-6 w-6" />
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200/80 dark:from-amber-500/20 dark:to-amber-500/10 text-[#1D4ED8] dark:text-[#FDE047] flex items-center justify-center font-bold shrink-0 shadow-2xs border border-amber-300/60 dark:border-amber-500/30">
+                  <Users className="h-6 w-6 text-[#1D4ED8] dark:text-[#FDE047]" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Lead Management</h1>
-                    <span className="text-[10px] font-extrabold bg-[#FFC107]/20 text-[#D4AF37] border border-[#FFC107]/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles className="h-3 w-3" />
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex flex-col items-start">
+                      <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                        <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Lead</span>
+                        <span className="text-[#F4B400] font-extrabold">Management</span>
+                      </h1>
+                    </div>
+                    <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
                       AI VOICE READY
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 font-semibold">Enterprise customer lead pipeline, intelligent scoring & agent routing</p>
+                  <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">Enterprise customer lead pipeline, intelligent scoring & agent routing</p>
                 </div>
               </div>
 
@@ -1165,6 +1172,7 @@ export default function Leads() {
                   <Plus className="h-4 w-4" />
                   <span>Add Lead</span>
                 </button>
+              )}
 
               <button
                 onClick={() => showToast("Exporting leads database CSV...", "info")}
@@ -1438,18 +1446,20 @@ export default function Leads() {
                       if (chip.id === "all") setStatusFilter("");
                       else setStatusFilter(chip.id);
                     }}
-                    className={`h-[46px] px-5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-2.5 active:scale-95 ${
+                    className={`h-[48px] px-6 rounded-[16px] text-[13.5px] font-semibold whitespace-nowrap transition-all duration-200 ease-in-out cursor-pointer shrink-0 flex items-center gap-3 active:scale-95 ${
                       isActive
-                        ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/25"
-                        : "bg-slate-100 dark:bg-[#111827] text-slate-600 dark:text-[#94A3B8] hover:bg-slate-200/80 dark:hover:bg-[#172033] hover:-translate-y-0.5 border border-slate-200/60 dark:border-white/10"
+                        ? "bg-gradient-to-r from-[#FACC15] to-[#EAB308] text-slate-950 font-semibold shadow-[0_4px_16px_rgba(234,179,8,0.3)] border border-amber-300/40 scale-[1.01]"
+                        : "bg-white dark:bg-[#182233] text-slate-700 dark:text-[#F8FAFC] border border-amber-200/80 dark:border-amber-500/20 hover:bg-amber-50/70 dark:hover:bg-amber-500/10 hover:border-amber-300 dark:hover:border-amber-500/40 hover:-translate-y-0.5 shadow-xs"
                     }`}
                   >
                     <span>{chip.label}</span>
-                    <span className={`h-6 px-2.5 rounded-full font-black text-[11px] flex items-center justify-center ${
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-slate-200 dark:bg-[#172033] text-slate-700 dark:text-[#F8FAFC]"
-                    }`}>
+                    <span
+                      className={`h-6.5 min-w-[26px] px-2 rounded-full font-bold text-[11px] flex items-center justify-center ${
+                        isActive
+                          ? "bg-amber-700/20 text-slate-950 shadow-2xs"
+                          : "bg-amber-100/90 dark:bg-amber-500/15 text-amber-900 dark:text-[#FDE047]"
+                      }`}
+                    >
                       {count}
                     </span>
                   </button>
@@ -1602,8 +1612,8 @@ export default function Leads() {
                           : "bg-slate-50/40 dark:bg-[#162238]"
                       } ${
                         isSelected
-                          ? "border-l-[#2563EB] bg-blue-50/50 dark:bg-gradient-to-r dark:from-[#2563EB]/15 dark:to-transparent shadow-[0_4px_24px_rgba(37,99,235,0.15)] select-row-active"
-                          : "border-l-transparent hover:border-l-[#2563EB] hover:bg-[#2563EB]/5 dark:hover:bg-[#2563EB]/8"
+                          ? "border-l-[#F4B400] bg-amber-50/50 dark:bg-gradient-to-r dark:from-[#F4B400]/15 dark:to-transparent shadow-[0_4px_24px_rgba(244,180,0,0.15)] select-row-active"
+                          : "border-l-transparent hover:border-l-[#F4B400] hover:bg-[#F4B400]/5 dark:hover:bg-[#F4B400]/8"
                       }`}
                       style={isSelected ? { borderTop: "1px solid rgba(250, 204, 21, 0.4)" } : undefined}
                     >
@@ -1667,8 +1677,8 @@ export default function Leads() {
 
                       {/* Pool Badge */}
                       <td className="px-4 py-3.5">
-                        <span className="font-bold text-[10px] px-3.5 py-1.5 rounded-full uppercase tracking-wider border border-[#2563EB]/35 bg-[#2563EB]/5 text-[#2563EB] dark:text-[#60A5FA] hover:shadow-[0_0_12px_rgba(37,99,235,0.2)] transition-all duration-200">
-                          {poolObj?.name.replace(/_/g, " ") || "No Pool"}
+                        <span className="font-semibold text-xs px-[14px] py-[6px] rounded-[12px] bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/15 dark:to-indigo-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200/80 dark:border-blue-500/30 shadow-2xs hover:scale-102 transition-all duration-200">
+                          {poolObj?.name === "credit_card_sales" ? "Sales Team" : (poolObj?.name ? poolObj.name.replace(/_/g, " ") : "No Pool")}
                         </span>
                       </td>
 
@@ -1829,174 +1839,197 @@ export default function Leads() {
       {/* MANUAL LEAD ENTRY MODAL */}
       <AnimatePresence>
         {showManualModal && (
-          <div className="fixed inset-0 z-50 bg-[#000000]/65 backdrop-blur-[10px] flex items-center justify-center p-4 md:p-6 font-sans overflow-hidden">
+          <div
+            className="fixed inset-0 z-[9999] bg-[#0A101C]/55 backdrop-blur-[4px] flex items-center justify-center p-4 font-sans pointer-events-auto modal-open-container"
+            style={{
+              backgroundColor: "rgba(10, 16, 28, 0.55)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)"
+            }}
+          >
             <style dangerouslySetInnerHTML={{__html: `
-              .custom-lead-scroll::-webkit-scrollbar { width: 6px; }
-              .custom-lead-scroll::-webkit-scrollbar-track { background: #0B1220; border-radius: 9999px; }
-              .custom-lead-scroll::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #2563EB, #FACC15); border-radius: 9999px; }
+              body.lead-modal-active {
+                overflow: hidden !important;
+              }
+              body.lead-modal-active header {
+                opacity: 0.35 !important;
+                filter: grayscale(50%) !important;
+                pointer-events: none !important;
+                user-select: none !important;
+                transition: opacity 0.2s ease, filter 0.2s ease !important;
+              }
+              body.lead-modal-active aside {
+                opacity: 0.40 !important;
+                filter: grayscale(40%) !important;
+                pointer-events: none !important;
+                user-select: none !important;
+                transition: opacity 0.2s ease, filter 0.2s ease !important;
+              }
+              body.lead-modal-active main > div:not(.modal-open-container) {
+                pointer-events: none !important;
+                user-select: none !important;
+              }
+              .lm-scroll::-webkit-scrollbar { width: 6px; }
+              .lm-scroll::-webkit-scrollbar-track { background: transparent; }
+              .lm-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+              .dark .lm-scroll::-webkit-scrollbar-thumb { background: #334155; }
+              .lm-scroll { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
+              .dark .lm-scroll { scrollbar-color: #334155 transparent; }
             `}} />
             <motion.div
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              style={{ width: "1180px", maxWidth: "95vw", maxHeight: "90vh" }}
-              className="bg-white dark:bg-[#131C2F] rounded-[24px] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.45)] border border-[#E2E8F0] dark:border-white/[0.08] relative overflow-hidden flex flex-col space-y-6"
+              initial={{ scale: 0.98, opacity: 0, y: 6 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.98, opacity: 0, y: 6 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              style={{ width: "1160px", maxWidth: "95vw", maxHeight: "90vh" }}
+              className="bg-white dark:bg-[#0C1526] rounded-[18px] shadow-2xl border border-[#D9E2EC] dark:border-slate-800 relative flex flex-col overflow-hidden pointer-events-auto"
             >
-              {/* Gradient top border (perfectly straight 4px height) */}
-              <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#2563EB] to-[#FACC15] z-30" />
+              {/* ── 3px brand bar ── */}
+              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15] z-20 rounded-t-[18px]" />
 
-              {/* Header (sticky at top) */}
-              <div className="flex justify-between items-center border-b border-[#E2E8F0] dark:border-white/[0.06] pb-5 shrink-0">
-                <div>
-                  <h3 className="font-bold text-[#0F172A] dark:text-[#F8FAFC] text-[30px] leading-tight flex items-center gap-3">
-                    <div className="h-[46px] w-[46px] rounded-[14px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.25)]">
-                      <UserPlus className="h-5 w-5" />
-                    </div>
-                    <span>Add Customer Lead</span>
+              {/* ── HEADER (72px) ── */}
+              <div className="h-[72px] flex items-center justify-between px-6 border-b border-[#D9E2EC] dark:border-slate-800 shrink-0 bg-white dark:bg-[#0C1526]">
+                <div className="flex flex-col items-start">
+                  <h3 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Add Customer</span>
+                    <span className="text-[#F4B400] font-extrabold">Lead</span>
                   </h3>
-                  <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-2 pl-[58px]">Enterprise customer registration &amp; pipeline classification</p>
                 </div>
-                <button 
-                  onClick={() => setShowManualModal(false)} 
-                  className="h-9 w-9 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/5 rounded-full cursor-pointer transition-all duration-200 text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white shrink-0"
+                <button
+                  type="button"
+                  onClick={() => setShowManualModal(false)}
+                  className="h-9 w-9 flex items-center justify-center rounded-[8px] text-[#64748B] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-150 cursor-pointer shrink-0 border border-transparent hover:border-[#D9E2EC] dark:hover:border-slate-700"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
 
-              {/* Form body */}
-              <form onSubmit={handleCreateManualLead} className="flex-1 flex flex-col min-h-0 overflow-hidden space-y-6">
-                
-                {/* 2-Column Responsive Grid (all cards in the same grid so row components align height automatically) */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto overflow-x-hidden pr-2 select-none custom-lead-scroll flex-1 pb-2">
-                  
-                  {/* Card 1: Profile Information */}
-                  <div className="bg-[#F8FAFC] dark:bg-[#18243A] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[16px] p-6 space-y-6 shadow-sm hover:shadow-[0_12px_40px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-250 relative overflow-hidden flex flex-col justify-between">
-                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
-                    <div className="flex items-center gap-3 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-3.5 shrink-0">
-                      <div className="h-[52px] w-[52px] rounded-[16px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)] ring-2 ring-[#FACC15]/30">
-                        <UserPlus className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-[#0F172A] dark:text-white text-[18px] leading-tight">Profile Information</h4>
-                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Primary contact identity and enterprise association</p>
-                      </div>
-                    </div>
-                    <div className="space-y-[18px] flex-1 flex flex-col justify-center">
-                      {renderTextInput("name", "Customer Name", "text", " ", true)}
-                      <div>
-                        <PhoneInput
-                          required
-                          value={manualForm.phone}
-                          onChange={(fullVal) => {
-                            setManualForm(prev => ({ ...prev, phone: fullVal }));
-                            setManualFormTouched(prev => ({ ...prev, phone: true }));
-                          }}
-                          error={getFieldError("phone")}
-                          label="Phone Number"
-                          inputClassName="h-[52px] rounded-[14px]"
-                        />
-                      </div>
-                      {renderTextInput("email", "Email ID", "email", " ", true)}
-                      {renderTextInput("company_name", "Company Name (Optional)", "text", " ", false)}
-                    </div>
-                  </div>
+              {/* ── SCROLLABLE BODY ── */}
+              <form onSubmit={handleCreateManualLead} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden lm-scroll p-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-                  {/* Card 3: Location */}
-                  <div className="bg-[#F8FAFC] dark:bg-[#18243A] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[16px] p-6 space-y-6 shadow-sm hover:shadow-[0_12px_40px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-250 relative overflow-hidden flex flex-col justify-between">
-                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
-                    <div className="flex items-center gap-3 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-3.5 shrink-0">
-                      <div className="h-[52px] w-[52px] rounded-[16px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)] ring-2 ring-[#FACC15]/30">
-                        <MapPin className="h-5 w-5" />
+                    {/* ── CARD 1: Profile Information ── */}
+                    <div className="bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#D9E2EC] dark:border-slate-800 rounded-[14px] p-[20px] relative overflow-hidden flex flex-col justify-between">
+                      <div className="pb-3 mb-4 border-b border-[#D9E2EC] dark:border-slate-800">
+                        <div className="flex flex-col items-start">
+                          <h4 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Profile</span>
+                            <span className="text-[#F4B400] font-extrabold">Information</span>
+                          </h4>
+                        </div>
+                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-normal mt-1 leading-normal">Primary contact identity and enterprise association</p>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-[#0F172A] dark:text-white text-[18px] leading-tight">Location</h4>
-                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Operational address and locality details</p>
+                      <div className="space-y-[14px]">
+                        {renderTextInput("name", "Customer Name", "text", "Full name", true)}
+                        <div>
+                          <PhoneInput
+                            required
+                            value={manualForm.phone}
+                            onChange={(fullVal) => {
+                              setManualForm(prev => ({ ...prev, phone: fullVal }));
+                              setManualFormTouched(prev => ({ ...prev, phone: true }));
+                            }}
+                            error={getFieldError("phone")}
+                            label="Phone Number"
+                            inputClassName="h-[46px] rounded-[10px]"
+                          />
+                        </div>
+                        {renderTextInput("email", "Email ID", "email", "name@company.com", true)}
+                        {renderTextInput("company_name", "Company Name", "text", "Company or organization (optional)", false)}
                       </div>
                     </div>
-                    <div className="space-y-[18px] flex-1 flex flex-col justify-center">
-                      <div className="space-y-1.5 w-full text-left">
-                        <label className="block text-[12px] font-extrabold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider pl-1">
-                          Country <span className="text-[#94A3B8] font-semibold normal-case text-[11px]">(Read-Only)</span>
-                        </label>
-                        <input
-                          readOnly
-                          value="India"
-                          className="w-full h-[52px] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[14px] px-4 bg-[#F1F5F9] dark:bg-[#0F172A]/70 text-[14px] font-bold text-[#64748B] dark:text-slate-400 select-none cursor-not-allowed focus:outline-none"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3.5">
-                        {renderSelectInput("state", "State", stateOptions, "Select State")}
-                        {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
-                      </div>
-                      {renderTextInput("pincode", "Pincode", "text", " ", true, 6)}
-                      {renderTextareaInput("address", "Address", "Street address, building, local area...", true, 1, addressRef, handleAddressChange)}
-                    </div>
-                  </div>
 
-                  {/* Card 2: Lead Details */}
-                  <div className="bg-[#F8FAFC] dark:bg-[#18243A] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[16px] p-6 space-y-6 shadow-sm hover:shadow-[0_12px_40px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-250 relative overflow-hidden flex flex-col justify-between">
-                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
-                    <div className="flex items-center gap-3 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-3.5 shrink-0">
-                      <div className="h-[52px] w-[52px] rounded-[16px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)] ring-2 ring-[#FACC15]/30">
-                        <Target className="h-5 w-5" />
+                    {/* ── CARD 2: Location ── */}
+                    <div className="bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#D9E2EC] dark:border-slate-800 rounded-[14px] p-[20px] relative overflow-hidden flex flex-col justify-between">
+                      <div className="pb-3 mb-4 border-b border-[#D9E2EC] dark:border-slate-800">
+                        <div className="flex flex-col items-start">
+                          <h4 className="text-xl font-extrabold tracking-tight leading-tight flex items-center -tracking-[0.5px]">
+                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Loc</span>
+                            <span className="text-[#F4B400] font-extrabold">ation</span>
+                          </h4>
+                        </div>
+                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-normal mt-1 leading-normal">Operational address and locality details</p>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-[#0F172A] dark:text-white text-[18px] leading-tight">Lead Details</h4>
-                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Pipeline classification and routing settings</p>
+                      <div className="space-y-[14px]">
+                        <div className="flex flex-col gap-1 w-full text-left font-sans">
+                          <label className="text-[12px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">
+                            Country <span className="text-[#94A3B8] font-normal normal-case text-[11px] lowercase">(read-only)</span>
+                          </label>
+                          <input
+                            readOnly
+                            value="India"
+                            className="w-full h-[46px] border border-[#D9E2EC] dark:border-slate-700 rounded-[10px] px-4 bg-[#F1F5F9] dark:bg-slate-800/40 text-[15px] font-medium text-[#64748B] dark:text-slate-400 select-none cursor-not-allowed focus:outline-none"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {renderSelectInput("state", "State", stateOptions, "Select State")}
+                          {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
+                        </div>
+                        {renderTextInput("pincode", "Pincode", "text", "6-digit pincode", true, 6)}
+                        {renderTextareaInput("address", "Address", "Street address, building, local area...", true, 2, addressRef, handleAddressChange)}
                       </div>
                     </div>
-                    <div className="space-y-[18px] flex-1 flex flex-col justify-center">
-                      {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool", user?.role === "agent")}
-                      {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
-                      {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
-                      {renderSelectInput("priority", "Priority", priorityOptions, "Select Priority")}
-                      {renderSelectInput("assigned_agent_id", "Assigned Agent (Optional)", manualAgentOptions, "Select Agent", user?.role === "agent")}
-                    </div>
-                  </div>
 
-                  {/* Card 4: Additional Information */}
-                  <div className="bg-[#F8FAFC] dark:bg-[#18243A] border border-[#E2E8F0] dark:border-white/[0.08] rounded-[16px] p-6 space-y-6 shadow-sm hover:shadow-[0_12px_40px_rgba(15,23,42,0.10)] dark:hover:shadow-[0_12px_40px_rgba(0,0,0,0.25)] hover:-translate-y-0.5 transition-all duration-250 relative overflow-hidden flex flex-col justify-between">
-                    <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
-                    <div className="flex items-center gap-3 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-3.5 shrink-0">
-                      <div className="h-[52px] w-[52px] rounded-[16px] bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center text-white shrink-0 shadow-[0_0_15px_rgba(37,99,235,0.2)] ring-2 ring-[#FACC15]/30">
-                        <FileText className="h-5 w-5" />
+                    {/* ── CARD 3: Lead Details ── */}
+                    <div className="bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#D9E2EC] dark:border-slate-800 rounded-[14px] p-[20px] relative overflow-hidden flex flex-col justify-between">
+                      <div className="pb-3 mb-4 border-b border-[#D9E2EC] dark:border-slate-800">
+                        <div className="flex flex-col items-start">
+                          <h4 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Lead</span>
+                            <span className="text-[#F4B400] font-extrabold">Details</span>
+                          </h4>
+                        </div>
+                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-normal mt-1 leading-normal">Pipeline classification and routing settings</p>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-[#0F172A] dark:text-white text-[18px] leading-tight">Additional Information</h4>
-                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Extra contextual notes and details</p>
+                      <div className="space-y-[14px]">
+                        {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool", user?.role === "agent")}
+                        {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
+                        {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
+                        {renderSelectInput("priority", "Priority", priorityOptions, "Select Priority")}
+                        {renderSelectInput("assigned_agent_id", "Assigned Agent", manualAgentOptions, "Select Agent (optional)", user?.role === "agent")}
                       </div>
                     </div>
-                    <div className="space-y-[18px] flex-1 flex flex-col justify-center">
-                      {renderTextareaInput("notes", "Notes (Optional)", "Add any extra notes or requirements...", false, 4)}
+
+                    {/* ── CARD 4: Additional Information ── */}
+                    <div className="bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#D9E2EC] dark:border-slate-800 rounded-[14px] p-[20px] relative overflow-hidden flex flex-col justify-between">
+                      <div className="pb-3 mb-4 border-b border-[#D9E2EC] dark:border-slate-800">
+                        <div className="flex flex-col items-start">
+                          <h4 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Additional</span>
+                            <span className="text-[#F4B400] font-extrabold">Information</span>
+                          </h4>
+                        </div>
+                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-normal mt-1 leading-normal">Extra contextual notes and details</p>
+                      </div>
+                      <div className="space-y-[14px]">
+                        {renderTextareaInput("notes", "Notes (Optional)", "Add any extra notes, requirements, or context about this lead...", false, 6)}
+                      </div>
                     </div>
-                  </div>
 
-                </div>
+                  </div>{/* /grid */}
+                </div>{/* /scroll */}
 
-                {/* Sticky Footer Actions (sticky at bottom) */}
-                <div className="flex items-center gap-3 pt-5 border-t border-[#E2E8F0] dark:border-white/[0.06] shrink-0">
+                {/* ── STICKY FOOTER ── */}
+                <div className="h-[72px] flex items-center justify-end gap-3 px-6 border-t border-[#D9E2EC] dark:border-slate-800 shrink-0 bg-white dark:bg-[#0C1526]">
                   <button
                     type="button"
                     onClick={() => setShowManualModal(false)}
-                    className="px-7 h-[52px] bg-[#F8FAFC] hover:bg-[#F1F5F9] dark:bg-[#18243A] dark:hover:bg-[#1E2E4A] border border-[#E2E8F0] dark:border-white/[0.08] text-[#0F172A] dark:text-[#F8FAFC] rounded-[14px] text-[13px] font-extrabold transition-all duration-250 cursor-pointer active:scale-95 text-center shrink-0"
+                    className="h-[46px] px-6 bg-white dark:bg-[#1E293B] border border-[#D9E2EC] dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white rounded-[10px] text-[14px] font-semibold transition duration-150 cursor-pointer shrink-0"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingManual || !isManualFormValid}
-                    className={`flex-1 h-[52px] text-white text-[13px] font-extrabold rounded-[14px] transition-all duration-250 cursor-pointer shadow-lg flex items-center justify-center gap-2 ${
-                      isSubmittingManual
-                        ? "bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed"
-                        : !isManualFormValid
-                        ? "bg-slate-200 dark:bg-[#18243A] text-[#94A3B8]/50 cursor-not-allowed shadow-none border border-[#E2E8F0] dark:border-white/[0.05]"
-                        : "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] shadow-blue-500/20 hover:shadow-blue-500/35 hover:-translate-y-0.5 active:scale-95 hover:scale-[1.01]"
+                    className={`flex-1 h-[46px] text-white text-[14px] font-semibold rounded-[10px] transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer ${
+                      isSubmittingManual || !isManualFormValid
+                        ? "bg-[#2563EB]/40 cursor-not-allowed"
+                        : "bg-[#2563EB] hover:bg-[#1D4ED8]"
                     }`}
                   >
-                    {isSubmittingManual && <Loader2 className="h-4.5 w-4.5 animate-spin" />}
-                    {isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}
+                    {isSubmittingManual && <Loader2 className="h-[14px] w-[14px] animate-spin" />}
+                    <span>{isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}</span>
                   </button>
                 </div>
               </form>

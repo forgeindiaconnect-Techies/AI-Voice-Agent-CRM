@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { CustomSelect } from "./CustomSelect";
+import MenuBadge from "./MenuBadge";
 import {
   X,
   User,
@@ -291,8 +292,13 @@ export default function RegisterUserModal({
               <UserPlus className="h-6 w-6 text-[#0F4C9A]" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Register New User</h2>
+              <div className="flex items-center gap-3.5 flex-wrap">
+                <div className="flex flex-col items-start">
+                  <h2 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Register</span>
+                    <span className="text-[#F4B400] font-extrabold">New User</span>
+                  </h2>
+                </div>
                 <span className="text-[11px] font-extrabold bg-[#0F4C9A]/10 text-[#0F4C9A] border border-[#0F4C9A]/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                   Enterprise SaaS
                 </span>
@@ -374,15 +380,16 @@ export default function RegisterUserModal({
                 <button
                   type="button"
                   onClick={() => toggleSection("personal")}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-slate-50/70 border-b border-slate-100 text-left cursor-pointer hover:bg-slate-100/60 transition"
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-blue-50/60 via-white to-amber-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-blue-50/80 hover:to-amber-50/60 transition-all duration-200"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold">
-                      <User className="h-4 w-4 text-[#0F4C9A]" />
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#1D4ED8] to-[#2563EB] flex items-center justify-center shadow-[0_2px_8px_rgba(37,99,235,0.35)]">
+                      <User className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                        1. Personal Information
+                      <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-0">
+                        <span className="text-[#1D4ED8]">1. Personal&nbsp;</span>
+                        <span className="text-[#F4B400]">Information</span>
                       </h3>
                       <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                         Basic user credentials and identification numbers
@@ -390,7 +397,7 @@ export default function RegisterUserModal({
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200">
+                    <span className="text-[10px] font-bold text-[#1D4ED8] bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
                       Required Fields
                     </span>
                     {openSections.personal ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
@@ -481,15 +488,16 @@ export default function RegisterUserModal({
                 <button
                   type="button"
                   onClick={() => toggleSection("role")}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-slate-50/70 border-b border-slate-100 text-left cursor-pointer hover:bg-slate-100/60 transition"
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-amber-50/60 via-white to-blue-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-amber-50/80 hover:to-blue-50/60 transition-all duration-200"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold">
-                      <Shield className="h-4 w-4 text-[#0F4C9A]" />
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#F4B400] to-[#FFD54A] flex items-center justify-center shadow-[0_2px_8px_rgba(244,180,0,0.4)]">
+                      <Shield className="h-4 w-4 text-[#1E3A8A]" />
                     </div>
                     <div>
-                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                        2. Role & Operational Assignment
+                      <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-0">
+                        <span className="text-[#1D4ED8]">2. Role &amp;&nbsp;</span>
+                        <span className="text-[#F4B400]">Operational Assignment</span>
                       </h3>
                       <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                         Define RBAC roles, pool mappings, and shifts
@@ -497,8 +505,8 @@ export default function RegisterUserModal({
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-[#0F4C9A] bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200/80">
-                      Role & Mapping
+                    <span className="text-[10px] font-bold text-[#92400E] bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                      Role &amp; Mapping
                     </span>
                     {openSections.role ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                   </div>
@@ -618,33 +626,14 @@ export default function RegisterUserModal({
                             const isSelected = poolId === p.id;
                             const isCreditCard = p.name.toLowerCase().includes("credit") || p.name.toLowerCase().includes("card");
                             return (
-                              <button
+                              <MenuBadge
                                 key={p.id}
-                                type="button"
+                                title={isCreditCard ? "Sales Team" : p.name.replace(/_/g, " ")}
+                                isActive={isSelected}
                                 onClick={() => setPoolId(p.id)}
-                                className={`relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer text-left flex items-center gap-3.5 ${
-                                  isSelected
-                                    ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
-                                    : "bg-white text-slate-900 border-blue-200/80 hover:border-[#0F4C9A] hover:bg-blue-50/50 hover:-translate-y-0.5 shadow-xs"
-                                }`}
-                              >
-                                <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${isSelected ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
-                                  {isCreditCard ? <Briefcase className="h-5 w-5" /> : <Layers className="h-5 w-5" />}
-                                </div>
-                                <div>
-                                  <span className="block font-semibold text-xs tracking-tight uppercase truncate max-w-[120px]">
-                                    {p.name.replace(/_/g, " ")}
-                                  </span>
-                                  <span className={`block text-[10px] font-medium ${isSelected ? "text-blue-100" : "text-slate-400"}`}>
-                                    {isCreditCard ? "Sales" : "Campaign Pool"}
-                                  </span>
-                                </div>
-                                {isSelected && (
-                                  <span className="absolute top-3 right-3 h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
-                                    <Check className="h-3 w-3 text-white" />
-                                  </span>
-                                )}
-                              </button>
+                                icon={isCreditCard ? <Briefcase className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+                                showCheck={true}
+                              />
                             );
                           })}
                         </div>
@@ -715,15 +704,16 @@ export default function RegisterUserModal({
                 <button
                   type="button"
                   onClick={() => toggleSection("security")}
-                  className="w-full px-6 py-4 flex items-center justify-between bg-slate-50/70 border-b border-slate-100 text-left cursor-pointer hover:bg-slate-100/60 transition"
+                  className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-blue-50/60 via-white to-amber-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-blue-50/80 hover:to-amber-50/60 transition-all duration-200"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold">
-                      <Lock className="h-4 w-4 text-[#0F4C9A]" />
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#1D4ED8] to-[#2563EB] flex items-center justify-center shadow-[0_2px_8px_rgba(37,99,235,0.35)]">
+                      <Lock className="h-4 w-4 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                        3. Security Credentials & Password Policies
+                      <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-0">
+                        <span className="text-[#1D4ED8]">3. Security Credentials &amp;&nbsp;</span>
+                        <span className="text-[#F4B400]">Password Policies</span>
                       </h3>
                       <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                         Set account login credentials and security parameters
@@ -731,11 +721,12 @@ export default function RegisterUserModal({
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80">
+                    <span className="text-[10px] font-bold text-[#92400E] bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
                       Security Policy
                     </span>
                     {openSections.security ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                   </div>
+
                 </button>
 
                 {openSections.security && (
