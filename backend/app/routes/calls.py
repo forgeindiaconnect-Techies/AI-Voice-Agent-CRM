@@ -88,7 +88,7 @@ async def get_twiml(request: Request):
     # If calling out to a destination phone or client
     if To and To != twilio_number:
         caller_id = twilio_number if twilio_number else '+19783818471'
-        dial = Dial(caller_id=caller_id)
+        dial = Dial(caller_id=caller_id, answer_on_bridge=True)
         
         if re.match(r"^[\d\+\-\(\) ]+$", To):
             dial.number(To)
@@ -602,13 +602,13 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
             assigned_agent_id = _uid(user)
             agent_phone = user.get("phone")
     
-    # Actually trigger Twilio call if configured
+    # Actually trigger Twilio call if configured and initiate_pstn is requested (WebRTC calls handle dialing natively)
     twilio_sid = None
     try:
         # pyrefly: ignore [missing-import]
         from twilio.rest import Client
         from app.core.config import settings
-        if hasattr(settings, 'TWILIO_ACCOUNT_SID') and settings.TWILIO_ACCOUNT_SID:
+        if payload.initiate_pstn and hasattr(settings, 'TWILIO_ACCOUNT_SID') and settings.TWILIO_ACCOUNT_SID:
             client = Client(getattr(settings, 'TWILIO_API_KEY', settings.TWILIO_ACCOUNT_SID), 
                             getattr(settings, 'TWILIO_API_SECRET', getattr(settings, 'TWILIO_AUTH_TOKEN', '')), 
                             settings.TWILIO_ACCOUNT_SID)

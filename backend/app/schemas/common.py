@@ -244,6 +244,7 @@ class ManualDialPayload(BaseModel):
     assigned_agent_id: Optional[str] = None
     priority: str
     notes: Optional[str] = None
+    initiate_pstn: Optional[bool] = False
 
 
 class ManualCallActionPayload(BaseModel):
