@@ -112,21 +112,28 @@ async def on_startup():
             "Make sure local MongoDB is running on mongodb://127.0.0.1:27017"
         )
         
-    # Seed mock users if using mongomock
+    # Seed default system accounts if missing or password hash needs updating
     from app.core.database import users_col, pools_col
-    from app.core.security import hash_password
+    from app.core.security import hash_password, verify_password
     from app.core.utils import utcnow, gen_employee_id
     
     try:
-        count = await users_col.count_documents({})
-        if count == 0:
-            default_users = [
-                {"name": "System Admin", "email": "admin@forgeindia.com", "password": hash_password("Admin@123"), "role": "admin", "employee_id": gen_employee_id("admin"), "is_active": True, "created_at": utcnow()},
-                {"name": "Team Leader", "email": "tl@forgeindia.com", "password": hash_password("Leader@123"), "role": "supervisor", "employee_id": gen_employee_id("supervisor"), "is_active": True, "created_at": utcnow()},
-                {"name": "Sales Agent", "email": "agent@forgeindia.com", "password": hash_password("Agent@123"), "role": "agent", "employee_id": gen_employee_id("agent"), "agent_phone": "+919444667411", "is_active": True, "created_at": utcnow()}
-            ]
-            await users_col.insert_many(default_users)
-            logger.info("Seeded in-memory mock database with default users.")
+        default_users = [
+            {"name": "System Admin", "email": "admin@forgeindia.com", "raw_p": "Admin@123", "password": hash_password("Admin@123"), "role": "admin", "employee_id": gen_employee_id("admin"), "is_active": True, "created_at": utcnow()},
+            {"name": "Team Leader", "email": "tl@forgeindia.com", "raw_p": "Leader@123", "password": hash_password("Leader@123"), "role": "supervisor", "employee_id": gen_employee_id("supervisor"), "is_active": True, "created_at": utcnow()},
+            {"name": "Sales Agent", "email": "agent@forgeindia.com", "raw_p": "Agent@123", "password": hash_password("Agent@123"), "role": "agent", "employee_id": gen_employee_id("agent"), "agent_phone": "+919444667411", "is_active": True, "created_at": utcnow()}
+        ]
+        
+        for u_data in default_users:
+            raw_p = u_data.pop("raw_p")
+            existing = await users_col.find_one({"email": u_data["email"]})
+            if not existing:
+                await users_col.insert_one(u_data)
+                logger.info(f"Seeded user account: {u_data['email']}")
+            else:
+                if not verify_password(raw_p, existing.get("password", "")):
+                    await users_col.update_one({"_id": existing["_id"]}, {"$set": {"password": u_data["password"]}})
+                    logger.info(f"Refreshed password hash for: {u_data['email']}")
             
         pool_count = await pools_col.count_documents({})
         if pool_count == 0:
