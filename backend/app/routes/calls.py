@@ -88,7 +88,7 @@ async def get_twiml(request: Request):
     # If calling out to a destination phone or client
     if To and To != twilio_number:
         caller_id = twilio_number if twilio_number else '+19783818471'
-        dial = Dial(caller_id=caller_id, answer_on_bridge=True)
+        dial = Dial(caller_id=caller_id)
         
         if re.match(r"^[\d\+\-\(\) ]+$", To):
             dial.number(To)
