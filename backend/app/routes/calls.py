@@ -33,7 +33,8 @@ from twilio.jwt.access_token import AccessToken
 # pyrefly: ignore [missing-import]
 from twilio.jwt.access_token.grants import VoiceGrant
 # pyrefly: ignore [missing-import]
-from twilio.twiml.voice_response import VoiceResponse, Dial
+from twilio.twiml.voice_response import VoiceResponse, Dial, Gather
+from urllib.parse import quote
 import re
 from app.core.config import settings
 
@@ -66,39 +67,78 @@ async def get_twilio_token(user: dict = Depends(get_current_user)):
 
 @router.api_route("/twiml", methods=["GET", "POST"])
 async def get_twiml(request: Request):
-    """Twilio webhook to generate TwiML for routing the call"""
+    """
+    Step 1 TwiML Webhook:
+    Executed when Desktop App places a call.
+    Plays trial account notification ONLY to the Desktop Agent on WebRTC leg.
+    The customer's phone DOES NOT RING AT ALL during this step.
+    When the message finishes, Twilio automatically proceeds to /twiml-dial to ring customer.
+    """
     if request.method == "POST":
         try:
             form_data = await request.form()
         except Exception:
             form_data = {}
         To = form_data.get("To", "")
-        From = form_data.get("From", "")
     else:
         To = request.query_params.get("To", "")
-        From = request.query_params.get("From", "")
 
-    response = VoiceResponse()
-    twilio_number = getattr(settings, 'TWILIO_PHONE_NUMBER', '')
-    
-    # Status callback URL for real-time call state events (busy, no-answer, answered, etc.)
-    base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
-    status_callback_url = f"{base_url}/api/calls/status-callback"
-    
-    # Strip spaces from To if present
     if To:
         To = To.replace(" ", "+")
 
-    # If calling out to a destination phone or client
+    base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
+    dial_url = f"{base_url}/api/calls/twiml-dial?To={quote(To)}"
+
+    response = VoiceResponse()
+    
+    # Gather prompt plays ONLY to Desktop Agent. Customer is not dialed yet.
+    gather = Gather(
+        action=dial_url,
+        method="POST",
+        num_digits=1,
+        timeout=1,
+    )
+    gather.say("Twilio trial account call. Connecting customer now.", voice="alice")
+    response.append(gather)
+
+    # Redirect to dial endpoint once message finishes playing
+    response.redirect(dial_url, method="POST")
+
+    return PlainTextResponse(str(response), media_type="text/xml")
+
+
+@router.api_route("/twiml-dial", methods=["GET", "POST"])
+async def get_twiml_dial(request: Request):
+    """
+    Step 2 TwiML Webhook:
+    Executed ONLY AFTER the trial account message finishes playing in Desktop App.
+    Now Twilio places the single outbound call to the customer's phone.
+    """
+    if request.method == "POST":
+        try:
+            form_data = await request.form()
+        except Exception:
+            form_data = {}
+        To = form_data.get("To", "") or request.query_params.get("To", "")
+    else:
+        To = request.query_params.get("To", "")
+
+    if To:
+        To = To.replace(" ", "+")
+
+    base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
+    status_callback_url = f"{base_url}/api/calls/status-callback"
+    twilio_number = getattr(settings, 'TWILIO_PHONE_NUMBER', '')
+    caller_id = twilio_number if twilio_number else '+19783818471'
+
+    response = VoiceResponse()
+
     if To and To != twilio_number:
-        caller_id = twilio_number if twilio_number else '+19783818471'
-        
         dial = Dial(
             caller_id=caller_id,
             action=status_callback_url,
             timeout=30,
         )
-        
         if re.match(r"^[\d\+\-\(\) ]+$", To):
             dial.number(
                 To,
@@ -108,11 +148,10 @@ async def get_twiml(request: Request):
             )
         else:
             dial.client(To)
-            
         response.append(dial)
     else:
         response.say("Welcome to Forge India Connect. Connecting your call.")
-        
+
     return PlainTextResponse(str(response), media_type="text/xml")
 
 
