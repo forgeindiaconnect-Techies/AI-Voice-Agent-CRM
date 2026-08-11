@@ -456,13 +456,7 @@ export default function Leads() {
 
       const leadsData = await api.get(`/api/leads${queryString}`);
       const validLeads = Array.isArray(leadsData) ? leadsData : [];
-      // Attach mock AI scores & dates for demo if missing
-      const enhancedLeads = validLeads.map((l: Lead, idx: number) => ({
-        ...l,
-        ai_score: l.ai_score || Math.floor(75 + (idx * 7) % 24),
-        last_contact_at: l.last_contact_at || "Today, 11:45 AM"
-      }));
-      setLeads(enhancedLeads);
+      setLeads(validLeads);
 
       try {
         const poolsData = await api.get("/api/pools");

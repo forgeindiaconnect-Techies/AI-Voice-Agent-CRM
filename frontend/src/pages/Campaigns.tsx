@@ -343,14 +343,7 @@ function RealtimeAIDialerHealth() {
 }
 
 // 3. Active Campaign Timeline & Live Status Panel
-function ActiveCampaignTimeline() {
-  const milestones = [
-    { title: "Credit Card Sales Q3", pool: "Outbound Sales Pool", status: "Running", progress: 68, color: "from-[#10B981] to-[#06B6D4]" },
-    { title: "Q3 Executive Hiring", pool: "Recruitment Pool", status: "Running", progress: 84, color: "from-[#2563EB] to-[#3B82F6]" },
-    { title: "Priority Support Follow-up", pool: "Customer Care Pool", status: "Paused", progress: 42, color: "from-[#F59E0B] to-[#FBBF24]" },
-    { title: "Wealth Advisory Outbound", pool: "VIP Clients", status: "Scheduled", progress: 10, color: "from-[#8B5CF6] to-[#A78BFA]" }
-  ];
-
+function ActiveCampaignTimeline({ campaigns }: { campaigns: Campaign[] }) {
   return (
     <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-6 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-5">
       <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-3">
@@ -369,78 +362,43 @@ function ActiveCampaignTimeline() {
       </div>
 
       <div className="space-y-5">
-        {milestones.map((m, idx) => (
-          <div key={idx} className="space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <div className="flex items-center gap-2">
-                <span className={`h-2.5 w-2.5 rounded-full bg-gradient-to-r ${m.color}`} />
-                <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC]">{m.title}</span>
-                <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-medium font-mono">({m.pool})</span>
-              </div>
-              <span className="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-[#34D399]">
-                {m.progress}%
-              </span>
-            </div>
-            <div className="h-3 w-full bg-slate-100 dark:bg-[#0B1220] rounded-full p-0.5 border border-slate-200/40 dark:border-white/5 overflow-hidden">
-              <div
-                className={`h-full rounded-full bg-gradient-to-r ${m.color} transition-all duration-500 shadow-[0_0_8px_rgba(16,185,129,0.3)] animate-pulse`}
-                style={{ width: `${m.progress}%` }}
-              />
-            </div>
+        {campaigns.length === 0 ? (
+          <div className="p-6 text-center text-slate-500 dark:text-slate-400 text-xs">
+            No active campaigns found in database. Create a campaign to start tracking progress.
           </div>
-        ))}
+        ) : (
+          campaigns.map((c, idx) => (
+            <div key={c.id || idx} className="space-y-2">
+              <div className="flex justify-between items-center text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-500" />
+                  <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC]">{c.name}</span>
+                  <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-medium font-mono">({c.campaign_type})</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full font-mono text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-[#34D399]">
+                  {c.status.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
 }
 
-// 4. Supervisor Alerts & Operational Notifications Widget
+// 4. Operational Notifications Widget
 function SupervisorAlertsPanel() {
-  const alerts = [
-    { title: "Lead Queue Depletion Warning", desc: "Outbound Sales Pool requires CSV import (+200 leads left)", type: "warning", time: "5m ago" },
-    { title: "High Conversion Rate Surge", desc: "AI Agent AGT84785 achieved 94% lead conversion on Campaign #8492", type: "success", time: "14m ago" },
-    { title: "Retry Queue Throttle Adjusted", desc: "Supervisor auto-adjusted retry interval to 30 mins for optimal SLA", type: "info", time: "42m ago" }
-  ];
-
   return (
-    <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-5 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
-      <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-2.5">
-        <h3 className="text-[20px] font-bold tracking-tight flex items-center gap-2">
-          <Bell className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
-          <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Supervisor</span>
-          <span className="text-[#F4B400] font-extrabold">Alerts</span>
+    <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[22px] p-6 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4">
+      <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/5 pb-3">
+        <h3 className="text-[18px] font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-amber-500" />
+          <span>Operational Notifications</span>
         </h3>
-        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider animate-pulse">
-          3 Active
-        </span>
       </div>
-
-      <div className="space-y-3 text-xs">
-        {alerts.map((al, idx) => (
-          <div
-            key={idx}
-            className="p-3.5 rounded-[16px] bg-slate-50 dark:bg-[#18243A] border border-slate-100 dark:border-white/5 hover:border-blue-500/30 dark:hover:border-blue-500/30 flex items-start gap-3 border-l-4 border-l-[#FACC15] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(37,99,235,0.08)] transition-all duration-200 cursor-pointer"
-          >
-            {/* Warning icon inside glowing circle */}
-            <div className="h-8 w-8 rounded-full bg-[#FACC15]/10 dark:bg-[#FACC15]/10 text-[#FACC15] flex items-center justify-center shadow-[0_0_10px_rgba(250,204,21,0.2)] shrink-0">
-              {al.type === "warning" ? (
-                <AlertTriangle className="h-4 w-4" />
-              ) : al.type === "success" ? (
-                <CheckCircle className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <AlertCircle className="h-4 w-4 text-blue-500" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between">
-                <span className="font-extrabold text-slate-900 dark:text-[#F8FAFC] truncate">{al.title}</span>
-                {/* Aligned perfectly right */}
-                <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-mono shrink-0 ml-auto pl-2">{al.time}</span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-[#94A3B8] font-medium mt-1 leading-normal">{al.desc}</p>
-            </div>
-          </div>
-        ))}
+      <div className="p-6 text-center text-slate-500 dark:text-slate-400 text-xs">
+        No critical system warnings or notifications at this time.
       </div>
     </div>
   );
@@ -1129,7 +1087,7 @@ export default function Campaigns() {
               <HourlyCallVolumeChart />
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <ActiveCampaignTimeline />
+                <ActiveCampaignTimeline campaigns={campaigns} />
                 <SupervisorAlertsPanel />
               </div>
 

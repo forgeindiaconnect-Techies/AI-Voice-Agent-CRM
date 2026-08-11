@@ -195,18 +195,29 @@ export default function Dashboard() {
 
   const [hoveredVolumePoint, setHoveredVolumePoint] = useState<{ label: string; val: number; x: number; y: number } | null>(null);
 
-  const hourlyCallVolumeData = useMemo(() => [
-    { label: "8 AM", val: 32 },
-    { label: "9 AM", val: 68 },
-    { label: "10 AM", val: 105 },
-    { label: "11 AM", val: 142 },
-    { label: "12 PM", val: 84 },
-    { label: "1 PM", val: 135 },
-    { label: "2 PM", val: 96 },
-    { label: "3 PM", val: 75 },
-    { label: "4 PM", val: 52 },
-    { label: "5 PM", val: 38 }
-  ], []);
+  const hourlyCallVolumeData = useMemo(() => {
+    const totalCalls = summary?.today_calls || summary?.total_calls || 0;
+    if (totalCalls === 0) {
+      return [
+        { label: "8 AM", val: 0 },
+        { label: "10 AM", val: 0 },
+        { label: "12 PM", val: 0 },
+        { label: "2 PM", val: 0 },
+        { label: "4 PM", val: 0 },
+        { label: "6 PM", val: 0 }
+      ];
+    }
+    const answered = summary?.answered_calls || Math.floor(totalCalls * 0.7);
+    const missed = summary?.missed_calls || (totalCalls - answered);
+    return [
+      { label: "8 AM", val: Math.round(totalCalls * 0.1) },
+      { label: "10 AM", val: Math.round(totalCalls * 0.25) },
+      { label: "12 PM", val: Math.round(totalCalls * 0.2) },
+      { label: "2 PM", val: Math.round(totalCalls * 0.25) },
+      { label: "4 PM", val: Math.round(totalCalls * 0.15) },
+      { label: "6 PM", val: Math.round(totalCalls * 0.05) }
+    ];
+  }, [summary]);
 
   const volumePeakPoint = useMemo(() => {
     return hourlyCallVolumeData.reduce((prev, curr) => (prev.val > curr.val ? prev : curr), hourlyCallVolumeData[0]);
@@ -325,24 +336,16 @@ export default function Dashboard() {
       
       if (user?.role !== "agent") {
         const logs = await api.get("/api/reports/recent-activities");
-        setActivities(logs);
+        setActivities(logs || []);
 
         const live = await api.get("/api/calls/live");
-        const enrichedLive = (live || []).map((c: any, idx: number) => ({
-          ...c,
-          campaign: idx % 2 === 0 ? "Outbound Sales Pool" : "Inbound Support Queue",
-          queue: idx % 2 === 0 ? "High Priority Sales" : "Customer Retention",
-          timer: `0${idx + 1}:${(idx * 17) % 60}`,
-          sentiment: idx % 2 === 0 ? "Positive (94%)" : "Neutral (82%)",
-          recording_status: true
-        }));
-        setLiveCallsList(enrichedLive);
+        setLiveCallsList(live || []);
       } else {
         const leadsData = await api.get("/api/leads?status_filter=new");
-        setAgentLeads(leadsData);
+        setAgentLeads(leadsData || []);
 
         const historyData = await api.get("/api/calls");
-        setAgentCallHistory(historyData);
+        setAgentCallHistory(historyData || []);
       }
       
       setError(null);
@@ -368,12 +371,8 @@ export default function Dashboard() {
       setActiveCallId(res.call_id);
       setCallDurationSeconds(0);
       setCallNotes("");
-      setAiIntent("Customer inquiring about enterprise CRM integration & SLA");
-      setAiSuggestions([
-        "Highlight 24/7 dedicated support SLA guarantee",
-        "Offer 15% annual billing subscription discount",
-        "Confirm call back time slot for technical demo"
-      ]);
+      setAiIntent(res.ai_intent || "");
+      setAiSuggestions(res.ai_suggestions || []);
       showToast(`Initiated outbound call to ${lead.name} (${lead.phone})`, "info");
     } catch (err: any) {
       showToast(`Failed to dial lead: ${err.message}`, "error");
