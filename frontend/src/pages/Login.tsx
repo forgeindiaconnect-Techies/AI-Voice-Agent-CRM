@@ -348,7 +348,45 @@ export default function Login() {
           {/* AI Robotic Eye Gentle Breathing Glow Effect */}
           <div className="absolute top-[16.5%] left-[53.8%] h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_15px_#38BDF8] animate-ping opacity-75 pointer-events-none" />
 
+          {/* ── Top-Right Floating Badge: Senior Enterprise Incoming Call Widget (Apple VisionOS / Stripe / macOS Fluent) ── */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0, y: [0, -5, 0] }}
+            transition={{ opacity: { delay: 0.3 }, y: { duration: 4.5, repeat: Infinity, ease: "easeInOut" } }}
+            className="absolute -top-6 -right-2 sm:-right-6 h-[88px] px-6 sm:px-7 rounded-[24px] bg-white/85 dark:bg-[#1E293B]/90 backdrop-blur-[24px] backdrop-saturate-[180%] border border-white/70 dark:border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.12),0_0_35px_rgba(29,78,216,0.22),0_0_40px_rgba(244,180,0,0.15)] hover:shadow-[0_25px_60px_rgba(29,78,216,0.35),0_0_50px_rgba(244,180,0,0.25)] hover:-translate-y-1 transition-all duration-250 flex items-center gap-5 select-none z-20 group cursor-pointer overflow-hidden relative"
+          >
+            {/* 2.5px Edge-to-Edge Blue-to-Gold Gradient Top Accent Line */}
+            <div className="absolute top-0 left-0 right-0 h-[2.5px] rounded-t-[24px] bg-gradient-to-r from-[#1D4ED8] via-[#3B82F6] to-[#F4B400]" />
 
+            {/* 48px Modern Avatar with Animated Gradient Ring */}
+            <div className="relative h-12 w-12 rounded-full p-[2px] bg-gradient-to-tr from-[#1D4ED8] via-[#F4B400] to-[#2563EB] shrink-0 shadow-md group-hover:scale-105 transition-transform flex items-center justify-center">
+              <div className="h-full w-full rounded-full bg-white/85 dark:bg-[#0F172A]/85 backdrop-blur-md flex items-center justify-center text-slate-800 dark:text-slate-100 font-extrabold text-base shadow-inner">
+                👤
+              </div>
+            </div>
+
+            {/* Caller Information (18px SemiBold) & Pulsing Green Live Status Dot with Increased Spacing */}
+            <div className="flex-1 min-w-0 pr-1">
+              <div className="text-[18px] font-semibold text-slate-900 dark:text-white tracking-tight leading-tight">
+                +91 80 XXXX XXXX
+              </div>
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-2.5">
+                <span className="relative flex h-2.5 w-2.5 items-center justify-center">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span>Incoming Call</span>
+              </div>
+            </div>
+
+            {/* 52x52px Circular Call Button with Blue-to-Purple Gradient, Hover Glow & Ripple */}
+            <button
+              type="button"
+              className="h-[52px] w-[52px] rounded-full bg-gradient-to-tr from-[#1D4ED8] via-[#6366F1] to-[#9333EA] flex items-center justify-center text-white shadow-[0_8px_25px_rgba(99,102,241,0.5)] hover:shadow-[0_10px_30px_rgba(147,51,234,0.65)] hover:scale-110 active:scale-95 transition-all duration-250 shrink-0 group/btn cursor-pointer relative overflow-hidden"
+            >
+              <PhoneCall className="h-5.5 w-5.5 animate-pulse group-hover/btn:rotate-12 transition-transform" />
+            </button>
+          </motion.div>
 
           {/* ── Top-Right Floating Voice Spectrum Waveform (Matching User Reference Image) ── */}
           <motion.div
