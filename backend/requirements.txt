@@ -2,7 +2,7 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.6
 motor==3.5.1
 pymongo==4.8.0
-pydantic==2.9.2
+pydantic[email]==2.9.2
 pydantic-settings==2.5.2
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
@@ -11,4 +11,4 @@ pandas==2.2.2
 openpyxl==3.1.5
 websockets==13.1
 python-dotenv==1.0.1
-twilio==8.9.4
+twilio==8.13.0
