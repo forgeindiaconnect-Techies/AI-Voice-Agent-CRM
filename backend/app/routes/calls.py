@@ -1,6 +1,6 @@
 import asyncio
 # pyrefly: ignore [missing-import]
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, status, Request
 # pyrefly: ignore [missing-import]
 from bson import ObjectId
 from app.core.database import calls_col, leads_col, users_col, audit_logs_col, campaigns_col
@@ -64,14 +64,31 @@ async def get_twilio_token(user: dict = Depends(get_current_user)):
     return {"token": token.to_jwt()}
 
 
-@router.post("/twiml")
-async def get_twiml(To: str = Form(""), From: str = Form("")):
+@router.api_route("/twiml", methods=["GET", "POST"])
+async def get_twiml(request: Request):
     """Twilio webhook to generate TwiML for routing the call"""
+    if request.method == "POST":
+        try:
+            form_data = await request.form()
+        except Exception:
+            form_data = {}
+        To = form_data.get("To", "")
+        From = form_data.get("From", "")
+    else:
+        To = request.query_params.get("To", "")
+        From = request.query_params.get("From", "")
+
     response = VoiceResponse()
+    twilio_number = getattr(settings, 'TWILIO_PHONE_NUMBER', '')
     
+    # Strip spaces from To if present
     if To:
         To = To.replace(" ", "+")
-        dial = Dial(caller_id=getattr(settings, 'TWILIO_PHONE_NUMBER', '+12345678900'))
+
+    # If calling out to a destination phone or client
+    if To and To != twilio_number:
+        caller_id = twilio_number if twilio_number else '+19783818471'
+        dial = Dial(caller_id=caller_id)
         
         if re.match(r"^[\d\+\-\(\) ]+$", To):
             dial.number(To)
@@ -80,7 +97,7 @@ async def get_twiml(To: str = Form(""), From: str = Form("")):
             
         response.append(dial)
     else:
-        response.say("Thanks for calling. Please provide a destination.")
+        response.say("Welcome to Forge India Connect. Connecting your call.")
         
     return PlainTextResponse(str(response), media_type="text/xml")
 
