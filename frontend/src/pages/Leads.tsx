@@ -1834,9 +1834,9 @@ export default function Leads() {
       <AnimatePresence>
         {showManualModal && (
           <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 font-sans pointer-events-auto modal-open-container"
+            className="fixed inset-0 md:left-[240px] z-[9999] flex items-center justify-center p-3 md:p-6 font-sans pointer-events-auto modal-open-container overflow-hidden"
             style={{
-              backgroundColor: "rgba(10, 15, 26, 0.82)",
+              backgroundColor: "rgba(10, 15, 26, 0.85)",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)"
             }}
@@ -1857,8 +1857,7 @@ export default function Leads() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.97, opacity: 0, y: 12 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              style={{ width: "1120px", maxWidth: "96vw", maxHeight: "90vh" }}
-              className="bg-white dark:bg-[#0F172A] rounded-[20px] shadow-[0_25px_70px_rgba(0,0,0,0.4)] border border-slate-200 dark:border-slate-800 relative flex flex-col overflow-hidden pointer-events-auto z-50"
+              className="w-full max-w-[960px] max-h-[86vh] bg-white dark:bg-[#0F172A] rounded-[20px] shadow-[0_25px_70px_rgba(0,0,0,0.4)] border border-slate-200 dark:border-slate-800 relative flex flex-col overflow-hidden pointer-events-auto z-50 mx-auto box-border"
             >
               {/* ── Top Brand Bar ── */}
               <div className="h-[3.5px] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#FACC15] shrink-0" />
