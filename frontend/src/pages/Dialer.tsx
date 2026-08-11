@@ -38,7 +38,7 @@ import {
   AlertCircle
 } from "lucide-react";
 
-type CallStatus = "idle" | "ringing" | "connected" | "hold" | "ended";
+type CallStatus = "idle" | "calling" | "ringing" | "connected" | "hold" | "ended" | "busy" | "no-answer" | "failed";
 type Tab = "outbound" | "inbound" | "supervisor" | "history";
 
 const STATUS_FILTER_OPTIONS = [
@@ -94,6 +94,8 @@ export default function Dialer() {
   // OUTBOUND DIALER STATE
   const [outboundPhone, setOutboundPhone] = useState("");
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
+  const isDialingRef = useRef(false); // duplicate-click guard
+  const callEndReasonRef = useRef<string>(""); // track why call ended
   const [isCreatingLead, setIsCreatingLead] = useState(false);
 
   // Helper to sanitize incoming value (from input, paste, or quick call)
@@ -139,16 +141,10 @@ export default function Dialer() {
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaker, setIsSpeaker] = useState(false);
   const [showInCallKeypad, setShowInCallKeypad] = useState(false);
-
   // POST-CALL OUTCOME
   const [outcome, setOutcome] = useState("answered");
   const [notes, setNotes] = useState("");
   const [isSavingOutcome, setIsSavingOutcome] = useState(false);
-
-  // TWILIO DEVICE STATE
-  const [deviceReady, setDeviceReady] = useState(false);
-  const deviceRef = useRef<Device | null>(null);
-  const callRef = useRef<any>(null);
 
   // SUPERVISOR STATE
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
@@ -164,12 +160,10 @@ export default function Dialer() {
   const fetchLeads = useCallback(async () => {
     setIsLoadingLeads(true);
     try {
-      // By default /api/leads respects RBAC (Agent sees own, TL sees pool/team, Admin sees all)
       const res = await api.get("/api/leads");
       setLeads(Array.isArray(res) ? res : []);
     } catch (err: any) {
       console.error("[Dialer] fetchLeads error:", err);
-      // Don't toast on initial load failures to avoid blank page
     } finally {
       setIsLoadingLeads(false);
     }
@@ -178,56 +172,109 @@ export default function Dialer() {
   useEffect(() => {
     fetchLeads();
 
-    // Listen to real-time lead assignments via native WebSocket
     let ws: WebSocket | null = null;
-    try {
-      ws = new WebSocket(getWsUrl("/global"));
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.event === "leads_updated") {
-            fetchLeads();
+    let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const connectWs = () => {
+      try {
+        ws = new WebSocket(getWsUrl("/global"));
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.event === "leads_updated") {
+              fetchLeads();
+            }
+            // Real-time call status updates from Twilio status-callback via backend
+            if (data.event === "call_status_update" && data.call_sid) {
+              const status: string = (data.call_status || "").toLowerCase();
+              if (status === "busy") {
+                callEndReasonRef.current = "busy";
+                if (callRef.current) callRef.current.disconnect();
+              } else if (status === "no-answer" || status === "no_answer") {
+                callEndReasonRef.current = "no-answer";
+                if (callRef.current) callRef.current.disconnect();
+              } else if (status === "failed") {
+                callEndReasonRef.current = "failed";
+                if (callRef.current) callRef.current.disconnect();
+              } else if (status === "in-progress") {
+                setCallStatus("connected");
+              }
+            }
+          } catch (err) {
+            console.error("Failed to parse websocket message", err);
           }
-        } catch (err) {
-          console.error("Failed to parse websocket message", err);
-        }
-      };
-    } catch (err) {
-      console.error("Failed to connect WebSocket", err);
-    }
+        };
+        ws.onclose = () => {
+          // Auto-reconnect WebSocket after 3s
+          wsReconnectTimer = setTimeout(connectWs, 3000);
+        };
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch (err) {
+        console.error("Failed to connect WebSocket", err);
+        wsReconnectTimer = setTimeout(connectWs, 5000);
+      }
+    };
+
+    connectWs();
 
     return () => {
+      if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
       if (ws) ws.close();
     };
   }, []);
 
+  // TWILIO DEVICE STATE
+  const [deviceReady, setDeviceReady] = useState(false);
+  const [isInitializingDevice, setIsInitializingDevice] = useState(false);
+  const deviceRef = useRef<Device | null>(null);
+  const callRef = useRef<any>(null);
+
+  const setupDevice = useCallback(async () => {
+    if (deviceRef.current && deviceReady) return;
+    setIsInitializingDevice(true);
+    try {
+      const { token } = await api.get("/api/calls/token");
+      if (!token) throw new Error("No token returned");
+
+      const device = new Device(token, {
+        codecPreferences: ["opus" as any, "pcmu" as any],
+      });
+
+      deviceRef.current = device;
+
+      device.on("registered", () => {
+        setDeviceReady(true);
+        setIsInitializingDevice(false);
+      });
+
+      device.on("error", (error: any) => {
+        console.warn("[Twilio Device Error]", error);
+        setIsInitializingDevice(false);
+      });
+
+      await device.register();
+    } catch (err: any) {
+      console.warn("Softphone registration notice:", err);
+      setIsInitializingDevice(false);
+    }
+  }, [deviceReady]);
+
   useEffect(() => {
-    // Initialize Twilio Device
-    const setupDevice = async () => {
-      try {
-        const { token } = await api.get("/api/calls/token");
-        const device = new Device(token);
-
-        device.on("registered", () => setDeviceReady(true));
-        device.on("error", (error) => showToast(`Twilio Error: ${error.message}`, "error"));
-
-        await device.register();
-        deviceRef.current = device;
-      } catch (err: any) {
-        showToast("Failed to initialize softphone. Check microphone permissions.", "error");
-      }
-    };
     setupDevice();
 
     return () => {
       if (deviceRef.current) {
-        deviceRef.current.destroy();
+        try {
+          deviceRef.current.destroy();
+        } catch {}
       }
     };
   }, []);
 
   useEffect(() => {
-    if (callStatus === "connected") {
+    if (callStatus === "connected" || callStatus === "hold") {
       const interval = setInterval(() => setCallDuration(d => d + 1), 1000);
       return () => clearInterval(interval);
     }
@@ -259,12 +306,23 @@ export default function Dialer() {
 
   const handleDial = async () => {
     if (!isValidMobile) return;
-    if (!deviceRef.current || !deviceReady) {
-      showToast("Softphone is not ready yet.", "error");
-      return;
+    if (isDialingRef.current) return; // prevent duplicate clicks
+    if (callStatus !== "idle") return;
+
+    isDialingRef.current = true;
+    callEndReasonRef.current = "";
+
+    // Ensure device is ready before dialing
+    if (!deviceReady && !isInitializingDevice) {
+      await setupDevice();
     }
 
     setIsCreatingLead(true);
+    setCallStatus("calling"); // Immediate UI feedback
+    setCallDuration(0);
+    setIsMuted(false);
+    setIsSpeaker(false);
+
     const fullPhoneNumber = `+91${outboundPhone}`;
     let matchedLead = leads.find(l => {
       const cleanL = l.phone.replace(/\D/g, "");
@@ -272,9 +330,7 @@ export default function Dialer() {
       return cleanL === cleanTarget;
     });
 
-    if (matchedLead) {
-      showToast("Existing lead loaded", "success");
-    } else {
+    if (!matchedLead) {
       try {
         const res = await api.post("/api/leads", {
           name: `Manual Lead - ${outboundPhone}`,
@@ -282,71 +338,138 @@ export default function Dialer() {
           pool_id: user?.pool_id || leads[0]?.pool_id || "6a6b40b7841e208e1cb69469",
           source: "Manual Dialer"
         });
-        showToast("Lead created successfully", "success");
-        await fetchLeads();
+        fetchLeads(); // refresh async, don't await
         matchedLead = res;
       } catch (err: any) {
         if (err.message?.includes("Duplicate") || err.message?.includes("already exists")) {
-          await fetchLeads();
-          matchedLead = leads.find(l => {
-            const cleanL = l.phone.replace(/\D/g, "");
-            const cleanTarget = fullPhoneNumber.replace(/\D/g, "");
-            return cleanL === cleanTarget;
-          });
-          if (matchedLead) {
-            showToast("Existing lead loaded", "success");
-          } else {
-            showToast("Existing lead loaded", "success");
-            matchedLead = {
-              _id: "temp_" + Date.now(),
-              phone: fullPhoneNumber,
-              name: `Manual Lead - ${outboundPhone}`,
-              source: "Manual Dialer",
-              status: "new",
-              created_at: new Date().toISOString()
-            } as any;
-          }
+          matchedLead = {
+            _id: "temp_" + Date.now(),
+            phone: fullPhoneNumber,
+            name: `Manual Lead - ${outboundPhone}`,
+            source: "Manual Dialer",
+            status: "new",
+            created_at: new Date().toISOString()
+          } as any;
         } else {
           showToast(err.message || "Failed to create lead", "error");
+          setCallStatus("idle");
           setIsCreatingLead(false);
+          isDialingRef.current = false;
           return;
         }
       }
     }
 
-    setCallStatus("ringing");
-    setCallDuration(0);
+    setIsCreatingLead(false);
+
+    // ─── STEP 1: Request microphone permission ───────────────────────────────
     try {
-      // 1. Try WebRTC connection if device is registered
-      if (deviceRef.current && deviceReady) {
-        try {
-          try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-          } catch (micErr) {
-            showToast("Microphone permission denied! Please allow microphone access to make calls.", "error");
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      showToast("Microphone denied! Enable mic access to make calls.", "error");
+      setCallStatus("idle");
+      isDialingRef.current = false;
+      return;
+    }
+
+    // ─── STEP 2: Initiate Twilio WebRTC Call ─────────────────────────────────
+    let isWebRtcConnected = false;
+    if (deviceRef.current && deviceReady) {
+      try {
+        const twilioCall = await deviceRef.current.connect({
+          params: { To: fullPhoneNumber }
+        });
+        callRef.current = twilioCall;
+        isWebRtcConnected = true;
+
+        // Twilio fires "ringing" when the outbound call is placed and far end is alerting
+        twilioCall.on("ringing", (hasEarlyMedia: boolean) => {
+          setCallStatus("ringing");
+          console.log("[Twilio] Ringing, earlyMedia:", hasEarlyMedia);
+        });
+
+        // "accept" fires when the far-end answers (agent WebRTC leg is connected)
+        twilioCall.on("accept", () => {
+          setCallStatus("connected");
+          setCallDuration(0);
+          isDialingRef.current = false;
+        });
+
+        // "disconnect" fires on normal hang-up from either side
+        twilioCall.on("disconnect", () => {
+          callRef.current = null;
+          setIsMuted(false);
+          isDialingRef.current = false;
+          const reason = callEndReasonRef.current;
+          if (reason === "busy") {
+            setCallStatus("busy");
+          } else if (reason === "no-answer") {
+            setCallStatus("no-answer");
+          } else {
             setCallStatus("ended");
-            setIsCreatingLead(false);
-            return;
           }
+        });
 
-          const twilioCall = await deviceRef.current.connect({
-            params: { To: fullPhoneNumber }
-          });
-          callRef.current = twilioCall;
-          twilioCall.on("accept", () => {
-            setCallStatus("connected");
-            showToast("Call connected via WebRTC", "success");
-          });
-          twilioCall.on("disconnect", () => {
-            setCallStatus("ended");
-            handleHangup();
-          });
-        } catch (e) {
-          console.warn("WebRTC connect error, using CRM manual dial:", e);
-        }
+        // "reject" fires if call was rejected before answer
+        twilioCall.on("reject", () => {
+          callRef.current = null;
+          setIsMuted(false);
+          setCallStatus("busy");
+          isDialingRef.current = false;
+        });
+
+        // Twilio SDK call error — includes SIP error codes
+        twilioCall.on("error", (err: any) => {
+          console.error("[Twilio] Call error:", err);
+          callRef.current = null;
+          setIsMuted(false);
+          isDialingRef.current = false;
+          // Decode SIP/Twilio error codes for specific status
+          const code = err?.code || err?.twilioError?.code || 0;
+          const msg: string = (err?.message || "").toLowerCase();
+          if (code === 31480 || msg.includes("busy") || msg.includes("486")) {
+            setCallStatus("busy");
+          } else if (code === 31486 || msg.includes("no answer") || msg.includes("408")) {
+            setCallStatus("no-answer");
+          } else if (code === 31005 || msg.includes("not reachable") || msg.includes("canceled")) {
+            setCallStatus("no-answer");
+          } else {
+            setCallStatus("failed");
+            showToast(err?.message || "Call failed", "error");
+          }
+        });
+
+        twilioCall.on("reconnecting", () => {
+          showToast("Network reconnecting...", "warning");
+        });
+        twilioCall.on("reconnected", () => {
+          showToast("Network reconnected", "success");
+        });
+        twilioCall.on("mute", (muted: boolean) => {
+          setIsMuted(muted);
+        });
+
+        // Listen for Twilio status-callback events via our WebSocket to catch
+        // no-answer / busy / failed from the PSTN leg (customer side)
+        // These come through as ws event "call_status_update" from backend
+
+      } catch (e: any) {
+        console.warn("[Twilio] connect() error:", e);
+        setCallStatus("failed");
+        showToast(e?.message || "Failed to initiate call", "error");
+        isDialingRef.current = false;
+        return;
       }
+    } else {
+      // Device not ready — fall back gracefully
+      showToast("Softphone not ready yet. Please wait and try again.", "warning");
+      setCallStatus("idle");
+      isDialingRef.current = false;
+      return;
+    }
 
-      // 2. Call CRM Backend Manual Dial API
+    // ─── STEP 3: Register call in CRM backend ────────────────────────────────
+    try {
       const res = await api.post("/api/calls/manual-dial", {
         phone: fullPhoneNumber,
         pool_id: matchedLead?.pool_id || user?.pool_id || "general",
@@ -354,54 +477,93 @@ export default function Dialer() {
         agent_assign_mode: "manual",
         assigned_agent_id: user?.id,
         priority: "high",
-        notes: ""
+        notes: "",
+        initiate_pstn: !isWebRtcConnected
       });
-
-      setCurrentCallId(res.id || res._id || res.call_id || "call_" + Date.now());
-
+      setCurrentCallId(res.id || res._id || res.call_id || null);
     } catch (err: any) {
-      setCallStatus("idle");
-      showToast(err.message || "Dialing failed", "error");
-    } finally {
-      setIsCreatingLead(false);
+      console.warn("[Dialer] Backend registration notice:", err);
+      // Don't abort — WebRTC call is already live
     }
   };
 
-  const handleHangup = async () => {
+  const handleHangup = useCallback(() => {
     if (callStatus === "idle") return;
 
     if (callRef.current) {
-      callRef.current.disconnect();
+      try {
+        callRef.current.disconnect();
+      } catch {}
       callRef.current = null;
     }
 
-    setCallStatus("ended");
-    try {
-      if (currentCallId) {
-        await api.post(`/api/calls/${currentCallId}/manual-end`, {
-          call_id: currentCallId,
-          outcome: "answered",
-          duration_seconds: callDuration,
-          notes: "Manual call ended"
-        });
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    setIsMuted(false);
+    setIsSpeaker(false);
+    isDialingRef.current = false;
 
-  const handleAction = async (action: "mute" | "hold" | "resume") => {
-    if (!currentCallId) return;
-    try {
-      await api.post(`/api/calls/${currentCallId}/manual-action`, { action });
-      if (action === "mute") setIsMuted(true);
-      if (action === "resume" && isMuted) setIsMuted(false);
-      if (action === "hold") setCallStatus("hold");
-      if (action === "resume" && callStatus === "hold") setCallStatus("connected");
-    } catch (err: any) {
-      showToast(err.message || `Failed to ${action}`, "error");
+    // Only move to "ended" if currently in a live call; cancel from calling/ringing goes to idle
+    if (callStatus === "calling" || callStatus === "ringing") {
+      setCallStatus("idle");
+      setCallDuration(0);
+    } else {
+      setCallStatus("ended");
     }
-  };
+
+    if (currentCallId) {
+      api.post(`/api/calls/${currentCallId}/manual-end`, {
+        call_id: currentCallId,
+        outcome: "answered",
+        duration_seconds: callDuration,
+        notes: "Manual call ended"
+      }).catch((err) => console.warn("Backend end-call notice:", err));
+    }
+  }, [callStatus, currentCallId, callDuration]);
+
+  const handleToggleMute = useCallback(() => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (callRef.current) {
+      try {
+        callRef.current.mute(nextMuted);
+      } catch (err) {
+        console.warn("Local mute error:", err);
+      }
+    }
+    showToast(nextMuted ? "Microphone Muted" : "Microphone Active", "info");
+
+    if (currentCallId) {
+      api.post(`/api/calls/${currentCallId}/manual-action`, {
+        action: nextMuted ? "mute" : "resume"
+      }).catch((err) => console.warn("Backend mute sync notice:", err));
+    }
+  }, [isMuted, currentCallId]);
+
+  const handleToggleHold = useCallback(() => {
+    const isCurrentlyHold = callStatus === "hold";
+    const nextStatus = isCurrentlyHold ? "connected" : "hold";
+
+    setCallStatus(nextStatus);
+    if (callRef.current) {
+      try {
+        callRef.current.mute(!isCurrentlyHold);
+      } catch (err) {
+        console.warn("Local hold mute error:", err);
+      }
+    }
+    showToast(isCurrentlyHold ? "Call Resumed" : "Call Placed on Hold", "info");
+
+    if (currentCallId) {
+      api.post(`/api/calls/${currentCallId}/manual-action`, {
+        action: isCurrentlyHold ? "resume" : "hold"
+      }).catch((err) => console.warn("Backend hold sync notice:", err));
+    }
+  }, [callStatus, currentCallId]);
+
+  const handleToggleSpeaker = useCallback(() => {
+    const nextSpeaker = !isSpeaker;
+    setIsSpeaker(nextSpeaker);
+    showToast(nextSpeaker ? "Speaker Output Enabled" : "Default Earpiece Enabled", "info");
+  }, [isSpeaker]);
 
   const saveOutcome = async () => {
     setIsSavingOutcome(true);
@@ -564,11 +726,52 @@ export default function Dialer() {
               <div className="w-full lg:w-[360px] xl:w-[380px] bg-white dark:bg-[#111827] rounded-[24px] shadow-sm border border-slate-200 dark:border-white/10 p-6 flex flex-col items-center justify-between overflow-y-auto shrink-0">
                 
                 <div className="w-full text-center">
-                  <div className="h-6 flex items-center justify-center gap-2 mb-4">
-                    {callStatus === "idle" && <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] bg-slate-100 dark:bg-[#172033] border border-slate-200 dark:border-white/10 px-3 py-1 rounded-full">Ready to Dial</span>}
-                    {callStatus === "ringing" && <span className="text-xs font-bold text-amber-600 dark:text-[#FCD34D] bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-3 py-1 rounded-full animate-pulse flex items-center gap-1"><PhoneForwarded className="h-3 w-3" /> Ringing...</span>}
-                    {callStatus === "connected" && <span className="text-xs font-bold text-[#10B981] dark:text-[#34D399] bg-[#10B981]/10 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Connected {formatTime(callDuration)}</span>}
-                    {callStatus === "hold" && <span className="text-xs font-bold text-amber-600 dark:text-[#FCD34D] bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-3 py-1 rounded-full flex items-center gap-1"><Pause className="h-3 w-3" /> On Hold {formatTime(callDuration)}</span>}
+                  <div className="h-7 flex items-center justify-center gap-2 mb-4">
+                    {callStatus === "idle" && (
+                      <span className="text-xs font-bold text-slate-500 dark:text-[#94A3B8] bg-slate-100 dark:bg-[#172033] border border-slate-200 dark:border-white/10 px-3 py-1 rounded-full">
+                        Ready to Dial
+                      </span>
+                    )}
+                    {callStatus === "calling" && (
+                      <span className="text-xs font-bold text-blue-600 dark:text-[#60A5FA] bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 px-3 py-1 rounded-full animate-pulse flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Calling...
+                      </span>
+                    )}
+                    {callStatus === "ringing" && (
+                      <span className="text-xs font-bold text-amber-600 dark:text-[#FCD34D] bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-3 py-1 rounded-full animate-pulse flex items-center gap-1">
+                        <PhoneForwarded className="h-3 w-3" /> Ringing...
+                      </span>
+                    )}
+                    {callStatus === "connected" && (
+                      <span className="text-xs font-bold text-[#10B981] dark:text-[#34D399] bg-[#10B981]/10 border border-emerald-500/30 px-3 py-1 rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Connected · {formatTime(callDuration)}
+                      </span>
+                    )}
+                    {callStatus === "hold" && (
+                      <span className="text-xs font-bold text-amber-600 dark:text-[#FCD34D] bg-amber-50 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 px-3 py-1 rounded-full flex items-center gap-1">
+                        <Pause className="h-3 w-3" /> On Hold · {formatTime(callDuration)}
+                      </span>
+                    )}
+                    {callStatus === "busy" && (
+                      <span className="text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 px-3 py-1 rounded-full flex items-center gap-1">
+                        <PhoneOff className="h-3 w-3" /> Customer Busy
+                      </span>
+                    )}
+                    {callStatus === "no-answer" && (
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600 px-3 py-1 rounded-full flex items-center gap-1">
+                        <PhoneOff className="h-3 w-3" /> No Answer
+                      </span>
+                    )}
+                    {callStatus === "failed" && (
+                      <span className="text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 px-3 py-1 rounded-full flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" /> Call Failed
+                      </span>
+                    )}
+                    {callStatus === "ended" && (
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600 px-3 py-1 rounded-full flex items-center gap-1">
+                        <PhoneOff className="h-3 w-3" /> Call Ended · {formatTime(callDuration)}
+                      </span>
+                    )}
                   </div>
 
                   <div className="relative w-full max-w-xs mx-auto mb-2">
@@ -580,6 +783,7 @@ export default function Dialer() {
                       value={outboundPhone}
                       onChange={e => {
                         if (callStatus !== "idle") return;
+                        if (isDialingRef.current) return;
                         const sanitized = sanitizeMobileNumber(e.target.value);
                         setOutboundPhone(sanitized);
                       }}
@@ -614,45 +818,87 @@ export default function Dialer() {
 
                 {callStatus === "idle" && renderKeypad()}
 
+                {/* Calling/Ringing animation */}
+                {(callStatus === "calling" || callStatus === "ringing") && (
+                  <div className="my-6 w-full flex flex-col items-center">
+                    <div className="relative h-28 w-28 mx-auto mb-4">
+                      <div className="absolute inset-0 rounded-full bg-blue-500/20 dark:bg-blue-500/10 animate-ping" />
+                      <div className="absolute inset-3 rounded-full bg-blue-500/30 dark:bg-blue-500/20 animate-ping" style={{ animationDelay: "0.3s" }} />
+                      <div className="relative h-28 w-28 rounded-full bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] flex items-center justify-center shadow-xl shadow-blue-500/40">
+                        {callStatus === "calling"
+                          ? <Loader2 className="h-12 w-12 text-white animate-spin" />
+                          : <Phone className="h-12 w-12 text-white animate-bounce" />}
+                      </div>
+                    </div>
+                    <p className="text-sm font-extrabold text-slate-700 dark:text-white">
+                      {callStatus === "calling" ? "Connecting..." : "Customer's phone is ringing"}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1 font-mono">+91 {outboundPhone}</p>
+                  </div>
+                )}
+
                 {(callStatus === "connected" || callStatus === "hold") && showInCallKeypad && renderKeypad(true)}
 
                 {(callStatus === "connected" || callStatus === "hold") && !showInCallKeypad && (
-                  <div className="my-8 w-full">
-                    <div className="h-24 w-24 rounded-full bg-[#2563EB]/10 border-4 border-[#2563EB]/20 mx-auto flex items-center justify-center text-[#2563EB] dark:text-[#60A5FA] mb-6">
+                  <div className="my-6 w-full">
+                    <div className="h-24 w-24 rounded-full bg-[#10B981]/10 border-4 border-[#10B981]/30 mx-auto flex items-center justify-center text-[#10B981] mb-4">
                       <User className="h-10 w-10" />
                     </div>
-                    <p className="text-center text-sm font-extrabold text-slate-900 dark:text-[#F8FAFC]">Unknown Customer</p>
+                    <p className="text-center text-sm font-extrabold text-slate-900 dark:text-[#F8FAFC]">Customer</p>
                     <p className="text-center text-xs text-slate-400 font-mono mt-0.5">+91 {outboundPhone}</p>
+                    <p className="text-center text-lg font-black text-[#10B981] mt-2 font-mono">{formatTime(callDuration)}</p>
+                  </div>
+                )}
+
+                {/* Terminal states: busy / no-answer / failed / ended */}
+                {(callStatus === "busy" || callStatus === "no-answer" || callStatus === "failed" || callStatus === "ended") && (
+                  <div className="my-6 w-full flex flex-col items-center">
+                    <div className={`h-24 w-24 rounded-full border-4 mx-auto flex items-center justify-center mb-4 ${
+                      callStatus === "busy" || callStatus === "failed"
+                        ? "bg-rose-50 dark:bg-rose-500/10 border-rose-300 dark:border-rose-500/30 text-rose-500"
+                        : "bg-slate-100 dark:bg-slate-700/30 border-slate-300 dark:border-slate-600 text-slate-400"
+                    }`}>
+                      <PhoneOff className="h-10 w-10" />
+                    </div>
+                    <p className="text-center text-sm font-extrabold text-slate-900 dark:text-[#F8FAFC]">
+                      {callStatus === "busy" ? "Line Busy" : callStatus === "no-answer" ? "No Answer" : callStatus === "failed" ? "Call Failed" : "Call Ended"}
+                    </p>
+                    <p className="text-center text-xs text-slate-400 font-mono mt-0.5">+91 {outboundPhone}</p>
+                    {callStatus === "ended" && callDuration > 0 && (
+                      <p className="text-center text-xs font-bold text-emerald-500 mt-1">Duration: {formatTime(callDuration)}</p>
+                    )}
                   </div>
                 )}
 
                 {/* Call Action Buttons */}
                 <div className="w-full mt-4">
-                  {callStatus === "idle" ? (
+                  {callStatus === "idle" && (
                     <button
                       onClick={handleDial}
                       disabled={!isValidMobile || isCreatingLead}
                       className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white rounded-full py-4 font-extrabold text-base shadow-lg shadow-emerald-500/25 transition disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                     >
-                      {isCreatingLead ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin" /> Checking Lead...
-                        </>
-                      ) : (
-                        <>
-                          <Phone className="h-5 w-5 fill-current" /> Call
-                        </>
-                      )}
+                      <Phone className="h-5 w-5 fill-current" /> Call
                     </button>
-                  ) : callStatus === "ended" ? (
-                    <div className="text-center p-4 bg-slate-50 dark:bg-[#172033] rounded-2xl border border-slate-200 dark:border-white/10">
-                      <p className="font-bold text-slate-700 dark:text-[#F8FAFC] text-xs">Please save outcome on the right</p>
-                    </div>
-                  ) : (
+                  )}
+
+                  {/* Calling / Ringing — show Cancel button */}
+                  {(callStatus === "calling" || callStatus === "ringing") && (
+                    <button
+                      onClick={handleHangup}
+                      className="w-full bg-gradient-to-r from-[#EF4444] to-[#DC2626] hover:from-[#DC2626] hover:to-[#B91C1C] text-white rounded-full py-4 font-extrabold text-base shadow-lg shadow-rose-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                    >
+                      <PhoneOff className="h-5 w-5 fill-current" />
+                      {callStatus === "calling" ? "Cancel" : "Cancel Ringing"}
+                    </button>
+                  )}
+
+                  {/* Connected / Hold — full controls */}
+                  {(callStatus === "connected" || callStatus === "hold") && (
                     <div className="space-y-4 w-full">
                       <div className="grid grid-cols-4 gap-2.5">
                         <button
-                          onClick={() => handleAction(isMuted ? "resume" : "mute")}
+                          onClick={handleToggleMute}
                           className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
                             isMuted
                               ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white border-amber-400 shadow-md shadow-amber-500/25"
@@ -660,10 +906,10 @@ export default function Dialer() {
                           }`}
                         >
                           {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                          <span className="text-[10px] font-black uppercase tracking-wider">Mute</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider">{isMuted ? "Muted" : "Mute"}</span>
                         </button>
                         <button
-                          onClick={() => handleAction(callStatus === "hold" ? "resume" : "hold")}
+                          onClick={handleToggleHold}
                           className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
                             callStatus === "hold"
                               ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white border-amber-400 shadow-md shadow-amber-500/25"
@@ -671,7 +917,7 @@ export default function Dialer() {
                           }`}
                         >
                           {callStatus === "hold" ? <Play className="h-5 w-5" /> : <CustomPauseIcon size={22} />}
-                          <span className="text-[10px] font-black uppercase tracking-wider">Hold</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider">{callStatus === "hold" ? "Resume" : "Hold"}</span>
                         </button>
                         <button
                           onClick={() => setShowInCallKeypad(!showInCallKeypad)}
@@ -685,7 +931,7 @@ export default function Dialer() {
                           <span className="text-[10px] font-black uppercase tracking-wider">Keypad</span>
                         </button>
                         <button
-                          onClick={() => setIsSpeaker(!isSpeaker)}
+                          onClick={handleToggleSpeaker}
                           className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
                             isSpeaker
                               ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white border-blue-400 shadow-md shadow-blue-500/25"
@@ -702,6 +948,28 @@ export default function Dialer() {
                       >
                         <PhoneOff className="h-5 w-5 fill-current" /> End Call
                       </button>
+                    </div>
+                  )}
+
+                  {/* Terminal states: busy / no-answer / failed / ended — Redial + Save */}
+                  {(callStatus === "busy" || callStatus === "no-answer" || callStatus === "failed" || callStatus === "ended") && (
+                    <div className="space-y-3">
+                      <button
+                        onClick={() => {
+                          callEndReasonRef.current = "";
+                          setCallStatus("idle");
+                          setCallDuration(0);
+                          setCurrentCallId(null);
+                        }}
+                        className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white rounded-full py-3.5 font-extrabold text-sm shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                      >
+                        <Phone className="h-4 w-4 fill-current" /> Redial
+                      </button>
+                      {callStatus === "ended" && (
+                        <p className="text-center text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#172033] rounded-xl p-3 border border-slate-200 dark:border-white/10">
+                          Save outcome using the panel on the right →
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -838,9 +1106,15 @@ export default function Dialer() {
                     </div>
                   </div>
                 ) : (
-                  // -------------- CALL NOTES & DISPOSITION --------------
+                  // -------------- CALL NOTES & DISPOSITION (all non-idle states) --------------
                   <div className="bg-white dark:bg-[#111827] rounded-[24px] shadow-sm border border-slate-200 dark:border-white/10 p-6 flex-1 flex flex-col relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-[#2563EB] to-emerald-400"></div>
+                    <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${
+                      callStatus === "connected" || callStatus === "hold" ? "from-blue-400 via-[#2563EB] to-emerald-400"
+                      : callStatus === "busy" || callStatus === "failed" ? "from-rose-400 via-rose-500 to-rose-600"
+                      : callStatus === "no-answer" ? "from-slate-300 via-slate-400 to-slate-500"
+                      : callStatus === "ended" ? "from-emerald-400 via-emerald-500 to-teal-500"
+                      : "from-blue-300 via-blue-400 to-blue-500"
+                    }`}></div>
                     
                     <h2 className="text-sm font-black text-slate-900 dark:text-[#F8FAFC] uppercase tracking-widest mb-4 flex items-center gap-2">
                       <MessageSquare className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" /> Live Call Notes &amp; Disposition

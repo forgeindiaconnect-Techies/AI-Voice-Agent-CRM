@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     TWILIO_API_KEY: str = ""
     TWILIO_API_SECRET: str = ""
     TWILIO_TWIML_APP_SID: str = ""
+    BASE_URL: str = "https://ai-voice-agent-crm.onrender.com"
 
     class Config:
         env_file = ".env"

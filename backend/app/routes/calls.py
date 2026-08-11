@@ -81,6 +81,10 @@ async def get_twiml(request: Request):
     response = VoiceResponse()
     twilio_number = getattr(settings, 'TWILIO_PHONE_NUMBER', '')
     
+    # Status callback URL for real-time call state events (busy, no-answer, answered, etc.)
+    base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
+    status_callback_url = f"{base_url}/api/calls/status-callback"
+    
     # Strip spaces from To if present
     if To:
         To = To.replace(" ", "+")
@@ -88,10 +92,24 @@ async def get_twiml(request: Request):
     # If calling out to a destination phone or client
     if To and To != twilio_number:
         caller_id = twilio_number if twilio_number else '+19783818471'
-        dial = Dial(caller_id=caller_id)
+        
+        # Play trial notice on Agent (Desktop app) leg ONLY, before dialing customer
+        response.say("Twilio trial account call. Connecting your call now.", voice="alice")
+
+        dial = Dial(
+            caller_id=caller_id,
+            action=status_callback_url,
+            answer_on_bridge=True,
+            timeout=30,
+        )
         
         if re.match(r"^[\d\+\-\(\) ]+$", To):
-            dial.number(To)
+            dial.number(
+                To,
+                status_callback=status_callback_url,
+                status_callback_event="initiated ringing answered completed",
+                status_callback_method="POST",
+            )
         else:
             dial.client(To)
             
@@ -100,6 +118,47 @@ async def get_twiml(request: Request):
         response.say("Welcome to Forge India Connect. Connecting your call.")
         
     return PlainTextResponse(str(response), media_type="text/xml")
+
+
+@router.api_route("/status-callback", methods=["GET", "POST"])
+async def twilio_status_callback(request: Request):
+    """
+    Twilio Status Callback webhook.
+    Twilio calls this URL to report real-time call status changes:
+    - ringing, in-progress (answered), completed, busy, no-answer, failed, canceled
+    
+    We broadcast the status over WebSocket so the frontend softphone
+    updates its UI INSTANTLY without any artificial delays or polling.
+    """
+    try:
+        if request.method == "POST":
+            try:
+                form_data = await request.form()
+            except Exception:
+                form_data = {}
+        else:
+            form_data = request.query_params
+
+        call_sid = form_data.get("CallSid", "")
+        call_status = form_data.get("CallStatus", "")  # e.g. ringing, in-progress, busy, no-answer, failed, completed
+        call_duration = form_data.get("CallDuration", "0")
+        to_number = form_data.get("To", "")
+        from_number = form_data.get("From", "")
+
+        # Broadcast to all connected WebSocket clients globally
+        await ws_manager.broadcast_global({
+            "event": "call_status_update",
+            "call_sid": call_sid,
+            "call_status": call_status,
+            "duration": call_duration,
+            "to": to_number,
+            "from": from_number,
+        })
+
+    except Exception as e:
+        print(f"[status-callback] Error: {e}")
+
+    return PlainTextResponse("OK", media_type="text/plain")
 
 
 def _uid(user: dict) -> str:
