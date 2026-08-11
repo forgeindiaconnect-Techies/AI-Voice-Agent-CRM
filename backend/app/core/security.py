@@ -24,7 +24,15 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(_truncate_pwd(plain), hashed)
+    if not plain or not hashed:
+        return False
+    # Support legacy plain-text match if password was seeded unhashed
+    if not (hashed.startswith("$2b$") or hashed.startswith("$2a$") or hashed.startswith("$2y$")):
+        return plain.strip() == hashed.strip()
+    try:
+        return pwd_context.verify(_truncate_pwd(plain), hashed)
+    except Exception:
+        return False
 
 
 def create_token(data: dict, expires_delta: timedelta, token_type: str = "access") -> str:

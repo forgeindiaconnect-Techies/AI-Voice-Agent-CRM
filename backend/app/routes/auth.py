@@ -31,12 +31,15 @@ async def bootstrap_admin(payload: UserCreate):
 async def login(payload: UserLogin, request: Request):
     client_host = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "unknown")
+    clean_email = payload.email.strip()
 
-    # Support login via Email OR Employee ID
+    # Case-insensitive email or exact Employee ID lookup
+    import re
+    email_pattern = re.compile(f"^{re.escape(clean_email)}$", re.IGNORECASE)
     user = await users_col.find_one({
         "$or": [
-            {"email": payload.email},
-            {"employee_id": payload.email}
+            {"email": email_pattern},
+            {"employee_id": clean_email}
         ]
     })
     if not user:
@@ -89,10 +92,15 @@ async def login(payload: UserLogin, request: Request):
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Account locked due to too many failed attempts.")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
 
-    # Success, reset failed attempts & lockout
+    # Success, reset failed attempts & lockout, auto-hash plain-text password if needed
+    from app.core.security import hash_password
+    set_fields: dict = {"failed_attempts": 0}
+    if not (user["password"].startswith("$2b$") or user["password"].startswith("$2a$") or user["password"].startswith("$2y$")):
+        set_fields["password"] = hash_password(payload.password)
+
     await users_col.update_one(
         {"_id": user["_id"]},
-        {"$set": {"failed_attempts": 0}, "$unset": {"locked_until": ""}}
+        {"$set": set_fields, "$unset": {"locked_until": ""}}
     )
 
     access = create_access_token(str(user["_id"]), user["role"])
