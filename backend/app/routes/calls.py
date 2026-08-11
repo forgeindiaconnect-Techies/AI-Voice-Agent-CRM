@@ -93,13 +93,9 @@ async def get_twiml(request: Request):
     if To and To != twilio_number:
         caller_id = twilio_number if twilio_number else '+19783818471'
         
-        # Play trial notice on Agent (Desktop app) leg ONLY, before dialing customer
-        response.say("Twilio trial account call. Connecting your call now.", voice="alice")
-
         dial = Dial(
             caller_id=caller_id,
             action=status_callback_url,
-            answer_on_bridge=True,
             timeout=30,
         )
         

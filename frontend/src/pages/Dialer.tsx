@@ -478,7 +478,7 @@ export default function Dialer() {
         assigned_agent_id: user?.id,
         priority: "high",
         notes: "",
-        initiate_pstn: !isWebRtcConnected
+        initiate_pstn: false // WebRTC softphone handles dialing natively; do NOT initiate duplicate PSTN call
       });
       setCurrentCallId(res.id || res._id || res.call_id || null);
     } catch (err: any) {
