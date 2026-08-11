@@ -1,7 +1,9 @@
 /**
  * Dynamic API Base URL Resolver.
- * Adapts to Environment Variables (Render API URL), custom user overrides, or browser origin.
+ * Connects directly to the production Render backend API (https://ai-voice-agent-crm.onrender.com).
  */
+const RENDER_PROD_URL = "https://ai-voice-agent-crm.onrender.com";
+
 let currentBaseUrl: string | null = null;
 
 export const getBaseUrl = (): string => {
@@ -15,32 +17,19 @@ export const getBaseUrl = (): string => {
     }
   }
 
-  // 2. Check environment variable VITE_API_URL (e.g. Render backend URL)
+  // 2. Check environment variable VITE_API_URL if configured
   if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== "") {
     let url = import.meta.env.VITE_API_URL.trim().replace(/\/+$/, "");
     if (url.startsWith(":")) {
-      const protocol = typeof window !== "undefined" ? window.location.protocol : "http:";
+      const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
       const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
       url = `${protocol}//${hostname}${url}`;
     }
     return url;
   }
 
-  // 3. Dynamic Resolution based on current browser URL
-  if (typeof window !== "undefined") {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    // Electron file:// protocol or custom app scheme
-    if (window.location.protocol === "file:" || (window as any).electronAPI?.isElectron) {
-      return "https://ai-voice-agent-crm.onrender.com"; // Default fallback for Desktop build
-    }
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return `${protocol}//127.0.0.1:8000`;
-    }
-    return `${protocol}//${hostname}:8000`;
-  }
-
-  return "http://localhost:8000";
+  // 3. Permanent Default Target: Production Render Backend
+  return RENDER_PROD_URL;
 };
 
 export const setCustomApiUrl = (newUrl: string | null) => {
@@ -71,11 +60,7 @@ export const getWsUrl = (roomPath: string = ""): string => {
     const wsProtocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
     return `${wsProtocol}//${urlObj.host}/ws${cleanPath}${tokenQuery}`;
   } catch {
-    if (typeof window !== "undefined") {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      return `${protocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
-    }
-    return `ws://localhost:8000/ws${cleanPath}${tokenQuery}`;
+    return `wss://ai-voice-agent-crm.onrender.com/ws${cleanPath}${tokenQuery}`;
   }
 };
 
@@ -88,6 +73,7 @@ export type ApiFetchOptions = RequestInit & {
 
 /**
  * Robust fetch wrapper with authentication, timeout (default 35s for Render cold starts), retry logic, and centralized error parsing.
+ * Always routes directly to Render API without falling back to local relative paths.
  */
 export async function apiFetch(
   path: string,
@@ -105,52 +91,23 @@ export async function apiFetch(
     ...(fetchOptions.headers as Record<string, string>),
   };
 
+  const baseUrl = getBaseUrl();
+  const targetUrl = `${baseUrl}${path.startsWith('/') ? path : '/' + path}`;
+
   let attempt = 0;
   let lastError: Error | null = null;
 
   while (attempt <= retries) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    // Merge external signal with timeout signal
     const combinedSignal = signal || controller.signal;
 
     try {
-      const baseUrl = getBaseUrl();
-      let targetUrl = `${baseUrl}${path}`;
-      if (currentBaseUrl === "") {
-        targetUrl = path;
-      }
-
-      let res: Response;
-      try {
-        res = await fetch(targetUrl, {
-          ...fetchOptions,
-          headers,
-          signal: combinedSignal,
-        });
-      } catch (primaryErr: any) {
-        // If direct connection failed (e.g. Failed to fetch on LAN IP) and we haven't already fallen back to relative proxy
-        if (
-          currentBaseUrl === null &&
-          typeof window !== "undefined" &&
-          (primaryErr.name === "TypeError" || primaryErr.message?.includes("fetch"))
-        ) {
-          try {
-            res = await fetch(path, {
-              ...fetchOptions,
-              headers,
-              signal: combinedSignal,
-            });
-            // If relative proxy path succeeds, switch currentBaseUrl to "" for subsequent requests
-            currentBaseUrl = "";
-          } catch {
-            throw primaryErr;
-          }
-        } else {
-          throw primaryErr;
-        }
-      }
+      const res = await fetch(targetUrl, {
+        ...fetchOptions,
+        headers,
+        signal: combinedSignal,
+      });
 
       clearTimeout(timeoutId);
 
