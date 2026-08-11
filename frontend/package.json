@@ -3,10 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "electron:dev": "vite",
+    "electron:build": "tsc && vite build && electron-builder",
+    "electron:preview": "tsc && vite build && electron ."
   },
   "dependencies": {
     "@twilio/voice-sdk": "^2.18.3",
@@ -17,13 +21,20 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@types/node": "^26.2.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^10.0.4",
+    "cross-env": "^10.1.0",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
     "postcss": "^8.4.45",
     "tailwindcss": "^3.4.10",
     "typescript": "^5.5.4",
-    "vite": "^5.4.3"
+    "vite": "^5.4.3",
+    "vite-plugin-electron": "^1.1.1",
+    "vite-plugin-electron-renderer": "^1.0.0"
   }
 }

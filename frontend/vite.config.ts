@@ -1,8 +1,39 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import electron from 'vite-plugin-electron';
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ command }) => ({
+  plugins: [
+    react(),
+    electron([
+      {
+        entry: 'electron/main.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            rollupOptions: {
+              external: ['electron'],
+            },
+          },
+        },
+      },
+      {
+        entry: 'electron/preload.ts',
+        onstart(options) {
+          options.reload();
+        },
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            rollupOptions: {
+              external: ['electron'],
+            },
+          },
+        },
+      },
+    ]),
+  ],
+  base: command === 'serve' ? '/' : './',
   server: {
     host: true,
     port: 5173,
@@ -22,4 +53,4 @@ export default defineConfig({
       },
     },
   },
-})
+}));

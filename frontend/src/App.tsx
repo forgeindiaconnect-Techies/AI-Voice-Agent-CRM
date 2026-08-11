@@ -13,6 +13,7 @@ import Dialer from "./pages/Dialer";
 import Quality from "./pages/Quality";
 import AIAgents from "./pages/AIAgents";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { DesktopTitleBar } from "./components/DesktopTitleBar";
 
 function ProtectedRoute({ children, roles }: { children: JSX.Element; roles?: string[] }) {
   const { user } = useAuth();
@@ -26,7 +27,10 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <Routes>
+      <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col antialiased selection:bg-amber-500/30 selection:text-amber-200">
+        <DesktopTitleBar />
+        <div className="flex-1 flex flex-col min-h-0">
+          <Routes>
       <Route path="/login" element={<Login />} />
       <Route
         path="/"
@@ -113,6 +117,8 @@ export default function App() {
         />
       </Route>
     </Routes>
+        </div>
+      </div>
     </ErrorBoundary>
   );
 }

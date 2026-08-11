@@ -1,0 +1,33 @@
+{
+  "appId": "com.forge.crm",
+  "productName": "Forge CRM Desktop",
+  "copyright": "Copyright © 2026 Forge India Connect",
+  "directories": {
+    "output": "release/${version}",
+    "buildResources": "public"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "public/login.png"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Forge CRM"
+  }
+}

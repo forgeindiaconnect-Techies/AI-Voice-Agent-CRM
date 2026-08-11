@@ -1,18 +1,22 @@
 /**
  * Dynamic API Base URL Resolver.
- * Automatically adapts to current browser location (localhost, 127.0.0.1, or LAN IP e.g. 192.168.x.x).
+ * Adapts to Environment Variables (Render API URL), custom user overrides, or browser origin.
  */
 let currentBaseUrl: string | null = null;
 
-const getBaseUrl = (): string => {
+export const getBaseUrl = (): string => {
   if (currentBaseUrl !== null) return currentBaseUrl;
 
-  // If explicitly configured in environment and not default placeholder, use it
-  if (
-    import.meta.env.VITE_API_URL &&
-    import.meta.env.VITE_API_URL.trim() !== "" &&
-    !import.meta.env.VITE_API_URL.includes("localhost")
-  ) {
+  // 1. Check user custom override from local storage (e.g. set via ApiSettingsModal)
+  if (typeof localStorage !== "undefined") {
+    const savedUrl = localStorage.getItem("custom_api_url");
+    if (savedUrl && savedUrl.trim() !== "") {
+      return savedUrl.trim().replace(/\/+$/, "");
+    }
+  }
+
+  // 2. Check environment variable VITE_API_URL (e.g. Render backend URL)
+  if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== "") {
     let url = import.meta.env.VITE_API_URL.trim().replace(/\/+$/, "");
     if (url.startsWith(":")) {
       const protocol = typeof window !== "undefined" ? window.location.protocol : "http:";
@@ -22,19 +26,32 @@ const getBaseUrl = (): string => {
     return url;
   }
 
-  // Dynamic Resolution based on current browser URL
+  // 3. Dynamic Resolution based on current browser URL
   if (typeof window !== "undefined") {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
-    // If accessing via localhost or 127.0.0.1, use direct port 8000
+    // Electron file:// protocol or custom app scheme
+    if (window.location.protocol === "file:" || (window as any).electronAPI?.isElectron) {
+      return "https://ai-voice-agent-crm.onrender.com"; // Default fallback for Desktop build
+    }
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return `${protocol}//127.0.0.1:8000`;
     }
-    // On LAN IP or custom domain, try direct port 8000 first (will fallback to relative proxy if port 8000 blocked/offline)
     return `${protocol}//${hostname}:8000`;
   }
 
   return "http://localhost:8000";
+};
+
+export const setCustomApiUrl = (newUrl: string | null) => {
+  if (typeof localStorage !== "undefined") {
+    if (newUrl && newUrl.trim() !== "") {
+      localStorage.setItem("custom_api_url", newUrl.trim().replace(/\/+$/, ""));
+    } else {
+      localStorage.removeItem("custom_api_url");
+    }
+  }
+  currentBaseUrl = null;
 };
 
 const BASE_URL = getBaseUrl();
@@ -43,15 +60,23 @@ function getToken(): string | null {
   return localStorage.getItem("access_token");
 }
 
-const getWsUrl = (roomPath: string = ""): string => {
+export const getWsUrl = (roomPath: string = ""): string => {
   const token = getToken();
   const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
   const cleanPath = roomPath ? (roomPath.startsWith("/") ? roomPath : `/${roomPath}`) : "";
-  if (typeof window !== "undefined") {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
+  const baseUrl = getBaseUrl();
+
+  try {
+    const urlObj = new URL(baseUrl);
+    const wsProtocol = urlObj.protocol === "https:" ? "wss:" : "ws:";
+    return `${wsProtocol}//${urlObj.host}/ws${cleanPath}${tokenQuery}`;
+  } catch {
+    if (typeof window !== "undefined") {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      return `${protocol}//${window.location.host}/ws${cleanPath}${tokenQuery}`;
+    }
+    return `ws://localhost:8000/ws${cleanPath}${tokenQuery}`;
   }
-  return `ws://localhost:8000/ws${cleanPath}${tokenQuery}`;
 };
 
 const WS_URL = getWsUrl();
@@ -62,14 +87,14 @@ export type ApiFetchOptions = RequestInit & {
 };
 
 /**
- * Robust fetch wrapper with authentication, timeout (default 10s), retry logic, and centralized error parsing.
+ * Robust fetch wrapper with authentication, timeout (default 35s for Render cold starts), retry logic, and centralized error parsing.
  */
 export async function apiFetch(
   path: string,
   options: ApiFetchOptions = {},
   signal?: AbortSignal
 ): Promise<any> {
-  const { timeoutMs = 10000, retries = 1, ...fetchOptions } = options;
+  const { timeoutMs = 35000, retries = 1, ...fetchOptions } = options;
   const token = getToken();
 
   const headers: Record<string, string> = {
@@ -91,7 +116,8 @@ export async function apiFetch(
     const combinedSignal = signal || controller.signal;
 
     try {
-      let targetUrl = `${BASE_URL}${path}`;
+      const baseUrl = getBaseUrl();
+      let targetUrl = `${baseUrl}${path}`;
       if (currentBaseUrl === "") {
         targetUrl = path;
       }
@@ -170,8 +196,8 @@ export async function apiFetch(
 
   const errorMessage =
     lastError?.name === "AbortError"
-      ? "Request timed out. Backend server taking too long to respond."
-      : lastError?.message || "Unable to connect to the backend server. Please check your connection.";
+      ? "Render Server is spinning up (Cold Start). Please wait a few seconds and try again."
+      : lastError?.message || "Unable to connect to the Render backend server. Please check your connection.";
 
   throw new Error(errorMessage);
 }
@@ -190,11 +216,11 @@ export const api = {
     apiFetch(path, { method: "POST", body: formData }),
   checkHealth: async (): Promise<{ status: string; database?: string }> => {
     try {
-      return await apiFetch("/api/health", { timeoutMs: 4000, retries: 0 });
+      return await apiFetch("/health", { timeoutMs: 35000, retries: 1 });
     } catch {
-      return await apiFetch("/health", { timeoutMs: 4000, retries: 0 });
+      return await apiFetch("/api/health", { timeoutMs: 35000, retries: 0 });
     }
   },
 };
 
-export { BASE_URL, WS_URL, getWsUrl, getToken };
+export { BASE_URL, WS_URL, getToken };

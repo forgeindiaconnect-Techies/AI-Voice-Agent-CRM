@@ -1,0 +1,119 @@
+import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Ensure single instance of the application
+const gotTheLock = app.requestSingleInstanceLock();
+
+let mainWindow: BrowserWindow | null = null;
+
+function createWindow() {
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+
+  mainWindow = new BrowserWindow({
+    width: 1300,
+    height: 850,
+    minWidth: 1050,
+    minHeight: 650,
+    frame: false, // Sleek custom titlebar
+    titleBarStyle: 'hidden',
+    backgroundColor: '#0b0f17',
+    icon: path.join(__dirname, '../public/login.png'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      webSecurity: true,
+      sandbox: false,
+    },
+  });
+
+  // Security: Prevent unhandled new windows, open in OS browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
+  // Load app: Dev server URL or built index.html
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
+  if (isDev) {
+    mainWindow.loadURL(devServerUrl);
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+
+  app.whenReady().then(() => {
+    createWindow();
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  });
+}
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+// IPC Handlers for window controls & native features
+ipcMain.on('window:minimize', () => {
+  if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on('window:maximize', () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow.maximize();
+    }
+  }
+});
+
+ipcMain.on('window:close', () => {
+  if (mainWindow) mainWindow.close();
+});
+
+ipcMain.handle('window:isMaximized', () => {
+  return mainWindow ? mainWindow.isMaximized() : false;
+});
+
+ipcMain.handle('app:version', () => {
+  return app.getVersion();
+});
+
+ipcMain.on('app:notification', (_, { title, body }: { title: string; body: string }) => {
+  if (Notification.isSupported()) {
+    new Notification({ title, body, icon: path.join(__dirname, '../public/login.png') }).show();
+  }
+});
+
+ipcMain.on('app:openExternal', (_, url: string) => {
+  if (url && (url.startsWith('http:') || url.startsWith('https:'))) {
+    shell.openExternal(url);
+  }
+});

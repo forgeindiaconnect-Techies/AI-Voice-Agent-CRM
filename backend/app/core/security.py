@@ -8,11 +8,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # Truncate to 72 bytes for bcrypt 4.x compatibility
+    safe_pwd = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    return pwd_context.hash(safe_pwd)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    safe_pwd = plain.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    return pwd_context.verify(safe_pwd, hashed)
 
 
 def create_token(data: dict, expires_delta: timedelta, token_type: str = "access") -> str:
