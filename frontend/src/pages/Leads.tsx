@@ -1834,34 +1834,16 @@ export default function Leads() {
       <AnimatePresence>
         {showManualModal && (
           <div
-            className="fixed inset-0 z-[9999] bg-[#0A101C]/55 backdrop-blur-[4px] flex items-center justify-center p-4 font-sans pointer-events-auto modal-open-container"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 font-sans pointer-events-auto modal-open-container"
             style={{
-              backgroundColor: "rgba(10, 16, 28, 0.55)",
-              backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)"
+              backgroundColor: "rgba(10, 15, 26, 0.82)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)"
             }}
           >
             <style dangerouslySetInnerHTML={{__html: `
               body.lead-modal-active {
                 overflow: hidden !important;
-              }
-              body.lead-modal-active header {
-                opacity: 0.35 !important;
-                filter: grayscale(50%) !important;
-                pointer-events: none !important;
-                user-select: none !important;
-                transition: opacity 0.2s ease, filter 0.2s ease !important;
-              }
-              body.lead-modal-active aside {
-                opacity: 0.40 !important;
-                filter: grayscale(40%) !important;
-                pointer-events: none !important;
-                user-select: none !important;
-                transition: opacity 0.2s ease, filter 0.2s ease !important;
-              }
-              body.lead-modal-active main > div:not(.modal-open-container) {
-                pointer-events: none !important;
-                user-select: none !important;
               }
               .lm-scroll::-webkit-scrollbar { width: 6px; }
               .lm-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -1871,51 +1853,64 @@ export default function Leads() {
               .dark .lm-scroll { scrollbar-color: #334155 transparent; }
             `}} />
             <motion.div
-              initial={{ scale: 0.98, opacity: 0, y: 6 }}
+              initial={{ scale: 0.97, opacity: 0, y: 12 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.98, opacity: 0, y: 6 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              style={{ width: "1160px", maxWidth: "95vw", maxHeight: "90vh" }}
-              className="bg-white dark:bg-[#0C1526] rounded-[18px] shadow-2xl border border-[#D9E2EC] dark:border-slate-800 relative flex flex-col overflow-hidden pointer-events-auto"
+              exit={{ scale: 0.97, opacity: 0, y: 12 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              style={{ width: "1120px", maxWidth: "96vw", maxHeight: "90vh" }}
+              className="bg-white dark:bg-[#0F172A] rounded-[20px] shadow-[0_25px_70px_rgba(0,0,0,0.4)] border border-slate-200 dark:border-slate-800 relative flex flex-col overflow-hidden pointer-events-auto z-50"
             >
-              {/* ── 3px brand bar ── */}
-              <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15] z-20 rounded-t-[18px]" />
+              {/* ── Top Brand Bar ── */}
+              <div className="h-[3.5px] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#FACC15] shrink-0" />
 
-              {/* ── HEADER (72px) ── */}
-              <div className="h-[72px] flex items-center justify-between px-6 border-b border-[#D9E2EC] dark:border-slate-800 shrink-0 bg-white dark:bg-[#0C1526]">
-                <div className="flex flex-col items-start">
-                  <h3 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
-                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Add Customer</span>
-                    <span className="text-[#F4B400] font-extrabold">Lead</span>
-                  </h3>
+              {/* ── FIXED HEADER ── */}
+              <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-10">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                    <UserPlus className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold tracking-tight flex items-center gap-1.5 text-slate-900 dark:text-white">
+                      <span className="text-[#2563EB] dark:text-[#3B82F6] font-extrabold">Add Customer</span>
+                      <span className="text-[#FACC15] font-extrabold">Lead</span>
+                    </h3>
+                    <p className="text-[12px] text-slate-500 dark:text-slate-400 font-medium">Create a new customer lead record for pipeline routing</p>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowManualModal(false)}
-                  className="h-9 w-9 flex items-center justify-center rounded-[8px] text-[#64748B] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-150 cursor-pointer shrink-0 border border-transparent hover:border-[#D9E2EC] dark:hover:border-slate-700"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+
+                <div className="flex items-center gap-3">
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Enterprise Lead Form
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowManualModal(false)}
+                    className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  >
+                    <X className="h-4.5 w-4.5" />
+                  </button>
+                </div>
               </div>
 
-              {/* ── SCROLLABLE BODY ── */}
+              {/* ── SCROLLABLE FORM BODY ── */}
               <form onSubmit={handleCreateManualLead} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex-1 overflow-y-auto overflow-x-hidden lm-scroll p-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div className="flex-1 overflow-y-auto lm-scroll p-6 bg-slate-50/60 dark:bg-[#0B1120]">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                     {/* ── CARD 1: Profile Information ── */}
-                    <div className="bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#D9E2EC] dark:border-slate-800 rounded-[14px] p-[20px] relative overflow-hidden flex flex-col justify-between">
-                      <div className="pb-3 mb-4 border-b border-[#D9E2EC] dark:border-slate-800">
-                        <div className="flex flex-col items-start">
-                          <h4 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
-                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Profile</span>
-                            <span className="text-[#F4B400] font-extrabold">Information</span>
-                          </h4>
-                        </div>
-                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-normal mt-1 leading-normal">Primary contact identity and enterprise association</p>
+                    <div className="bg-white dark:bg-[#131C2F] border border-slate-200/90 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
+                      <div className="pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <Users className="h-4.5 w-4.5 text-[#2563EB]" />
+                          <span>Profile Information</span>
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Primary contact identity and enterprise details</p>
                       </div>
-                      <div className="space-y-[14px]">
-                        {renderTextInput("name", "Customer Name", "text", "Full name", true)}
+
+                      <div className="space-y-4">
+                        {renderTextInput("name", "Customer Name", "text", "Enter customer full name", true)}
+                        
                         <div>
                           <PhoneInput
                             required
@@ -1926,57 +1921,58 @@ export default function Leads() {
                             }}
                             error={getFieldError("phone")}
                             label="Phone Number"
-                            inputClassName="h-[46px] rounded-[10px]"
+                            inputClassName="h-[42px] rounded-lg text-sm"
                           />
                         </div>
+
                         {renderTextInput("email", "Email ID", "email", "name@company.com", true)}
                         {renderTextInput("company_name", "Company Name", "text", "Company or organization (optional)", false)}
                       </div>
                     </div>
 
                     {/* ── CARD 2: Location ── */}
-                    <div className="bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#D9E2EC] dark:border-slate-800 rounded-[14px] p-[20px] relative overflow-hidden flex flex-col justify-between">
-                      <div className="pb-3 mb-4 border-b border-[#D9E2EC] dark:border-slate-800">
-                        <div className="flex flex-col items-start">
-                          <h4 className="text-xl font-extrabold tracking-tight leading-tight flex items-center -tracking-[0.5px]">
-                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Loc</span>
-                            <span className="text-[#F4B400] font-extrabold">ation</span>
-                          </h4>
-                        </div>
-                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-normal mt-1 leading-normal">Operational address and locality details</p>
+                    <div className="bg-white dark:bg-[#131C2F] border border-slate-200/90 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
+                      <div className="pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <MapPin className="h-4.5 w-4.5 text-amber-500" />
+                          <span>Location Details</span>
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Operational address and geographic details</p>
                       </div>
-                      <div className="space-y-[14px]">
+
+                      <div className="space-y-4">
                         <div className="flex flex-col gap-1 w-full text-left font-sans">
-                          <label className="text-[12px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider">
-                            Country <span className="text-[#94A3B8] font-normal normal-case text-[11px] lowercase">(read-only)</span>
+                          <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                            Country <span className="text-slate-400 font-normal lowercase">(read-only)</span>
                           </label>
                           <input
                             readOnly
                             value="India"
-                            className="w-full h-[46px] border border-[#D9E2EC] dark:border-slate-700 rounded-[10px] px-4 bg-[#F1F5F9] dark:bg-slate-800/40 text-[15px] font-medium text-[#64748B] dark:text-slate-400 select-none cursor-not-allowed focus:outline-none"
+                            className="w-full h-[42px] border border-slate-200 dark:border-slate-800 rounded-lg px-3 bg-slate-100/70 dark:bg-slate-800/40 text-sm font-medium text-slate-500 dark:text-slate-400 cursor-not-allowed select-none focus:outline-none"
                           />
                         </div>
+
                         <div className="grid grid-cols-2 gap-3">
                           {renderSelectInput("state", "State", stateOptions, "Select State")}
                           {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
                         </div>
+
                         {renderTextInput("pincode", "Pincode", "text", "6-digit pincode", true, 6)}
                         {renderTextareaInput("address", "Address", "Street address, building, local area...", true, 2, addressRef, handleAddressChange)}
                       </div>
                     </div>
 
                     {/* ── CARD 3: Lead Details ── */}
-                    <div className="bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#D9E2EC] dark:border-slate-800 rounded-[14px] p-[20px] relative overflow-hidden flex flex-col justify-between">
-                      <div className="pb-3 mb-4 border-b border-[#D9E2EC] dark:border-slate-800">
-                        <div className="flex flex-col items-start">
-                          <h4 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
-                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Lead</span>
-                            <span className="text-[#F4B400] font-extrabold">Details</span>
-                          </h4>
-                        </div>
-                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-normal mt-1 leading-normal">Pipeline classification and routing settings</p>
+                    <div className="bg-white dark:bg-[#131C2F] border border-slate-200/90 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
+                      <div className="pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <Target className="h-4.5 w-4.5 text-emerald-500" />
+                          <span>Pipeline & Routing</span>
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pipeline classification and agent assignment</p>
                       </div>
-                      <div className="space-y-[14px]">
+
+                      <div className="space-y-4">
                         {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool", user?.role === "agent")}
                         {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
                         {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
@@ -1986,43 +1982,42 @@ export default function Leads() {
                     </div>
 
                     {/* ── CARD 4: Additional Information ── */}
-                    <div className="bg-[#F8FAFC] dark:bg-[#111C2E] border border-[#D9E2EC] dark:border-slate-800 rounded-[14px] p-[20px] relative overflow-hidden flex flex-col justify-between">
-                      <div className="pb-3 mb-4 border-b border-[#D9E2EC] dark:border-slate-800">
-                        <div className="flex flex-col items-start">
-                          <h4 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
-                            <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Additional</span>
-                            <span className="text-[#F4B400] font-extrabold">Information</span>
-                          </h4>
-                        </div>
-                        <p className="text-[13px] text-[#64748B] dark:text-[#94A3B8] font-normal mt-1 leading-normal">Extra contextual notes and details</p>
+                    <div className="bg-white dark:bg-[#131C2F] border border-slate-200/90 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4">
+                      <div className="pb-3 border-b border-slate-100 dark:border-slate-800/80">
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                          <FileText className="h-4.5 w-4.5 text-indigo-500" />
+                          <span>Additional Notes</span>
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Contextual notes and call instructions</p>
                       </div>
-                      <div className="space-y-[14px]">
-                        {renderTextareaInput("notes", "Notes (Optional)", "Add any extra notes, requirements, or context about this lead...", false, 6)}
+
+                      <div className="space-y-4">
+                        {renderTextareaInput("notes", "Notes (Optional)", "Add any extra requirements, call scripts, or notes...", false, 5)}
                       </div>
                     </div>
 
                   </div>{/* /grid */}
                 </div>{/* /scroll */}
 
-                {/* ── STICKY FOOTER ── */}
-                <div className="h-[72px] flex items-center justify-end gap-3 px-6 border-t border-[#D9E2EC] dark:border-slate-800 shrink-0 bg-white dark:bg-[#0C1526]">
+                {/* ── FIXED FOOTER ── */}
+                <div className="h-16 flex items-center justify-end gap-3 px-6 border-t border-slate-200 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-10">
                   <button
                     type="button"
                     onClick={() => setShowManualModal(false)}
-                    className="h-[46px] px-6 bg-white dark:bg-[#1E293B] border border-[#D9E2EC] dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white rounded-[10px] text-[14px] font-semibold transition duration-150 cursor-pointer shrink-0"
+                    className="h-10 px-5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold rounded-lg transition-colors cursor-pointer shrink-0"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingManual || !isManualFormValid}
-                    className={`flex-1 h-[46px] text-white text-[14px] font-semibold rounded-[10px] transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer ${
+                    className={`h-10 px-6 text-white text-sm font-semibold rounded-lg transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-md ${
                       isSubmittingManual || !isManualFormValid
-                        ? "bg-[#2563EB]/40 cursor-not-allowed"
-                        : "bg-[#2563EB] hover:bg-[#1D4ED8]"
+                        ? "bg-blue-600/50 cursor-not-allowed shadow-none"
+                        : "bg-blue-600 hover:bg-blue-700 shadow-blue-500/20"
                     }`}
                   >
-                    {isSubmittingManual && <Loader2 className="h-[14px] w-[14px] animate-spin" />}
+                    {isSubmittingManual && <Loader2 className="h-4 w-4 animate-spin" />}
                     <span>{isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}</span>
                   </button>
                 </div>
