@@ -37,6 +37,7 @@ ngrok.zip
 # Electron & Frontend Build Outputs
 release/
 frontend/release/
+!frontend/release/0.1.0/*.exe
 dist/
 frontend/dist/
 dist-electron/
