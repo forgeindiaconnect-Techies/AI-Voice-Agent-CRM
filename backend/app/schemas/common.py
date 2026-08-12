@@ -249,6 +249,15 @@ class ManualDialPayload(BaseModel):
     call_mode: Optional[str] = "human"
 
 
+class VapiDialPayload(BaseModel):
+    phone: str
+    name: Optional[str] = None
+    pool_id: Optional[str] = "general"
+    assistant_id: Optional[str] = None
+    phone_number_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
+
+
 class ManualCallActionPayload(BaseModel):
     action: str
 

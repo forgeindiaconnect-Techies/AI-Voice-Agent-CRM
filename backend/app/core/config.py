@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     BASE_URL: str = "https://ai-voice-agent-crm.onrender.com"
 
     class Config:
-        env_file = ".env"
+        env_file = ("backend/.env", ".env")
         extra = "ignore"
 
 

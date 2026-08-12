@@ -2,7 +2,7 @@
 import os, asyncio, httpx
 # pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
-load_dotenv('.env')
+load_dotenv('backend/.env')
 
 async def test_vapi():
     vapi_payload = {

@@ -391,7 +391,33 @@ export default function Dialer() {
 
     setIsCreatingLead(false);
 
-    // ─── STEP 1: Register call in CRM backend (Lock & Idempotency Gatekeeper) ──
+    // If AI Call Mode is selected, call dedicated Vapi dial endpoint
+    if (callMode === "ai") {
+      try {
+        const res = await api.post("/api/calls/vapi-dial", {
+          phone: fullPhoneNumber,
+          name: matchedLead?.name || `Manual Lead - ${outboundPhone}`,
+          pool_id: matchedLead?.pool_id || user?.pool_id || "general",
+          idempotency_key: idempotencyKey
+        });
+        setCurrentCallId(res.id || res._id || res.call_id || null);
+        setCallStatus("connected");
+        setCallDuration(0);
+        isDialingRef.current = false;
+        setIsDialing(false);
+        showToast("Vapi AI Voice Agent call initiated", "success");
+        return;
+      } catch (err: any) {
+        const msg = typeof err.message === "string" ? err.message : JSON.stringify(err.message || "");
+        showToast(msg || "Vapi AI Call Failed", "error");
+        setCallStatus("idle");
+        isDialingRef.current = false;
+        setIsDialing(false);
+        return;
+      }
+    }
+
+    // ─── STEP 1: Register call in CRM backend for Human Agent WebRTC Softphone ──
     try {
       const res = await api.post("/api/calls/manual-dial", {
         phone: fullPhoneNumber,
@@ -440,16 +466,6 @@ export default function Dialer() {
         setIsDialing(false);
         return;
       }
-    }
-
-    // If AI Call Mode is selected, Vapi AI Agent places call directly from Twilio server to Customer
-    if (callMode === "ai") {
-      setCallStatus("connected");
-      setCallDuration(0);
-      isDialingRef.current = false;
-      setIsDialing(false);
-      showToast("Vapi AI Voice Agent initiated outbound call to customer", "success");
-      return;
     }
 
     // ─── STEP 2: Request microphone permission ───────────────────────────────
