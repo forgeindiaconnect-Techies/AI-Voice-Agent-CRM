@@ -2,6 +2,8 @@
   "name": "forge-india-connect-crm",
   "private": true,
   "version": "0.1.0",
+  "description": "Forge India Connect AI Voice Agent CRM Desktop Application",
+  "author": "Forge India Connect",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {

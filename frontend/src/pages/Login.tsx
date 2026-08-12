@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { api, BASE_URL } from "../api/client";
 import ForgeLogo from "../components/ForgeLogo";
+import { assets } from "../utils/assets";
 import {
   Mail,
   Lock,
@@ -337,11 +338,11 @@ export default function Login() {
           className="relative z-10 h-[92vh] max-h-[960px] flex items-center justify-center scale-105 lg:scale-110"
         >
           <img
-            src="/login-nobg.png"
+            src={assets.loginNobg}
             alt="AI Voice Agent Enterprise CRM"
             className="h-full w-auto object-contain select-none drop-shadow-[0_25px_60px_rgba(29,78,216,0.25)] transform hover:scale-[1.02] transition-transform duration-300"
             onError={(e) => {
-              e.currentTarget.src = "/login.png";
+              e.currentTarget.src = assets.loginImg;
             }}
           />
 

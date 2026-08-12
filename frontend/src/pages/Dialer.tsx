@@ -94,6 +94,7 @@ export default function Dialer() {
   // OUTBOUND DIALER STATE
   const [outboundPhone, setOutboundPhone] = useState("");
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
+  const [isDialing, setIsDialing] = useState(false);
   const isDialingRef = useRef(false); // duplicate-click guard
   const callEndReasonRef = useRef<string>(""); // track why call ended
   const [isCreatingLead, setIsCreatingLead] = useState(false);
@@ -306,11 +307,14 @@ export default function Dialer() {
 
   const handleDial = async () => {
     if (!isValidMobile) return;
-    if (isDialingRef.current) return; // prevent duplicate clicks
-    if (callStatus !== "idle") return;
+    if (isDialingRef.current || isDialing || callStatus !== "idle") return; // prevent duplicate clicks
 
     isDialingRef.current = true;
+    setIsDialing(true);
     callEndReasonRef.current = "";
+
+    // Generate unique idempotency key for this call attempt
+    const idempotencyKey = `${user?.id || 'agent'}_${outboundPhone}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     // Ensure device is ready before dialing
     if (!deviceReady && !isInitializingDevice) {
@@ -355,6 +359,7 @@ export default function Dialer() {
           setCallStatus("idle");
           setIsCreatingLead(false);
           isDialingRef.current = false;
+          setIsDialing(false);
           return;
         }
       }
@@ -362,25 +367,51 @@ export default function Dialer() {
 
     setIsCreatingLead(false);
 
-    // ─── STEP 1: Request microphone permission ───────────────────────────────
+    // ─── STEP 1: Register call in CRM backend (Lock & Idempotency Gatekeeper) ──
+    try {
+      const res = await api.post("/api/calls/manual-dial", {
+        phone: fullPhoneNumber,
+        pool_id: matchedLead?.pool_id || user?.pool_id || "general",
+        language: "english",
+        agent_assign_mode: "manual",
+        assigned_agent_id: user?.id,
+        priority: "high",
+        notes: "",
+        initiate_pstn: false, // WebRTC softphone handles dialing natively
+        idempotency_key: idempotencyKey
+      });
+      setCurrentCallId(res.id || res._id || res.call_id || null);
+    } catch (err: any) {
+      const msg = err.message || "Failed to start call session";
+      if (err.status === 409 || msg.includes("already in progress") || msg.includes("active call")) {
+        showToast(msg, "warning");
+      } else {
+        showToast(msg, "error");
+      }
+      setCallStatus("idle");
+      isDialingRef.current = false;
+      setIsDialing(false);
+      return;
+    }
+
+    // ─── STEP 2: Request microphone permission ───────────────────────────────
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
       showToast("Microphone denied! Enable mic access to make calls.", "error");
       setCallStatus("idle");
       isDialingRef.current = false;
+      setIsDialing(false);
       return;
     }
 
-    // ─── STEP 2: Initiate Twilio WebRTC Call ─────────────────────────────────
-    let isWebRtcConnected = false;
+    // ─── STEP 3: Initiate Twilio WebRTC Call ─────────────────────────────────
     if (deviceRef.current && deviceReady) {
       try {
         const twilioCall = await deviceRef.current.connect({
           params: { To: fullPhoneNumber }
         });
         callRef.current = twilioCall;
-        isWebRtcConnected = true;
 
         // Twilio fires "ringing" when the outbound call is placed and far end is alerting
         twilioCall.on("ringing", (hasEarlyMedia: boolean) => {
@@ -393,6 +424,7 @@ export default function Dialer() {
           setCallStatus("connected");
           setCallDuration(0);
           isDialingRef.current = false;
+          setIsDialing(false);
         });
 
         // "disconnect" fires on normal hang-up from either side
@@ -400,6 +432,7 @@ export default function Dialer() {
           callRef.current = null;
           setIsMuted(false);
           isDialingRef.current = false;
+          setIsDialing(false);
           const reason = callEndReasonRef.current;
           if (reason === "busy") {
             setCallStatus("busy");
@@ -416,6 +449,7 @@ export default function Dialer() {
           setIsMuted(false);
           setCallStatus("busy");
           isDialingRef.current = false;
+          setIsDialing(false);
         });
 
         // Twilio SDK call error — includes SIP error codes
@@ -424,7 +458,7 @@ export default function Dialer() {
           callRef.current = null;
           setIsMuted(false);
           isDialingRef.current = false;
-          // Decode SIP/Twilio error codes for specific status
+          setIsDialing(false);
           const code = err?.code || err?.twilioError?.code || 0;
           const msg: string = (err?.message || "").toLowerCase();
           if (code === 31480 || msg.includes("busy") || msg.includes("486")) {
@@ -449,15 +483,12 @@ export default function Dialer() {
           setIsMuted(muted);
         });
 
-        // Listen for Twilio status-callback events via our WebSocket to catch
-        // no-answer / busy / failed from the PSTN leg (customer side)
-        // These come through as ws event "call_status_update" from backend
-
       } catch (e: any) {
         console.warn("[Twilio] connect() error:", e);
         setCallStatus("failed");
         showToast(e?.message || "Failed to initiate call", "error");
         isDialingRef.current = false;
+        setIsDialing(false);
         return;
       }
     } else {
@@ -465,25 +496,8 @@ export default function Dialer() {
       showToast("Softphone not ready yet. Please wait and try again.", "warning");
       setCallStatus("idle");
       isDialingRef.current = false;
+      setIsDialing(false);
       return;
-    }
-
-    // ─── STEP 3: Register call in CRM backend ────────────────────────────────
-    try {
-      const res = await api.post("/api/calls/manual-dial", {
-        phone: fullPhoneNumber,
-        pool_id: matchedLead?.pool_id || user?.pool_id || "general",
-        language: "english",
-        agent_assign_mode: "manual",
-        assigned_agent_id: user?.id,
-        priority: "high",
-        notes: "",
-        initiate_pstn: false // WebRTC softphone handles dialing natively; do NOT initiate duplicate PSTN call
-      });
-      setCurrentCallId(res.id || res._id || res.call_id || null);
-    } catch (err: any) {
-      console.warn("[Dialer] Backend registration notice:", err);
-      // Don't abort — WebRTC call is already live
     }
   };
 
@@ -500,6 +514,7 @@ export default function Dialer() {
     setIsMuted(false);
     setIsSpeaker(false);
     isDialingRef.current = false;
+    setIsDialing(false);
 
     // Only move to "ended" if currently in a live call; cancel from calling/ringing goes to idle
     if (callStatus === "calling" || callStatus === "ringing") {
@@ -592,6 +607,7 @@ export default function Dialer() {
   };
 
   const handleQuickCall = (phone: string) => {
+    if (callStatus !== "idle" || isDialing || isDialingRef.current) return;
     const sanitized = sanitizeMobileNumber(phone);
     setOutboundPhone(sanitized);
   };
@@ -875,10 +891,18 @@ export default function Dialer() {
                   {callStatus === "idle" && (
                     <button
                       onClick={handleDial}
-                      disabled={!isValidMobile || isCreatingLead}
-                      className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white rounded-full py-4 font-extrabold text-base shadow-lg shadow-emerald-500/25 transition disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                      disabled={!isValidMobile || isCreatingLead || isDialing}
+                      className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white rounded-full py-4 font-extrabold text-base shadow-lg shadow-emerald-500/25 transition disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed disabled:pointer-events-none flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                     >
-                      <Phone className="h-5 w-5 fill-current" /> Call
+                      {isDialing || isCreatingLead ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" /> Dialing...
+                        </>
+                      ) : (
+                        <>
+                          <Phone className="h-5 w-5 fill-current" /> Call
+                        </>
+                      )}
                     </button>
                   )}
 
@@ -1086,7 +1110,8 @@ export default function Dialer() {
                             <div className="flex gap-2">
                               <button
                                 onClick={() => handleQuickCall(lead.phone)}
-                                className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer ${
+                                disabled={callStatus !== "idle" || isDialing}
+                                className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer ${
                                   outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone
                                     ? 'bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md'
                                     : 'bg-[#2563EB]/10 text-[#2563EB] dark:text-[#60A5FA] hover:bg-[#2563EB]/20 border border-[#2563EB]/20'

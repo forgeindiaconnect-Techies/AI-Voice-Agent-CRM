@@ -1,4 +1,5 @@
 import React from "react";
+import { assets } from "../utils/assets";
 
 export type ForgeLogoProps = {
   variant?: "full" | "emblem" | "header" | "collapsed";
@@ -9,7 +10,7 @@ export type ForgeLogoProps = {
 export function ForgeEmblem({ className = "h-10 w-10" }: { className?: string }) {
   return (
     <img
-      src="/logo-square.png"
+      src={assets.logoSquare}
       alt="Forge Emblem"
       className={`${className} object-contain select-none`}
     />
@@ -35,7 +36,7 @@ export default function ForgeLogo({ variant = "full", className = "", size = "md
     return (
       <div className={`flex items-center justify-center shrink-0 ${className}`}>
         <img
-          src="/logo-square.png"
+          src={assets.logoSquare}
           alt="Forge Emblem"
           className={`${emblemSizes[size]} object-contain select-none transition-all`}
         />
@@ -46,12 +47,11 @@ export default function ForgeLogo({ variant = "full", className = "", size = "md
   return (
     <div className={`flex items-center select-none shrink-0 ${className}`}>
       <img
-        src="/logo-horizontal.png"
+        src={assets.logoHorizontal}
         alt="Forge India Connect Pvt. Ltd."
         className={`${imageHeights[size]} w-auto object-contain max-w-full brightness-105 transition-all`}
         onError={(e) => {
-          const target = e.currentTarget;
-          target.style.display = "none";
+          e.currentTarget.src = assets.logoSquare;
         }}
       />
     </div>

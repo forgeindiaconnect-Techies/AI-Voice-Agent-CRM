@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
             <div className="flex gap-4 justify-center pt-2">
               <button
-                onClick={() => window.location.href = "/"}
+                onClick={() => window.location.hash = "#/"}
                 className="px-5 py-2.5 border rounded-xl text-gray-600 hover:bg-slate-50 transition text-sm font-bold flex items-center gap-1.5"
               >
                 <Home className="h-4 w-4" />

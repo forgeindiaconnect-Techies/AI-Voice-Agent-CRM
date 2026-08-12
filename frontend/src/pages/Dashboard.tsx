@@ -1367,7 +1367,7 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => window.location.href = "/campaigns"}
+            <button onClick={() => window.location.hash = "#/campaigns"}
                     className="dk-action dk-action-blue">
               <Zap className="h-6 w-6" />
               <span className="text-xs font-extrabold text-center leading-tight">Launch Campaign</span>
@@ -1379,7 +1379,7 @@ export default function Dashboard() {
               <span className="text-xs font-extrabold text-center leading-tight">AI Voice Config</span>
             </button>
 
-            <button onClick={() => window.location.href = "/dialer"}
+            <button onClick={() => window.location.hash = "#/dialer"}
                     className="dk-action dk-action-green">
               <Phone className="h-6 w-6" />
               <span className="text-xs font-extrabold text-center leading-tight">Softphone Dial</span>
@@ -1397,7 +1397,7 @@ export default function Dashboard() {
               <span className="text-xs font-extrabold text-center leading-tight">Sync Metrics</span>
             </button>
 
-            <button onClick={() => window.location.href = "/users"}
+            <button onClick={() => window.location.hash = "#/users"}
                     className="dk-action dk-action-slate">
               <Users className="h-6 w-6" />
               <span className="text-xs font-extrabold text-center leading-tight">Manage Users</span>

@@ -111,12 +111,12 @@ export async function apiFetch(
 
       clearTimeout(timeoutId);
 
-      // Handle token expiration
+      // Handle token expiration safely for HashRouter/Electron
       if (res.status === 401 && path !== "/api/auth/login") {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
-        if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-          window.location.href = "/login";
+        if (typeof window !== "undefined") {
+          window.location.hash = "#/login";
         }
         throw new Error("Session expired. Please sign in again.");
       }

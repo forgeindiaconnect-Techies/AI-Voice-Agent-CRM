@@ -27,6 +27,18 @@ Thumbs.db
 # Logs
 *.log
 
-# Binaries
+# Binaries & Executables
+*.exe
+*.zip
+*.blockmap
 ngrok.exe
 ngrok.zip
+
+# Electron & Frontend Build Outputs
+release/
+frontend/release/
+dist/
+frontend/dist/
+dist-electron/
+frontend/dist-electron/
+scratch/

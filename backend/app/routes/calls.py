@@ -180,6 +180,10 @@ async def twilio_status_callback(request: Request):
         to_number = form_data.get("To", "")
         from_number = form_data.get("From", "")
 
+        # Release active call lock if call reached terminal state
+        if call_status.lower() in ["completed", "busy", "no-answer", "failed", "canceled"]:
+            release_call_lock(phone=to_number, call_id=call_sid)
+
         # Broadcast to all connected WebSocket clients globally
         await ws_manager.broadcast_global({
             "event": "call_status_update",
@@ -237,6 +241,7 @@ async def end_call(payload: CallEnd):
         "ended_at": utcnow(),
     }
     await calls_col.update_one({"_id": ObjectId(payload.call_id)}, {"$set": update})
+    release_call_lock(agent_id=call.get("agent_id"), call_id=payload.call_id)
     await ws_manager.broadcast(call["pool_id"], {"event": "call_ended", "call_id": payload.call_id})
     return {"status": "completed"}
 
@@ -572,7 +577,66 @@ async def get_inbound_calls_summary(user: dict = Depends(get_current_user)):
 
 # --- MANUAL DIAL FEATURES ---
 
+import time
+
 active_call_streams = {}
+active_call_locks = {}
+processed_idempotency_keys = {}
+
+LOCK_TTL_SECONDS = 120
+IDEMPOTENCY_TTL_SECONDS = 30
+
+
+def _cleanup_expired_locks():
+    now = time.time()
+    expired_locks = [k for k, v in active_call_locks.items() if now - v.get("timestamp", 0) > LOCK_TTL_SECONDS]
+    for k in expired_locks:
+        active_call_locks.pop(k, None)
+
+    expired_keys = [k for k, v in processed_idempotency_keys.items() if now - v.get("timestamp", 0) > IDEMPOTENCY_TTL_SECONDS]
+    for k in expired_keys:
+        processed_idempotency_keys.pop(k, None)
+
+
+def acquire_call_lock(phone: str, agent_id: str, idempotency_key: str | None = None) -> tuple[bool, str]:
+    _cleanup_expired_locks()
+    now = time.time()
+
+    if idempotency_key and idempotency_key in processed_idempotency_keys:
+        return False, "IDEMPOTENCY_HIT"
+
+    if phone in active_call_locks:
+        lock_info = active_call_locks[phone]
+        if now - lock_info.get("timestamp", 0) < LOCK_TTL_SECONDS:
+            return False, f"Call already in progress to {phone}"
+
+    if agent_id and agent_id in active_call_locks:
+        lock_info = active_call_locks[agent_id]
+        if now - lock_info.get("timestamp", 0) < LOCK_TTL_SECONDS:
+            return False, "Agent already has an active call session"
+
+    return True, ""
+
+
+def register_call_lock(phone: str, agent_id: str, call_id: str, idempotency_key: str | None = None, result_doc: dict | None = None):
+    now = time.time()
+    lock_data = {"call_id": call_id, "idempotency_key": idempotency_key, "timestamp": now}
+    active_call_locks[phone] = lock_data
+    if agent_id:
+        active_call_locks[agent_id] = lock_data
+    if idempotency_key and result_doc:
+        processed_idempotency_keys[idempotency_key] = {"result": result_doc, "timestamp": now}
+
+
+def release_call_lock(phone: str | None = None, agent_id: str | None = None, call_id: str | None = None):
+    _cleanup_expired_locks()
+    keys_to_remove = []
+    for k, v in active_call_locks.items():
+        if (phone and (k == phone or k.replace("+", "") == phone.replace("+", ""))) or (agent_id and k == agent_id) or (call_id and v.get("call_id") == call_id):
+            keys_to_remove.append(k)
+    for k in keys_to_remove:
+        active_call_locks.pop(k, None)
+
 
 
 async def simulate_call_stream(call_id: str, pool_id: str):
@@ -667,20 +731,40 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
     is_plus = cleaned.startswith("+")
     digits = re.sub(r"\D", "", cleaned)
     normalized_phone = f"+{digits}" if is_plus else digits
-    
+
     if not normalized_phone:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid phone number provided")
-        
+
     lead = await leads_col.find_one({"phone": normalized_phone, "pool_id": payload.pool_id})
     if not lead:
         lead = await leads_col.find_one({"phone": normalized_phone})
-    
+
     if not lead:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
-        
+
     lead_id_str = str(lead.get("_id"))
-    assigned_agent_id = payload.assigned_agent_id
-    
+    assigned_agent_id = payload.assigned_agent_id or _uid(user)
+
+    # 1. Check idempotency key or active call locks
+    acquired, lock_reason = acquire_call_lock(normalized_phone, assigned_agent_id, payload.idempotency_key)
+    if not acquired:
+        if lock_reason == "IDEMPOTENCY_HIT" and payload.idempotency_key:
+            return processed_idempotency_keys[payload.idempotency_key]["result"]
+        raise HTTPException(status.HTTP_409_CONFLICT, lock_reason)
+
+    # 2. Check DB for active live call
+    existing_call = await calls_col.find_one({
+        "$or": [
+            {"lead_id": lead_id_str, "status": "live"},
+            {"agent_id": assigned_agent_id, "status": "live"}
+        ]
+    })
+    if existing_call:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"An active call session already exists (Call ID: {str(existing_call['_id'])})"
+        )
+
     agent_phone = None
     if payload.agent_assign_mode == "manual" and payload.assigned_agent_id:
         agent = await users_col.find_one({"_id": ObjectId(payload.assigned_agent_id)})
@@ -695,7 +779,7 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
         else:
             assigned_agent_id = _uid(user)
             agent_phone = user.get("phone")
-    
+
     # Actually trigger Twilio call if configured and initiate_pstn is requested (WebRTC calls handle dialing natively)
     twilio_sid = None
     try:
@@ -703,20 +787,19 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
         from twilio.rest import Client
         from app.core.config import settings
         if payload.initiate_pstn and hasattr(settings, 'TWILIO_ACCOUNT_SID') and settings.TWILIO_ACCOUNT_SID:
-            client = Client(getattr(settings, 'TWILIO_API_KEY', settings.TWILIO_ACCOUNT_SID), 
-                            getattr(settings, 'TWILIO_API_SECRET', getattr(settings, 'TWILIO_AUTH_TOKEN', '')), 
+            client = Client(getattr(settings, 'TWILIO_API_KEY', settings.TWILIO_ACCOUNT_SID),
+                            getattr(settings, 'TWILIO_API_SECRET', getattr(settings, 'TWILIO_AUTH_TOKEN', '')),
                             settings.TWILIO_ACCOUNT_SID)
-            
+
             from_number = getattr(settings, 'TWILIO_PHONE_NUMBER', '+12345678900')
-            
-            # Form TwiML: if agent has a phone, dial it, otherwise play hold music to keep call alive
+
             twiml_url = f"<Response><Say>Please hold while we connect your call.</Say>"
             if agent_phone:
                 twiml_url += f"<Dial>{agent_phone}</Dial>"
             else:
                 twiml_url += "<Play loop=\"0\">http://com.twilio.sounds.music.s3.amazonaws.com/MARKOVICHAMP-Borghestral.mp3</Play>"
             twiml_url += "</Response>"
-            
+
             call = client.calls.create(
                 to=normalized_phone,
                 from_=from_number,
@@ -756,14 +839,17 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
         "started_at": utcnow(),
         "twilio_sid": twilio_sid
     }
-    
+
     result = await calls_col.insert_one(doc)
     call_id_str = str(result.inserted_id)
     doc["_id"] = result.inserted_id
-    
+
+    response_doc = oid_str(doc)
+    register_call_lock(normalized_phone, assigned_agent_id, call_id_str, payload.idempotency_key, response_doc)
+
     task = asyncio.create_task(simulate_call_stream(call_id_str, payload.pool_id))
     active_call_streams[call_id_str] = task
-    
+
     ws_payload = {
         "event": "call_started",
         "call_id": call_id_str,
@@ -776,8 +862,8 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
     }
     await ws_manager.broadcast("global", ws_payload)
     await ws_manager.broadcast(payload.pool_id, ws_payload)
-    
-    return oid_str(doc)
+
+    return response_doc
 
 
 @router.post("/{call_id}/manual-action", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
@@ -946,9 +1032,7 @@ async def end_manual_call(call_id: str, payload: CallEnd, user: dict = Depends(g
         "outcome": payload.outcome,
         "pool_id": call["pool_id"]
     }
-    await ws_manager.broadcast("global", ws_payload)
-    await ws_manager.broadcast(call["pool_id"], ws_payload)
-    
+    release_call_lock(agent_id=call.get("agent_id") or _uid(user), call_id=call_id)
     return {"status": "completed"}
 
 

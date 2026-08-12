@@ -668,7 +668,13 @@ export default function Leads() {
     }
   }
 
+  const isCallingRef = useRef(false);
+
   async function handleCallCustomer(lead: Lead) {
+    if (isCallingRef.current) return;
+    isCallingRef.current = true;
+    const idempotencyKey = `lead_${user?.id || 'agent'}_${lead.phone.replace(/\D/g, '')}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
     try {
       showToast(`Initiating manual call to ${lead.phone}...`, "info");
       await api.post("/api/calls/manual-dial", {
@@ -678,7 +684,8 @@ export default function Leads() {
         language: lead.language || "English",
         agent_assign_mode: "auto",
         priority: lead.priority || "medium",
-        notes: lead.last_note || ""
+        notes: lead.last_note || "",
+        idempotency_key: idempotencyKey
       });
       showToast(`Call started with ${lead.name}`, "success");
       
@@ -688,7 +695,10 @@ export default function Leads() {
         navigate("/live-calls");
       }
     } catch (err: any) {
-      showToast(err.message || "Failed to start call", "error");
+      const msg = err.message || "Failed to start call";
+      showToast(msg, err.status === 409 || msg.includes("already in progress") ? "warning" : "error");
+    } finally {
+      setTimeout(() => { isCallingRef.current = false; }, 1000);
     }
   }
 

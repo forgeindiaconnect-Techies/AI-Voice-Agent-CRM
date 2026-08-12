@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ForgeLogo from "./ForgeLogo";
 import GalaxyBackground3D from "./GalaxyBackground3D";
+import { assets } from "../utils/assets";
 import {
   Menu,
   X,
@@ -301,11 +302,11 @@ export default function Layout() {
           >
             <div className="h-9 w-9 flex items-center justify-center shrink-0">
               <img
-                src="/logo-square.png"
+                src={assets.logoSquare}
                 alt="Forge Emblem"
                 className="h-8 w-8 object-contain"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
+                  e.currentTarget.src = assets.logoHorizontal;
                 }}
               />
             </div>
@@ -534,7 +535,7 @@ export default function Layout() {
               <button
                 onClick={() => {
                   logout();
-                  window.location.href = "/login";
+                  window.location.hash = "#/login";
                 }}
                 className="flex items-center gap-3 w-full px-3 py-2 rounded-xl transition font-semibold text-xs cursor-pointer text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
                 title="Logout"
@@ -559,7 +560,7 @@ export default function Layout() {
               <button
                 onClick={() => {
                   logout();
-                  window.location.href = "/login";
+                  window.location.hash = "#/login";
                 }}
                 className="p-1.5 rounded-lg transition cursor-pointer text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
                 title="Logout"

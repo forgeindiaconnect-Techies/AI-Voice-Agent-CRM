@@ -38,13 +38,23 @@ function createWindow() {
     return { action: 'deny' };
   });
 
+  // Guard against navigating away from the HTML file bundle
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('file:') && !url.startsWith('http://localhost')) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
   // Load app: Dev server URL or built index.html
   const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
   if (isDev) {
     mainWindow.loadURL(devServerUrl);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html')).catch((err) => {
+      console.error("Failed to load index.html:", err);
+    });
   }
 
   mainWindow.on('closed', () => {
