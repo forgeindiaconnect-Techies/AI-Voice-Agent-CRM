@@ -638,6 +638,52 @@ def release_call_lock(phone: str | None = None, agent_id: str | None = None, cal
         active_call_locks.pop(k, None)
 
 
+async def cleanup_stale_db_calls(agent_id: str | None = None, lead_id: str | None = None):
+    """
+    Checks MongoDB for any call with status='live' that is no longer active in memory or stream task has finished.
+    Automatically marks stale calls as 'completed' so agents are never permanently locked out.
+    """
+    query = {"status": "live"}
+    if agent_id or lead_id:
+        conditions = []
+        if agent_id:
+            conditions.append({"agent_id": agent_id})
+        if lead_id:
+            conditions.append({"lead_id": lead_id})
+        query["$or"] = conditions
+
+    now = utcnow()
+    async for call in calls_col.find(query):
+        call_id_str = str(call["_id"])
+        started_at = call.get("started_at")
+
+        # Check if stream task is active
+        has_active_stream = call_id_str in active_call_streams and not active_call_streams[call_id_str].done()
+
+        # Stale criteria: no active stream task OR started > 120s ago without stream task
+        is_stale = not has_active_stream
+        if started_at:
+            delta = (now.replace(tzinfo=None) - started_at.replace(tzinfo=None)).total_seconds()
+            if delta > 120 and not has_active_stream:
+                is_stale = True
+
+        if is_stale:
+            await calls_col.update_one(
+                {"_id": call["_id"]},
+                {"$set": {
+                    "status": "completed",
+                    "outcome": "stale_auto_cleaned",
+                    "notes": "Session automatically cleaned after inactivity",
+                    "ended_at": now
+                }}
+            )
+            task = active_call_streams.pop(call_id_str, None)
+            if task and not task.done():
+                task.cancel()
+            release_call_lock(agent_id=call.get("agent_id"), call_id=call_id_str)
+            print(f"[calls] Auto-cleaned stale ghost call: {call_id_str}")
+
+
 
 async def simulate_call_stream(call_id: str, pool_id: str):
     transcript_dialogue = [
@@ -724,6 +770,45 @@ async def simulate_call_stream(call_id: str, pool_id: str):
         logging.getLogger("uvicorn.error").error(f"Error in simulate_call_stream: {e}")
 
 
+@router.get("/active")
+async def get_current_active_call(user: dict = Depends(get_current_user)):
+    """Returns the current user's live active call session (if any), after cleaning stale sessions."""
+    agent_id = _uid(user)
+    await cleanup_stale_db_calls(agent_id=agent_id)
+
+    call = await calls_col.find_one({"agent_id": agent_id, "status": "live"})
+    if not call:
+        return None
+
+    lead = await leads_col.find_one({"_id": ObjectId(call.get("lead_id"))}) if call.get("lead_id") and ObjectId.is_valid(call.get("lead_id")) else None
+    call_data = oid_str(call)
+    call_data["phone"] = lead.get("phone") if lead else call.get("phone", "")
+    call_data["lead_name"] = lead.get("name") if lead else "Customer"
+    return call_data
+
+
+@router.post("/{call_id}/force-end")
+async def force_end_stuck_call(call_id: str, user: dict = Depends(get_current_user)):
+    """Force terminates a call session that is stuck or stale."""
+    query = {"_id": ObjectId(call_id)} if ObjectId.is_valid(call_id) else {"_id": call_id}
+    call = await calls_col.find_one(query)
+    if call:
+        task = active_call_streams.pop(call_id, None)
+        if task and not task.done():
+            task.cancel()
+
+        await calls_col.update_one(
+            query,
+            {"$set": {"status": "completed", "outcome": "force_ended", "ended_at": utcnow()}}
+        )
+        release_call_lock(agent_id=call.get("agent_id"), call_id=call_id)
+        await ws_manager.broadcast("global", {"event": "call_ended", "call_id": call_id, "outcome": "force_ended"})
+    else:
+        release_call_lock(agent_id=_uid(user), call_id=call_id)
+
+    return {"status": "success", "message": "Call session force cleared"}
+
+
 @router.post("/manual-dial", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get_current_user)):
     import re
@@ -745,12 +830,19 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
     lead_id_str = str(lead.get("_id"))
     assigned_agent_id = payload.assigned_agent_id or _uid(user)
 
+    # Automatically clean any stale ghost call sessions for this agent or lead
+    await cleanup_stale_db_calls(agent_id=assigned_agent_id, lead_id=lead_id_str)
+
     # 1. Check idempotency key or active call locks
     acquired, lock_reason = acquire_call_lock(normalized_phone, assigned_agent_id, payload.idempotency_key)
     if not acquired:
         if lock_reason == "IDEMPOTENCY_HIT" and payload.idempotency_key:
             return processed_idempotency_keys[payload.idempotency_key]["result"]
-        raise HTTPException(status.HTTP_409_CONFLICT, lock_reason)
+        # Double check if lock is stale
+        await cleanup_stale_db_calls(agent_id=assigned_agent_id, lead_id=lead_id_str)
+        acquired_retry, lock_reason_retry = acquire_call_lock(normalized_phone, assigned_agent_id, payload.idempotency_key)
+        if not acquired_retry:
+            raise HTTPException(status.HTTP_409_CONFLICT, lock_reason_retry)
 
     # 2. Check DB for active live call
     existing_call = await calls_col.find_one({

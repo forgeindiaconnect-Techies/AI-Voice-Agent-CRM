@@ -173,6 +173,22 @@ export default function Dialer() {
   useEffect(() => {
     fetchLeads();
 
+    const checkActiveSession = async () => {
+      try {
+        const active = await api.get("/api/calls/active");
+        if (active && (active.id || active._id)) {
+          setCurrentCallId(active.id || active._id);
+          if (active.phone) {
+            setOutboundPhone(sanitizeMobileNumber(active.phone));
+          }
+          setCallStatus(active.call_state === "hold" ? "hold" : "connected");
+        }
+      } catch (err) {
+        console.warn("[Dialer] Active session check notice:", err);
+      }
+    };
+    checkActiveSession();
+
     let ws: WebSocket | null = null;
     let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -206,7 +222,6 @@ export default function Dialer() {
           }
         };
         ws.onclose = () => {
-          // Auto-reconnect WebSocket after 3s
           wsReconnectTimer = setTimeout(connectWs, 3000);
         };
         ws.onerror = () => {
@@ -307,7 +322,13 @@ export default function Dialer() {
 
   const handleDial = async () => {
     if (!isValidMobile) return;
-    if (isDialingRef.current || isDialing || callStatus !== "idle") return; // prevent duplicate clicks
+    if (isDialingRef.current || isDialing) return;
+    if (callStatus === "calling" || callStatus === "ringing" || callStatus === "connected" || callStatus === "hold") return;
+
+    if (callStatus !== "idle") {
+      setCallStatus("idle");
+      setCurrentCallId(null);
+    }
 
     isDialingRef.current = true;
     setIsDialing(true);
@@ -342,7 +363,7 @@ export default function Dialer() {
           pool_id: user?.pool_id || leads[0]?.pool_id || "6a6b40b7841e208e1cb69469",
           source: "Manual Dialer"
         });
-        fetchLeads(); // refresh async, don't await
+        fetchLeads();
         matchedLead = res;
       } catch (err: any) {
         if (err.message?.includes("Duplicate") || err.message?.includes("already exists")) {
@@ -377,21 +398,44 @@ export default function Dialer() {
         assigned_agent_id: user?.id,
         priority: "high",
         notes: "",
-        initiate_pstn: false, // WebRTC softphone handles dialing natively
+        initiate_pstn: false,
         idempotency_key: idempotencyKey
       });
       setCurrentCallId(res.id || res._id || res.call_id || null);
     } catch (err: any) {
-      const msg = err.message || "Failed to start call session";
-      if (err.status === 409 || msg.includes("already in progress") || msg.includes("active call")) {
-        showToast(msg, "warning");
+      const msg = typeof err.message === "string" ? err.message : JSON.stringify(err.message || "");
+      if (err.status === 409 || msg.includes("already in progress") || msg.includes("active call") || msg.includes("already exists")) {
+        // Try clearing ghost call session on backend and retry once
+        try {
+          if (currentCallId) {
+            await api.post(`/api/calls/${currentCallId}/force-end`).catch(() => {});
+          }
+          const retryRes = await api.post("/api/calls/manual-dial", {
+            phone: fullPhoneNumber,
+            pool_id: matchedLead?.pool_id || user?.pool_id || "general",
+            language: "english",
+            agent_assign_mode: "manual",
+            assigned_agent_id: user?.id,
+            priority: "high",
+            notes: "",
+            initiate_pstn: false,
+            idempotency_key: `retry_${idempotencyKey}`
+          });
+          setCurrentCallId(retryRes.id || retryRes._id || retryRes.call_id || null);
+        } catch (retryErr: any) {
+          showToast("Previous session conflict resolved. Ready to dial.", "info");
+          setCallStatus("idle");
+          isDialingRef.current = false;
+          setIsDialing(false);
+          return;
+        }
       } else {
-        showToast(msg, "error");
+        showToast(msg || "Failed to start call", "error");
+        setCallStatus("idle");
+        isDialingRef.current = false;
+        setIsDialing(false);
+        return;
       }
-      setCallStatus("idle");
-      isDialingRef.current = false;
-      setIsDialing(false);
-      return;
     }
 
     // ─── STEP 2: Request microphone permission ───────────────────────────────
