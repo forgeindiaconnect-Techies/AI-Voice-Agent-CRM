@@ -879,7 +879,8 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
         "customer": {
             "number": e164_phone,
             "name": payload.name or (lead.get("name") if lead else f"Customer - {e164_phone}")
-        }
+        },
+        "serverUrl": f"{settings.BASE_URL.rstrip('/')}/api/calls/vapi-webhook"
     }
     if vapi_phone_id:
         vapi_payload["phoneNumberId"] = vapi_phone_id
@@ -1456,10 +1457,25 @@ async def vapi_webhook(request: Request):
 
         elif msg_type == "status-update":
             vapi_status = message.get("status")
-            if vapi_status == "ended":
+            if vapi_status in ("ringing", "in-progress", "queued", "forwarding"):
+                status_mapped = "ringing" if vapi_status == "ringing" else ("connected" if vapi_status in ("in-progress", "forwarding") else "calling")
                 await calls_col.update_one(
                     {"_id": db_call["_id"]},
-                    {"$set": {"status": "completed", "outcome": "vapi_completed", "ended_at": utcnow()}}
+                    {"$set": {"call_state": status_mapped}}
+                )
+                ws_update = {
+                    "event": "vapi_call_status",
+                    "call_id": call_id_str,
+                    "vapi_call_id": vapi_call_id,
+                    "call_status": status_mapped,
+                    "vapi_raw_status": vapi_status
+                }
+                await ws_manager.broadcast("global", ws_update)
+                await ws_manager.broadcast(pool_id, ws_update)
+            elif vapi_status == "ended":
+                await calls_col.update_one(
+                    {"_id": db_call["_id"]},
+                    {"$set": {"status": "completed", "call_state": "ended", "outcome": "vapi_completed", "ended_at": utcnow()}}
                 )
                 release_call_lock(agent_id=db_call.get("agent_id"), call_id=call_id_str)
                 await ws_manager.broadcast("global", {"event": "call_ended", "call_id": call_id_str, "outcome": "vapi_completed"})

@@ -204,6 +204,19 @@ export default function Dialer() {
             if (data.event === "leads_updated") {
               fetchLeads();
             }
+            if (data.event === "vapi_call_status") {
+              const st = (data.call_status || "").toLowerCase();
+              if (st === "ringing") {
+                setCallStatus("ringing");
+              } else if (st === "connected" || st === "in-progress") {
+                setCallStatus("connected");
+              } else if (st === "ended" || st === "completed") {
+                setCallStatus("ended");
+              }
+            }
+            if (data.event === "call_ended") {
+              setCallStatus("ended");
+            }
             // Real-time call status updates from Twilio status-callback via backend
             if (data.event === "call_status_update" && data.call_sid) {
               const status: string = (data.call_status || "").toLowerCase();
