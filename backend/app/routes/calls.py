@@ -872,6 +872,43 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
             assigned_agent_id = _uid(user)
             agent_phone = user.get("phone")
 
+    # Vapi AI Voice Agent trigger if call_mode == "ai"
+    vapi_call_id = None
+    is_ai_call = (getattr(payload, 'call_mode', 'human') == 'ai')
+
+    if is_ai_call:
+        vapi_api_key = getattr(settings, 'VAPI_API_KEY', '') or os.getenv('VAPI_API_KEY', '')
+        vapi_assistant_id = getattr(settings, 'VAPI_ASSISTANT_ID', '') or os.getenv('VAPI_ASSISTANT_ID', '')
+        vapi_phone_id = getattr(settings, 'VAPI_PHONE_NUMBER_ID', '') or os.getenv('VAPI_PHONE_NUMBER_ID', '')
+
+        if vapi_api_key and vapi_assistant_id:
+            try:
+                import httpx
+                vapi_payload = {
+                    "assistantId": vapi_assistant_id,
+                    "customer": {
+                        "number": normalized_phone,
+                        "name": lead.get("name", "Customer")
+                    }
+                }
+                if vapi_phone_id:
+                    vapi_payload["phoneNumberId"] = vapi_phone_id
+
+                headers = {
+                    "Authorization": f"Bearer {vapi_api_key}",
+                    "Content-Type": "application/json"
+                }
+                async with httpx.AsyncClient() as client:
+                    res = await client.post("https://api.vapi.ai/call", json=vapi_payload, headers=headers, timeout=10.0)
+                    if res.status_code in (200, 201):
+                        res_data = res.json()
+                        vapi_call_id = res_data.get("id")
+                        print(f"[Vapi] Call initiated successfully. Vapi Call ID: {vapi_call_id}")
+                    else:
+                        print(f"[Vapi] API Error: {res.status_code} - {res.text}")
+            except Exception as vapi_err:
+                print(f"[Vapi] Exception calling Vapi API: {vapi_err}")
+
     # Actually trigger Twilio call if configured and initiate_pstn is requested (WebRTC calls handle dialing natively)
     twilio_sid = None
     try:
@@ -908,7 +945,7 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
         f"[{utcnow().isoformat()}] [SIP] Sending: SIP/2.0 100 Trying",
         f"[{utcnow().isoformat()}] [SIP] Sending: SIP/2.0 180 Ringing",
         f"[{utcnow().isoformat()}] [SIP] Sending: SIP/2.0 200 OK",
-        f"[{utcnow().isoformat()}] [SIP] Call established via WebRTC Trunk (Twilio SID: {twilio_sid})"
+        f"[{utcnow().isoformat()}] [SIP] Call established via {'Vapi AI Agent' if is_ai_call else 'WebRTC Trunk'} (Twilio SID: {twilio_sid}, Vapi ID: {vapi_call_id})"
     ]
 
     doc = {
@@ -917,6 +954,9 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
         "agent_id": assigned_agent_id,
         "direction": "outbound",
         "status": "live",
+        "call_mode": getattr(payload, 'call_mode', 'human') or 'human',
+        "is_ai": is_ai_call,
+        "vapi_call_id": vapi_call_id,
         "call_state": "active",
         "muted": False,
         "priority": payload.priority,
@@ -1201,5 +1241,84 @@ async def manual_call_conference(call_id: str, payload: ManualConferencePayload,
     await ws_manager.broadcast(call["pool_id"], ws_payload)
     
     return {"status": "success", "conference_established_with": invitee["name"]}
+
+
+@router.post("/vapi-webhook")
+async def vapi_webhook(request: Request):
+    """
+    Vapi Webhook endpoint to process real-time call events from Vapi AI.
+    Handles status updates, live transcript dialogue, and end-of-call reports.
+    """
+    try:
+        body = await request.json()
+        message = body.get("message", {})
+        msg_type = message.get("type")
+        vapi_call = message.get("call", {})
+        vapi_call_id = vapi_call.get("id")
+
+        if not vapi_call_id:
+            return {"status": "ok"}
+
+        db_call = await calls_col.find_one({"vapi_call_id": vapi_call_id})
+        if not db_call:
+            return {"status": "ok"}
+
+        call_id_str = str(db_call["_id"])
+        pool_id = db_call.get("pool_id", "global")
+
+        if msg_type == "transcript":
+            role = message.get("role")
+            speaker = "customer" if role == "user" else "agent"
+            text = message.get("transcript", "")
+
+            if text:
+                new_entry = {
+                    "speaker": speaker,
+                    "text": text,
+                    "timestamp": utcnow().isoformat()
+                }
+                await calls_col.update_one(
+                    {"_id": db_call["_id"]},
+                    {"$push": {"transcript_list": new_entry}}
+                )
+
+                update_payload = {
+                    "event": "manual_call_update",
+                    "call_id": call_id_str,
+                    "vapi_call_id": vapi_call_id,
+                    "speaker": speaker,
+                    "text": text,
+                    "timestamp": new_entry["timestamp"]
+                }
+                await ws_manager.broadcast("global", update_payload)
+                await ws_manager.broadcast(pool_id, update_payload)
+
+        elif msg_type == "status-update":
+            vapi_status = message.get("status")
+            if vapi_status == "ended":
+                await calls_col.update_one(
+                    {"_id": db_call["_id"]},
+                    {"$set": {"status": "completed", "outcome": "vapi_completed", "ended_at": utcnow()}}
+                )
+                release_call_lock(agent_id=db_call.get("agent_id"), call_id=call_id_str)
+                await ws_manager.broadcast("global", {"event": "call_ended", "call_id": call_id_str, "outcome": "vapi_completed"})
+
+        elif msg_type == "end-of-call-report":
+            summary = message.get("summary")
+            recording_url = message.get("recordingUrl")
+            update_data = {"status": "completed", "outcome": "vapi_completed", "ended_at": utcnow()}
+            if summary:
+                update_data["notes"] = summary
+            if recording_url:
+                update_data["recording_file"] = recording_url
+
+            await calls_col.update_one({"_id": db_call["_id"]}, {"$set": update_data})
+            release_call_lock(agent_id=db_call.get("agent_id"), call_id=call_id_str)
+            await ws_manager.broadcast("global", {"event": "call_ended", "call_id": call_id_str, "outcome": "vapi_completed"})
+
+    except Exception as e:
+        print(f"[Vapi Webhook Error] {e}")
+
+    return {"status": "ok"}
 
 

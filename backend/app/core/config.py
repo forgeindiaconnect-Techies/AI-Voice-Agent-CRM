@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     TWILIO_API_KEY: str = ""
     TWILIO_API_SECRET: str = ""
     TWILIO_TWIML_APP_SID: str = ""
+    VAPI_API_KEY: str = ""
+    VAPI_ASSISTANT_ID: str = ""
+    VAPI_PHONE_NUMBER_ID: str = ""
     BASE_URL: str = "https://ai-voice-agent-crm.onrender.com"
 
     class Config:

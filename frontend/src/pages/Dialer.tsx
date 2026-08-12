@@ -29,6 +29,8 @@ import {
   Loader2,
   Headphones,
   Ear,
+  Sparkles,
+  Bot,
   Search,
   Filter,
   RefreshCw,
@@ -93,6 +95,7 @@ export default function Dialer() {
 
   // OUTBOUND DIALER STATE
   const [outboundPhone, setOutboundPhone] = useState("");
+  const [callMode, setCallMode] = useState<"human" | "ai">("human");
   const [callStatus, setCallStatus] = useState<CallStatus>("idle");
   const [isDialing, setIsDialing] = useState(false);
   const isDialingRef = useRef(false); // duplicate-click guard
@@ -399,13 +402,13 @@ export default function Dialer() {
         priority: "high",
         notes: "",
         initiate_pstn: false,
-        idempotency_key: idempotencyKey
+        idempotency_key: idempotencyKey,
+        call_mode: callMode
       });
       setCurrentCallId(res.id || res._id || res.call_id || null);
     } catch (err: any) {
       const msg = typeof err.message === "string" ? err.message : JSON.stringify(err.message || "");
       if (err.status === 409 || msg.includes("already in progress") || msg.includes("active call") || msg.includes("already exists")) {
-        // Try clearing ghost call session on backend and retry once
         try {
           if (currentCallId) {
             await api.post(`/api/calls/${currentCallId}/force-end`).catch(() => {});
@@ -419,7 +422,8 @@ export default function Dialer() {
             priority: "high",
             notes: "",
             initiate_pstn: false,
-            idempotency_key: `retry_${idempotencyKey}`
+            idempotency_key: `retry_${idempotencyKey}`,
+            call_mode: callMode
           });
           setCurrentCallId(retryRes.id || retryRes._id || retryRes.call_id || null);
         } catch (retryErr: any) {
@@ -436,6 +440,16 @@ export default function Dialer() {
         setIsDialing(false);
         return;
       }
+    }
+
+    // If AI Call Mode is selected, Vapi AI Agent places call directly from Twilio server to Customer
+    if (callMode === "ai") {
+      setCallStatus("connected");
+      setCallDuration(0);
+      isDialingRef.current = false;
+      setIsDialing(false);
+      showToast("Vapi AI Voice Agent initiated outbound call to customer", "success");
+      return;
     }
 
     // ─── STEP 2: Request microphone permission ───────────────────────────────
@@ -876,6 +890,37 @@ export default function Dialer() {
                   )}
                 </div>
 
+                {callStatus === "idle" && (
+                  <div className="mb-4 w-full max-w-xs mx-auto">
+                    <div className="flex items-center justify-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => setCallMode("human")}
+                        className={`flex-1 py-1.5 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                          callMode === "human"
+                            ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+                            : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <User className="h-3.5 w-3.5" />
+                        <span>Agent Call</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCallMode("ai")}
+                        className={`flex-1 py-1.5 px-3 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                          callMode === "ai"
+                            ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/30"
+                            : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
+                      >
+                        <Bot className="h-3.5 w-3.5" />
+                        <span>Vapi AI Call</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {callStatus === "idle" && renderKeypad()}
 
                 {/* Calling/Ringing animation */}
@@ -901,10 +946,16 @@ export default function Dialer() {
 
                 {(callStatus === "connected" || callStatus === "hold") && !showInCallKeypad && (
                   <div className="my-6 w-full">
-                    <div className="h-24 w-24 rounded-full bg-[#10B981]/10 border-4 border-[#10B981]/30 mx-auto flex items-center justify-center text-[#10B981] mb-4">
-                      <User className="h-10 w-10" />
+                    <div className={`h-24 w-24 rounded-full border-4 mx-auto flex items-center justify-center mb-4 ${
+                      callMode === "ai"
+                        ? "bg-purple-500/10 border-purple-500/40 text-purple-400 animate-pulse shadow-lg shadow-purple-500/20"
+                        : "bg-[#10B981]/10 border-[#10B981]/30 text-[#10B981]"
+                    }`}>
+                      {callMode === "ai" ? <Bot className="h-10 w-10 text-purple-400 animate-bounce" /> : <User className="h-10 w-10" />}
                     </div>
-                    <p className="text-center text-sm font-extrabold text-slate-900 dark:text-[#F8FAFC]">Customer</p>
+                    <p className="text-center text-sm font-extrabold text-slate-900 dark:text-[#F8FAFC]">
+                      {callMode === "ai" ? "Customer ↔ Vapi AI Agent" : "Customer"}
+                    </p>
                     <p className="text-center text-xs text-slate-400 font-mono mt-0.5">+91 {outboundPhone}</p>
                     <p className="text-center text-lg font-black text-[#10B981] mt-2 font-mono">{formatTime(callDuration)}</p>
                   </div>

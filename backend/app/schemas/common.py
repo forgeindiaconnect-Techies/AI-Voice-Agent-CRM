@@ -246,6 +246,7 @@ class ManualDialPayload(BaseModel):
     notes: Optional[str] = None
     initiate_pstn: Optional[bool] = False
     idempotency_key: Optional[str] = None
+    call_mode: Optional[str] = "human"
 
 
 class ManualCallActionPayload(BaseModel):
