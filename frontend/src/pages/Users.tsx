@@ -837,54 +837,70 @@ export default function Users() {
 
         {/* Request Pool Transfer Modal Form */}
         {isTransferModalOpen && (
-          <div className="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 backdrop-blur-xs">
-            <div className="bg-white dark:bg-[#111827] rounded-[20px] p-6 max-w-md w-full shadow-2xl space-y-5 border border-slate-200 dark:border-white/10 font-sans">
-              <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/10 pb-4">
-                <h3 className="font-black text-slate-900 dark:text-[#F8FAFC] text-base flex items-center gap-2.5">
-                  <Send className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
-                  <span>Agent Pool Transfer Request</span>
-                </h3>
-                <button onClick={() => setIsTransferModalOpen(false)} className="p-1 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg text-slate-400 dark:text-[#64748B] hover:text-slate-600 dark:hover:text-white transition cursor-pointer">
-                  <X className="h-5 w-5" />
-                </button>
+          <div className="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 backdrop-blur-xs font-sans">
+            <div className="bg-white dark:bg-[#111827] rounded-[20px] max-w-md w-full shadow-2xl overflow-hidden border border-slate-200 dark:border-white/10">
+              {/* Top Brand Accent Bar (Blue & Yellow) */}
+              <div className="h-1.5 bg-gradient-to-r from-[#0F4FA8] via-[#2563EB] to-[#FACC15] shrink-0" />
+
+              <div className="p-6 space-y-5">
+                <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl p-[2px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-xs shrink-0">
+                      <div className="w-full h-full rounded-[10px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center">
+                        <Send className="h-4.5 w-4.5 text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold tracking-tight text-base flex items-center gap-1.5">
+                        <span className="text-[#1D4ED8] dark:text-[#3B82F6]">Agent Pool</span>
+                        <span className="text-[#F4B400]">Transfer Request</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500 dark:text-[#94A3B8] font-medium mt-0.5">Submit request for pool reassignment</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsTransferModalOpen(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-slate-400 dark:text-[#64748B] hover:text-slate-600 dark:hover:text-white transition cursor-pointer">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateTransferRequest} className="space-y-4 text-xs font-semibold">
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase mb-1.5">Target Pool</label>
+                    <CustomSelect
+                      value={transferTargetPoolId}
+                      onChange={setTransferTargetPoolId}
+                      options={transferTargetPoolOptions}
+                      placeholder="-- Choose Target Pool --"
+                      triggerClassName="h-[52px] rounded-[14px] text-xs dark:bg-[#172033] dark:text-[#F8FAFC] dark:border-white/10"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase mb-1.5">Justification Reason</label>
+                    <textarea
+                      placeholder="Provide details on why this pool reassignment is required..."
+                      value={transferReason}
+                      onChange={e => setTransferReason(e.target.value)}
+                      className="w-full border border-slate-200 dark:border-white/10 rounded-[14px] p-3 text-xs bg-slate-50 dark:bg-[#172033] h-28 text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20 transition font-sans"
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsTransferModalOpen(false)}
+                      className="h-11 px-5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-[#94A3B8] hover:bg-slate-50 dark:hover:bg-white/10 transition text-xs font-extrabold cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="h-11 px-6 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white rounded-xl transition text-xs font-extrabold shadow-md shadow-blue-500/25 cursor-pointer active:scale-95"
+                    >
+                      Submit Request
+                    </button>
+                  </div>
+                </form>
               </div>
-              <form onSubmit={handleCreateTransferRequest} className="space-y-4 text-xs font-semibold">
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase mb-1.5">Target Pool</label>
-                  <CustomSelect
-                    value={transferTargetPoolId}
-                    onChange={setTransferTargetPoolId}
-                    options={transferTargetPoolOptions}
-                    placeholder="-- Choose Target Pool --"
-                    triggerClassName="h-[52px] rounded-[14px] text-xs dark:bg-[#172033] dark:text-[#F8FAFC] dark:border-white/10"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase mb-1.5">Justification Reason</label>
-                  <textarea
-                    placeholder="Provide details on why this pool reassignment is required..."
-                    value={transferReason}
-                    onChange={e => setTransferReason(e.target.value)}
-                    className="w-full border border-slate-200 dark:border-white/10 rounded-[14px] p-3 text-xs bg-slate-50 dark:bg-[#172033] h-28 text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20 transition font-sans"
-                    required
-                  />
-                </div>
-                <div className="flex gap-3 justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsTransferModalOpen(false)}
-                    className="h-11 px-5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-600 dark:text-[#94A3B8] hover:bg-slate-50 dark:hover:bg-white/10 transition text-xs font-extrabold cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="h-11 px-6 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white rounded-xl transition text-xs font-extrabold shadow-md shadow-blue-500/25 cursor-pointer active:scale-95"
-                  >
-                    Submit Request
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}
@@ -1855,21 +1871,38 @@ export default function Users() {
       {/* Edit User Modal (Portal) */}
       {editingUser && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[9999] bg-slate-900/65 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 font-sans">
-          <div className="bg-white rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden transition-all duration-300">
+          <div className="bg-white dark:bg-[#0F172A] rounded-2xl shadow-2xl shadow-slate-900/20 border border-slate-200/90 dark:border-slate-800 w-full max-w-2xl flex flex-col max-h-[85vh] overflow-hidden transition-all duration-300">
+            {/* Top Brand Gradient Bar (Blue & Yellow) */}
+            <div className="h-1.5 bg-gradient-to-r from-[#0F4FA8] via-[#2563EB] to-[#FACC15] shrink-0" />
+
             {/* Header */}
-            <div className="px-6 py-4 border-b border-slate-100 bg-white flex items-center justify-between gap-4 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center font-bold border border-blue-100">
-                  <Edit className="h-5 w-5 text-[#0F4FA8]" />
+            <div className="px-7 py-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0F172A] flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-4 min-w-0">
+                {/* Dual Blue to Yellow Gradient Avatar Icon Container */}
+                <div className="h-12 w-12 rounded-[16px] p-[2.5px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-[0_4px_14px_rgba(37,99,235,0.35)] shrink-0">
+                  <div className="w-full h-full rounded-[13px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-[13px]" />
+                    <Edit className="h-5 w-5 text-white relative z-10 drop-shadow-xs" />
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 tracking-tight">Edit Personnel Account</h2>
-                  <p className="text-xs text-slate-500 font-medium">Update account details for {editingUser.name}</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-xl font-extrabold tracking-tight leading-tight flex items-center gap-1.5 -tracking-[0.5px]">
+                      <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Edit Personnel</span>
+                      <span className="text-[#F4B400] font-extrabold">Account</span>
+                    </h2>
+                    <span className="text-[10px] font-black bg-[#2563EB]/10 text-[#2563EB] dark:bg-blue-500/20 dark:text-blue-400 border border-[#2563EB]/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                      Forge CRM
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1 truncate">
+                    Update account details and permissions for <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">{editingUser.name}</span>
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => setEditingUser(null)}
-                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer shrink-0"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1880,69 +1913,72 @@ export default function Users() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Full Name */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Full Name *</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Full Name *</label>
                   <input
                     type="text"
                     required
                     value={editForm.name}
                     onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 focus:border-[#0F4FA8] transition"
+                    className="w-full h-10 px-3.5 bg-slate-50 dark:bg-[#172033] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-white focus:bg-white dark:focus:bg-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] transition"
                   />
                 </div>
 
                 {/* Email Address */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Address *</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Email Address *</label>
                   <input
                     type="email"
                     required
                     value={editForm.email}
                     onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 focus:border-[#0F4FA8] transition"
+                    className="w-full h-10 px-3.5 bg-slate-50 dark:bg-[#172033] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-white focus:bg-white dark:focus:bg-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] transition"
                   />
                 </div>
 
                 {/* System Role */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">System Role</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">System Role</label>
                   <CustomSelect
                     value={editForm.role}
                     onChange={val => setEditForm({ ...editForm, role: val })}
                     options={SYSTEM_ROLE_OPTIONS}
                     placeholder="Select Role"
+                    triggerClassName="h-10 text-xs rounded-xl dark:bg-[#172033] dark:text-white dark:border-slate-700"
                   />
                 </div>
 
                 {/* Department */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Department</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Department</label>
                   <CustomSelect
                     value={editForm.department}
                     onChange={val => setEditForm({ ...editForm, department: val })}
                     options={EDIT_DEPARTMENT_OPTIONS}
                     placeholder="Select Department"
+                    triggerClassName="h-10 text-xs rounded-xl dark:bg-[#172033] dark:text-white dark:border-slate-700"
                   />
                 </div>
 
                 {/* Pool Assignment */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Pool Mapping</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Pool Mapping</label>
                   <CustomSelect
                     value={editForm.pool_id}
                     onChange={val => setEditForm({ ...editForm, pool_id: val })}
                     options={editPoolOptions}
                     placeholder="Select Pool"
+                    triggerClassName="h-10 text-xs rounded-xl dark:bg-[#172033] dark:text-white dark:border-slate-700"
                   />
                 </div>
 
                 {/* Employee ID */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Employee ID</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Employee ID</label>
                   <input
                     type="text"
                     value={editForm.employee_id}
                     onChange={e => setEditForm({ ...editForm, employee_id: e.target.value })}
-                    className="w-full h-10 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/20 transition"
+                    className="w-full h-10 px-3.5 bg-slate-50 dark:bg-[#172033] border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-white focus:bg-white dark:focus:bg-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#2563EB]/20 transition"
                   />
                 </div>
 
@@ -1955,30 +1991,31 @@ export default function Users() {
 
                 {/* Shift Schedule */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Shift Schedule</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200 mb-1.5">Shift Schedule</label>
                   <CustomSelect
                     value={editForm.shift}
                     onChange={val => setEditForm({ ...editForm, shift: val })}
                     options={EDIT_SHIFT_OPTIONS}
                     placeholder="Select Shift"
+                    triggerClassName="h-10 text-xs rounded-xl dark:bg-[#172033] dark:text-white dark:border-slate-700"
                   />
                 </div>
               </div>
 
               {/* Submit Buttons */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 rounded-xl transition cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#0F4FA8] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-6 py-2.5 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white font-extrabold text-xs rounded-xl shadow-md shadow-blue-500/25 transition cursor-pointer active:scale-95 flex items-center gap-2"
                 >
-                  Save Changes
+                  <span>Save Changes</span>
                 </button>
               </div>
             </form>
