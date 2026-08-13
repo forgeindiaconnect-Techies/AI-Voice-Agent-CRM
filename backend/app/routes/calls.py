@@ -957,7 +957,9 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
             "number": e164_phone,
             "name": payload.name or (lead.get("name") if lead else f"Customer - {e164_phone}")
         },
-        "serverUrl": f"{base_url}/api/calls/vapi-webhook"
+        "assistantOverrides": {
+            "serverUrl": f"{base_url}/api/calls/vapi-webhook"
+        }
     }
 
     headers = {
