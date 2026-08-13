@@ -319,13 +319,13 @@ export default function CustomDateTimePicker({
         {isOpen && (
           <motion.div
             ref={popupRef}
-            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            initial={{ opacity: 0, y: 6, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            exit={{ opacity: 0, y: 6, scale: 0.99 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
             onKeyDown={handleKeyDown}
             tabIndex={0}
-            className="absolute left-0 top-full mt-2 z-[99999] bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-[20px] shadow-2xl p-5 w-[340px] sm:w-[640px] max-w-[95vw] outline-none text-sans overflow-hidden"
+            className="mt-2 z-[99999] bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-[20px] shadow-2xl p-5 w-full max-w-full outline-none text-sans overflow-hidden"
           >
             {/* POPUP HEADER */}
             <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-white/10 mb-4">
@@ -352,8 +352,8 @@ export default function CustomDateTimePicker({
               </button>
             </div>
 
-            {/* MAIN GRID BODY: CALENDAR + TIME */}
-            <div className="flex flex-col sm:flex-row gap-5 items-stretch">
+            {/* MAIN GRID BODY: CALENDAR (60%) + TIME (40%) */}
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.5fr)_minmax(240px,1fr)] gap-5 items-stretch w-full max-w-full overflow-hidden">
               
               {/* LEFT: CALENDAR */}
               <div className="flex-1 min-w-0">
