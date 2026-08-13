@@ -1,5 +1,6 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { CustomSelect } from "./CustomSelect";
+import CustomDateTimePicker from "./CustomDateTimePicker";
 import { useAuth } from "../context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -219,8 +220,12 @@ export default function LeadDetailsDrawer({ lead, onClose, onUpdateDisposition, 
                       <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status Disposition</label><CustomSelect value={status} onChange={setStatus} options={DISPOSITION_STATUS_OPTIONS} placeholder="Select Status" /></div>
                       {(status === "follow_up" || status === "in_progress") && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                          <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Follow-up Date & Time</label>
-                          <input type="datetime-local" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} className="w-full h-10 bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[10px] px-3 text-[12px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/50 transition-shadow" />
+                          <CustomDateTimePicker
+                            label="Follow-up Date & Time"
+                            value={followUpDate}
+                            onChange={setFollowUpDate}
+                            placeholder="Select Follow-up Date & Time"
+                          />
                         </motion.div>
                       )}
                       <div>
