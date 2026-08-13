@@ -1,6 +1,10 @@
 import asyncio
+import httpx
+import logging
+import os
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, status, Request
+from fastapi.responses import PlainTextResponse, JSONResponse
 # pyrefly: ignore [missing-import]
 from bson import ObjectId
 from app.core.database import calls_col, leads_col, users_col, audit_logs_col, campaigns_col
@@ -877,12 +881,12 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
     Validates environment variables and lead phone numbers, authenticates with Vapi,
     and returns a structured response without hiding original Vapi errors.
     """
-    import httpx
-    import logging
     log = logging.getLogger("uvicorn.error")
+    log.info(f"Vapi dial request started | Lead Phone: {payload.phone}")
 
     e164_phone = normalize_e164(payload.phone)
     if not e164_phone or len(e164_phone) < 10:
+        log.error(f"Phone number validation failed: {payload.phone}")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -892,6 +896,8 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
                 "details": f"Provided phone number '{payload.phone}' is invalid. Must be valid mobile digits."
             }
         )
+
+    log.info(f"Phone number validated: {mask_phone(e164_phone)}")
 
     vapi_api_key = getattr(settings, 'VAPI_API_KEY', '') or os.getenv('VAPI_API_KEY', '')
     vapi_assistant_id = payload.assistant_id or getattr(settings, 'VAPI_ASSISTANT_ID', '') or os.getenv('VAPI_ASSISTANT_ID', '')
@@ -959,25 +965,23 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
         "Content-Type": "application/json"
     }
 
+    vapi_endpoint = f"{vapi_base_url}/call"
     log.info(
-        f"[Vapi Call Initiating] Lead ID: {lead_id_str} | Phone: {mask_phone(e164_phone)} | "
+        f"Vapi request sent to {vapi_endpoint} | Lead ID: {lead_id_str} | Phone: {mask_phone(e164_phone)} | "
         f"Assistant ID: {vapi_assistant_id} | Phone Number ID: {vapi_phone_id}"
     )
 
-    vapi_endpoint = f"{vapi_base_url}/call"
     vapi_call_id = None
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(vapi_endpoint, json=vapi_payload, headers=headers)
-            
+            log.info(f"Vapi response status: {res.status_code}")
+
             if res.status_code in (200, 201):
                 res_data = res.json()
                 vapi_call_id = res_data.get("id")
-                log.info(
-                    f"[Vapi Call Success] Lead ID: {lead_id_str} | Phone: {mask_phone(e164_phone)} | "
-                    f"Vapi Call ID: {vapi_call_id} | Status: {res.status_code}"
-                )
+                log.info(f"Vapi call ID: {vapi_call_id}")
             else:
                 release_call_lock(phone=e164_phone, agent_id=assigned_agent_id)
                 err_text = res.text
