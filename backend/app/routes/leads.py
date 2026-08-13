@@ -24,6 +24,7 @@ class LeadImportProcessPayload(BaseModel):
     agent_id: Optional[str] = None
     mapping: dict
     rows: list[dict]
+    duplicate_strategy: Optional[str] = "skip"  # "skip" or "update"
 
 
 class LeadBulkStatus(BaseModel):
@@ -39,9 +40,23 @@ def normalize_phone(phone_str: str) -> str:
     if not phone_str:
         return ""
     cleaned = str(phone_str).strip()
-    is_plus = cleaned.startswith("+")
     digits = re.sub(r"\D", "", cleaned)
-    return f"+{digits}" if is_plus else digits
+    if not digits:
+        return ""
+    if len(digits) == 10 and digits[0] in "6789":
+        return f"+91{digits}"
+    if len(digits) == 12 and digits.startswith("91") and digits[2] in "6789":
+        return f"+{digits}"
+    if len(digits) == 11 and digits.startswith("0") and digits[1] in "6789":
+        return f"+91{digits[1:]}"
+    if cleaned.startswith("+"):
+        return f"+{digits}"
+    return f"+91{digits}"
+
+
+def is_valid_phone(phone_str: str) -> bool:
+    normalized = normalize_phone(phone_str)
+    return bool(re.match(r"^\+91[6-9]\d{9}$", normalized))
 
 
 def is_valid_email(email_str: str) -> bool:
@@ -55,8 +70,8 @@ def is_valid_email(email_str: str) -> bool:
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user)):
     normalized = normalize_phone(payload.phone)
-    if not normalized:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or empty phone number")
+    if not normalized or not is_valid_phone(normalized):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid Indian phone number. Must start with 6, 7, 8, or 9 and be 10 digits.")
 
     existing = await leads_col.find_one({"phone": normalized, "pool_id": payload.pool_id})
     if existing:
@@ -125,39 +140,108 @@ async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user
 
 @router.post("/upload-preview", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def upload_preview(file: UploadFile = File(...)):
-    content = await file.read()
-    if file.filename.endswith(".csv"):
-        df = pd.read_csv(io.BytesIO(content))
-    elif file.filename.endswith((".xlsx", ".xls")):
-        df = pd.read_excel(io.BytesIO(content))
-    else:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Only .csv, .xlsx, .xls files are supported")
+    if not file.filename:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No file provided for upload.")
 
-    headers = [str(col).strip() for col in df.columns]
+    filename_lower = file.filename.lower()
+    if not filename_lower.endswith((".csv", ".xlsx", ".xls")):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid file type. Please upload a valid CSV file (.csv) or Excel spreadsheet (.xlsx, .xls)."
+        )
+
+    content = await file.read()
+    if not content or len(content.strip()) == 0:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The uploaded file is empty. Please select a valid CSV file with data.")
+
+    try:
+        if filename_lower.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(content), dtype=str)
+        else:
+            df = pd.read_excel(io.BytesIO(content), dtype=str)
+    except Exception as e:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Invalid CSV format or unable to parse file: {str(e)}"
+        )
+
+    if df.empty:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "The uploaded file contains no data rows.")
+
+    headers = [str(col).strip() for col in df.columns if str(col).strip() and not str(col).startswith("Unnamed:")]
+    if not headers:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Missing headers in CSV file. Please upload a file with header columns.")
+
+    # Smart header alias mapping
     suggested = {}
     for h in headers:
-        hl = h.lower()
-        if "name" in hl:
+        hl = h.lower().replace("_", " ").replace("-", " ").strip()
+        if not suggested.get("name") and any(k in hl for k in ["name", "full name", "customer name", "lead name", "client name"]):
             suggested["name"] = h
-        elif "phone" in hl or "ph" in hl or "mobile" in hl or "contact" in hl:
+        elif not suggested.get("phone") and any(k in hl for k in ["phone", "mobile", "contact", "ph", "cell", "tel"]):
             suggested["phone"] = h
-        elif "email" in hl or "mail" in hl:
+        elif not suggested.get("email") and any(k in hl for k in ["email", "mail", "e mail"]):
             suggested["email"] = h
-        elif "location" in hl or "city" in hl or "address" in hl or "state" in hl:
+        elif not suggested.get("location") and any(k in hl for k in ["location", "city", "state", "address", "district"]):
             suggested["location"] = h
-        elif "lang" in hl:
+        elif not suggested.get("language") and any(k in hl for k in ["lang", "language", "mother tongue"]):
             suggested["language"] = h
 
     df_clean = df.where(pd.notnull(df), None)
-    rows = df_clean.head(10).to_dict(orient="records")
     all_rows = df_clean.to_dict(orient="records")
+
+    # Evaluate validation preview on rows
+    name_col = suggested.get("name")
+    phone_col = suggested.get("phone")
+
+    valid_count = 0
+    invalid_count = 0
+    duplicate_in_file = 0
+    seen_phones = set()
+    rows_with_status = []
+
+    for idx, row in enumerate(all_rows):
+        name_val = str(row.get(name_col) or "").strip() if name_col else ""
+        phone_val = str(row.get(phone_col) or "").strip() if phone_col else ""
+        norm_phone = normalize_phone(phone_val)
+
+        row_errors = []
+        if not name_val:
+            row_errors.append("Missing Name")
+        if not phone_val:
+            row_errors.append("Missing Phone")
+        elif not is_valid_phone(phone_val):
+            row_errors.append("Invalid Indian Phone")
+
+        status_flag = "valid"
+        if row_errors:
+            status_flag = "invalid"
+            invalid_count += 1
+        elif norm_phone in seen_phones:
+            status_flag = "duplicate"
+            duplicate_in_file += 1
+        else:
+            seen_phones.add(norm_phone)
+            valid_count += 1
+
+        rows_with_status.append({
+            "index": idx + 1,
+            "raw": row,
+            "parsed_name": name_val,
+            "parsed_phone": norm_phone or phone_val,
+            "status": status_flag,
+            "errors": row_errors
+        })
 
     return {
         "headers": headers,
-        "rows": rows,
         "suggested_mapping": suggested,
-        "all_rows": all_rows,
-        "total_records": len(df)
+        "total_records": len(all_rows),
+        "valid_count": valid_count,
+        "invalid_count": invalid_count,
+        "duplicate_in_file": duplicate_in_file,
+        "preview_rows": rows_with_status[:100],
+        "all_rows": all_rows
     }
 
 
@@ -169,9 +253,14 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
     campaign_id = payload.campaign_id
     supervisor_id = payload.supervisor_id
     agent_id = payload.agent_id
+    duplicate_strategy = (payload.duplicate_strategy or "skip").lower()
+
+    if not pool_id:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Target lead pool selection is required.")
 
     import_id = gen_import_id()
     inserted_leads = []
+    updated_leads_count = 0
     skipped_duplicates = 0
     skipped_invalid = 0
     total_processed = 0
@@ -183,8 +272,9 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
     language_col = mapping.get("language")
 
     if not name_col or not phone_col:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Mapping configuration must contain name and phone columns")
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "CSV mapping must assign Name and Phone columns.")
 
+    # Deduplicate phones in batch query
     for row in rows:
         name_val = str(row.get(name_col) or "").strip()
         phone_val = str(row.get(phone_col) or "").strip()
@@ -198,7 +288,7 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
         total_processed += 1
 
         normalized_phone = normalize_phone(phone_val)
-        if not name_val or not normalized_phone:
+        if not name_val or not normalized_phone or not is_valid_phone(normalized_phone):
             skipped_invalid += 1
             continue
 
@@ -207,15 +297,39 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
             skipped_invalid += 1
             continue
 
+        # Check existing lead in DB
+        or_conditions = [{"phone": normalized_phone}]
+        if email_clean:
+            or_conditions.append({"email": email_clean})
+
         duplicate = await leads_col.find_one({
-            "$or": [
-                {"phone": normalized_phone},
-                *( [{"email": email_clean}] if email_clean else [] )
-            ],
+            "$or": or_conditions,
             "pool_id": pool_id
         })
+
         if duplicate:
-            skipped_duplicates += 1
+            if duplicate_strategy == "update":
+                update_doc = {
+                    "name": name_val,
+                    "updated_at": utcnow()
+                }
+                if email_clean:
+                    update_doc["email"] = email_clean
+                if location_val:
+                    update_doc["location"] = location_val
+                if language_val:
+                    update_doc["language"] = language_val
+                if campaign_id:
+                    update_doc["campaign_id"] = campaign_id
+                if supervisor_id:
+                    update_doc["supervisor_id"] = supervisor_id
+                if agent_id:
+                    update_doc["assigned_agent_id"] = agent_id
+
+                await leads_col.update_one({"_id": duplicate["_id"]}, {"$set": update_doc})
+                updated_leads_count += 1
+            else:
+                skipped_duplicates += 1
             continue
 
         lead_doc = {
@@ -233,6 +347,7 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
             "status": LeadStatus.NEW,
             "created_by": _uid(user),
             "created_at": utcnow(),
+            "ai_score": 85,
             "extra": {}
         }
         
@@ -245,13 +360,14 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
 
     report_doc = {
         "import_id": import_id,
-        "filename": "Imported Web Upload",
+        "filename": "Imported CSV Records",
         "pool_id": pool_id,
         "campaign_id": campaign_id,
         "supervisor_id": supervisor_id,
         "agent_id": agent_id,
         "total_processed": total_processed,
         "inserted": inserted_count,
+        "updated": updated_leads_count,
         "skipped_duplicates": skipped_duplicates,
         "skipped_invalid": skipped_invalid,
         "created_by": _uid(user),
@@ -264,11 +380,23 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
         "user_id": _uid(user),
         "import_id": import_id,
         "inserted_count": inserted_count,
+        "updated_count": updated_leads_count,
         "timestamp": utcnow()
     })
 
     await ws_manager.broadcast("global", {"event": "leads_updated"})
-    return oid_str(report_doc)
+
+    return {
+        "success": True,
+        "import_id": import_id,
+        "total": total_processed,
+        "imported": inserted_count,
+        "updated": updated_leads_count,
+        "duplicates": skipped_duplicates,
+        "failed": skipped_invalid,
+        "skipped_duplicates": skipped_duplicates,
+        "skipped_invalid": skipped_invalid
+    }
 
 
 @router.post("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])

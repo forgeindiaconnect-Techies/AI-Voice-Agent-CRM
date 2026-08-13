@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, Notification, shell, dialog } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -127,3 +128,29 @@ ipcMain.on('app:openExternal', (_, url: string) => {
     shell.openExternal(url);
   }
 });
+
+ipcMain.handle('dialog:openCSVFile', async () => {
+  if (!mainWindow) return null;
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select CSV File',
+    properties: ['openFile'],
+    filters: [
+      { name: 'CSV Files', extensions: ['csv'] }
+    ]
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  const filePath = result.filePaths[0];
+  const fileBuffer = fs.readFileSync(filePath);
+  const fileName = path.basename(filePath);
+
+  return {
+    filePath,
+    fileName,
+    content: fileBuffer.toString('utf-8')
+  };
+});
+

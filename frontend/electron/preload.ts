@@ -10,4 +10,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   showNotification: (title: string, body: string) =>
     ipcRenderer.send('app:notification', { title, body }),
   openExternal: (url: string) => ipcRenderer.send('app:openExternal', url),
+  openCSVFile: () => ipcRenderer.invoke('dialog:openCSVFile'),
 });

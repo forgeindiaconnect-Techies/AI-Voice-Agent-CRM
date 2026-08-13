@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { PhoneInput } from "../components/PhoneInput";
 import LeadDetailsDrawer from "../components/LeadDetailsDrawer";
+import { ImportCsvModal, ImportPreviewData } from "../components/ImportCsvModal";
 import { CustomSelect } from "../components/CustomSelect";
 import { STATES_AND_UTS, getDistrictsOptions } from "../utils/indiaData";
 import { AlertCircle, FileText } from "lucide-react";
@@ -260,6 +261,72 @@ export default function Leads() {
   const [showImportSection, setShowImportSection] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
+
+  // Enterprise CSV Import Modal States
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<ImportPreviewData | null>(null);
+  const [isSelectingFile, setIsSelectingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const processFileForPreview = async (fileToUpload: File) => {
+    const formData = new FormData();
+    formData.append("file", fileToUpload);
+    try {
+      showToast("Reading CSV headers & validating records...", "info");
+      const res = await api.upload("/api/leads/upload-preview", formData);
+      setPreviewData({
+        headers: res.headers,
+        suggested_mapping: res.suggested_mapping,
+        total_records: res.total_records,
+        valid_count: res.valid_count,
+        invalid_count: res.invalid_count,
+        duplicate_in_file: res.duplicate_in_file,
+        preview_rows: res.preview_rows || [],
+        all_rows: res.all_rows || [],
+        filename: fileToUpload.name
+      });
+      setImportModalOpen(true);
+    } catch (err: any) {
+      showToast(err.message || "Failed to process CSV file.", "error");
+    }
+  };
+
+  const handleTriggerFilePicker = async () => {
+    if (isSelectingFile) return;
+    setIsSelectingFile(true);
+
+    try {
+      if (window.electronAPI?.openCSVFile) {
+        const fileResult = await window.electronAPI.openCSVFile();
+        if (!fileResult) {
+          setIsSelectingFile(false);
+          return;
+        }
+        const fileBlob = new Blob([fileResult.content], { type: "text/csv" });
+        const fileObj = new File([fileBlob], fileResult.fileName, { type: "text/csv" });
+        await processFileForPreview(fileObj);
+      } else {
+        fileInputRef.current?.click();
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to open CSV file picker.", "error");
+    } finally {
+      setIsSelectingFile(false);
+    }
+  };
+
+  const handleWebFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+    if (!selectedFile.name.toLowerCase().endsWith(".csv") && !selectedFile.name.toLowerCase().endsWith(".xlsx")) {
+      showToast("Invalid file format. Please select a .csv file.", "error");
+      e.target.value = "";
+      return;
+    }
+    await processFileForPreview(selectedFile);
+    e.target.value = "";
+  };
+
 
   // Prevent background scrolling and disable header/page interaction when manual lead modal is open
   useEffect(() => {
@@ -1150,13 +1217,28 @@ export default function Leads() {
               </button>
 
               {isManager && (
-                <button
-                  onClick={() => setShowImportSection(!showImportSection)}
-                  className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
-                >
-                  <UploadCloud className="h-4 w-4 text-[#0F4FA8]" />
-                  <span>Import CSV</span>
-                </button>
+                <>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleWebFileInput}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={handleTriggerFilePicker}
+                    disabled={isSelectingFile}
+                    className="h-10 px-4 bg-slate-100 hover:bg-[#0F4FA8] hover:text-white text-slate-700 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer disabled:opacity-50 group"
+                    title="Import CSV Leads"
+                  >
+                    {isSelectingFile ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-[#0F4FA8] group-hover:text-white" />
+                    ) : (
+                      <UploadCloud className="h-4 w-4 text-[#0F4FA8] group-hover:text-white transition-colors" />
+                    )}
+                    <span>{isSelectingFile ? "Selecting file..." : "Import CSV"}</span>
+                  </button>
+                </>
               )}
 
               {(isManager || user?.role === "agent") && (
@@ -2067,6 +2149,20 @@ export default function Leads() {
           </div>
         </div>
       )}
+
+      {/* CSV IMPORT MODAL */}
+      <ImportCsvModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        previewData={previewData}
+        pools={pools}
+        campaigns={campaigns}
+        users={users}
+        showToast={showToast}
+        onImportSuccess={() => {
+          loadData();
+        }}
+      />
 
     </div>
   );

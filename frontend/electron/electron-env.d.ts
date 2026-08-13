@@ -9,6 +9,7 @@ export interface IElectronAPI {
   isMaximized: () => Promise<boolean>;
   showNotification: (title: string, body: string) => void;
   openExternal: (url: string) => void;
+  openCSVFile: () => Promise<{ filePath: string; fileName: string; content: string } | null>;
 }
 
 declare global {
