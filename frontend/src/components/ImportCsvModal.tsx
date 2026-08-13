@@ -9,6 +9,7 @@ import {
   Layers,
   UserCheck,
   ArrowRight,
+  ArrowLeft,
   Loader2,
   ShieldAlert,
   Info,
@@ -91,9 +92,10 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
   const [targetCampaignId, setTargetCampaignId] = useState<string>("");
   const [targetSupervisorId, setTargetSupervisorId] = useState<string>("");
   const [targetAgentId, setTargetAgentId] = useState<string>("");
-  const [duplicateStrategy, setDuplicateStrategy] = useState<"skip" | "update">("skip");
+  const [duplicateStrategy, setDuplicateStrategy] = useState<"skip" | "update" | "new">("skip");
 
   const [isImporting, setIsImporting] = useState<boolean>(false);
+  const [importProgress, setImportProgress] = useState<number>(0);
   const [importReport, setImportReport] = useState<{
     total: number;
     imported: number;
@@ -122,7 +124,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
   // Agents
   const agentOptions = useMemo(() => {
     const ags = users.filter(u => u.role === "agent");
-    return [{ value: "", label: "Unassigned Agent (Pool Only)" }, ...ags.map(u => ({ value: u.id, label: u.name }))];
+    return [{ value: "", label: "Auto assign (Unassigned Agent)" }, ...ags.map(u => ({ value: u.id, label: u.name }))];
   }, [users]);
 
   const isValidMapping = Boolean(mapping.name && mapping.phone);
@@ -187,7 +189,7 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
 
   const handleConfirmImport = async () => {
     if (!isValidMapping) {
-      showToast("Please link Name and Phone headers to proceed.", "error");
+      showToast("Please link Lead Name and Phone Number headers to proceed.", "error");
       return;
     }
     if (!targetPoolId) {
@@ -196,6 +198,12 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
     }
 
     setIsImporting(true);
+    setImportProgress(20);
+
+    const progressInterval = setInterval(() => {
+      setImportProgress(prev => (prev < 90 ? prev + 15 : prev));
+    }, 200);
+
     try {
       const payload = {
         pool_id: targetPoolId,
@@ -204,10 +212,13 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
         agent_id: targetAgentId || undefined,
         mapping,
         rows: previewData.all_rows,
-        duplicate_strategy: duplicateStrategy
+        duplicate_strategy: duplicateStrategy === "new" ? "skip" : duplicateStrategy
       };
 
       const res = await api.post("/api/leads/import-process", payload);
+      setImportProgress(100);
+      clearInterval(progressInterval);
+
       setImportReport({
         total: res.total || 0,
         imported: res.imported || 0,
@@ -216,9 +227,10 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
         failed: res.failed || res.skipped_invalid || 0
       });
 
-      showToast(`Successfully imported ${res.imported || 0} leads!`, "success");
+      showToast(`Successfully processed ${res.imported || 0} leads!`, "success");
       onImportSuccess();
     } catch (err: any) {
+      clearInterval(progressInterval);
       showToast(err.message || "Failed to process CSV import.", "error");
     } finally {
       setIsImporting(false);
@@ -227,311 +239,323 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 font-sans overflow-hidden box-border"
       style={{
-        backgroundColor: "rgba(10, 15, 26, 0.85)",
+        backgroundColor: "rgba(10, 15, 26, 0.82)",
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)"
       }}
     >
       <motion.div
-        initial={{ scale: 0.96, opacity: 0, y: 15 }}
+        initial={{ scale: 0.97, opacity: 0, y: 10 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.96, opacity: 0, y: 15 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        className="w-full max-w-[1000px] max-h-[92vh] bg-white dark:bg-[#0F172A] rounded-[24px] shadow-[0_25px_70px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden text-slate-900 dark:text-white"
+        exit={{ scale: 0.97, opacity: 0, y: 10 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+        className="w-full max-w-[1240px] max-h-[92vh] h-[92vh] bg-white dark:bg-[#0F172A] rounded-[20px] shadow-[0_25px_70px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden text-slate-900 dark:text-white box-border"
       >
         {/* Brand Accent Bar */}
-        <div className="h-1 bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#FACC15] shrink-0" />
+        <div className="h-1 bg-gradient-to-r from-[#0F4FA8] via-[#2563EB] to-[#FACC15] shrink-0" />
 
-        {/* Header */}
-        <div className="h-16 px-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#0F172A]">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[#0F4FA8] dark:text-blue-400 flex items-center justify-center font-bold">
-              <UploadCloud className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold tracking-tight flex items-center gap-2">
-                <span>Import CSV Leads</span>
-                {previewData.filename && (
-                  <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">
-                    {previewData.filename}
-                  </span>
-                )}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Validate headers, preview records, and import leads directly into database
-              </p>
-            </div>
+        {/* Header & 3-Step Indicator */}
+        <div className="px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0 bg-white dark:bg-[#0F172A]">
+          <div>
+            <h3 className="text-base font-bold tracking-tight flex items-center gap-2 text-slate-900 dark:text-white">
+              <span>Import CSV Leads</span>
+              {previewData.filename && (
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">
+                  {previewData.filename}
+                </span>
+              )}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Step 2 of 3 — Map CSV columns and review validation before importing into lead pipeline
+            </p>
+          </div>
+
+          {/* Compact 3-Step Stepper */}
+          <div className="flex items-center gap-2 text-xs font-semibold bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200/80 dark:border-slate-800">
+            <span className="text-slate-400 flex items-center gap-1">
+              <span className="font-mono text-[10px]">01</span> Upload CSV
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">→</span>
+            <span className="text-[#0F4FA8] dark:text-blue-400 font-extrabold flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-800">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#0F4FA8] dark:bg-blue-400 animate-pulse" />
+              <span className="font-mono text-[10px]">02</span> Map &amp; Validate
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">→</span>
+            <span className="text-slate-400 flex items-center gap-1">
+              <span className="font-mono text-[10px]">03</span> Review &amp; Import
+            </span>
           </div>
 
           <button
             onClick={onClose}
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4.5 w-4.5" />
           </button>
         </div>
 
-        {/* Modal Body */}
+        {/* Scrollable Workspace Body */}
         {importReport ? (
-          /* Report Step */
-          <div className="p-8 space-y-6 flex-1 overflow-y-auto text-center">
-            <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-full flex items-center justify-center mx-auto text-emerald-600 dark:text-emerald-400 shadow-md">
+          /* Report Screen */
+          <div className="p-8 space-y-6 flex-1 overflow-y-auto text-center flex flex-col items-center justify-center">
+            <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <div>
-              <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Import Processed Successfully</h4>
+              <h4 className="text-xl font-extrabold text-slate-900 dark:text-white">Import Completed Successfully</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Your CSV data has been processed and saved to the CRM database.
+                All valid CSV records have been saved into your CRM database pipeline.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-xl mx-auto pt-2">
-              <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-xl w-full">
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl">
                 <span className="block text-2xl font-black font-mono text-slate-800 dark:text-slate-100">{importReport.total}</span>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Processed</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Processed</span>
               </div>
-              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl">
+              <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl">
                 <span className="block text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400">{importReport.imported}</span>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">New Leads</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Imported</span>
               </div>
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-2xl">
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl">
                 <span className="block text-2xl font-black font-mono text-amber-600 dark:text-amber-400">{importReport.duplicates}</span>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Duplicates</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Duplicates</span>
               </div>
-              <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-2xl">
+              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 rounded-xl">
                 <span className="block text-2xl font-black font-mono text-rose-600 dark:text-rose-400">{importReport.failed}</span>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Invalid</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Invalid</span>
               </div>
             </div>
 
-            <div className="pt-4">
+            <div className="pt-2">
               <button
                 onClick={onClose}
-                className="h-11 px-8 bg-[#0F4FA8] hover:bg-[#0B3C80] text-white font-extrabold text-sm rounded-xl transition shadow-lg shadow-blue-500/20 cursor-pointer"
+                className="h-10 px-8 bg-[#0F4FA8] hover:bg-[#0B3C80] text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-blue-500/20 cursor-pointer"
               >
-                Done &amp; View Leads
+                View Updated Leads
               </button>
             </div>
           </div>
         ) : (
-          /* Mapping & Preview Content */
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-[#0B1120]">
+          /* Main Mapping Workspace */
+          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/60 dark:bg-[#0B1120] box-border">
 
-            {/* Top Stats Banner */}
+            {/* 1. Compact Summary Cards (Height 84px, Radius 14px) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-white dark:bg-[#131C2F] p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                <div className="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-[#0F4FA8] dark:text-blue-400 rounded-xl">
-                  <FileSpreadsheet className="h-5 w-5" />
-                </div>
+              {/* Detected */}
+              <div className="h-[84px] bg-white dark:bg-[#131C2F] px-4 py-3 rounded-[14px] border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
                 <div>
-                  <span className="block text-lg font-mono font-black text-slate-900 dark:text-white leading-none">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Detected</span>
+                  <span className="text-2xl font-black font-mono text-slate-900 dark:text-white leading-none mt-1 block">
                     {previewData.total_records}
                   </span>
-                  <span className="text-[11px] font-bold uppercase text-slate-400">Detected Records</span>
+                </div>
+                <div className="p-2 bg-blue-50 dark:bg-blue-950/60 text-[#0F4FA8] dark:text-blue-400 rounded-lg">
+                  <FileSpreadsheet className="h-4 w-4" />
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-[#131C2F] p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                  <CheckCircle2 className="h-5 w-5" />
-                </div>
+              {/* Valid */}
+              <div className="h-[84px] bg-white dark:bg-[#131C2F] px-4 py-3 rounded-[14px] border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
                 <div>
-                  <span className="block text-lg font-mono font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Valid</span>
+                  <span className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none mt-1 block">
                     {evaluatedRows.valid}
                   </span>
-                  <span className="text-[11px] font-bold uppercase text-slate-400">Valid Leads</span>
+                </div>
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                  <CheckCircle2 className="h-4 w-4" />
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-[#131C2F] p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-xl">
-                  <RotateCcw className="h-5 w-5" />
-                </div>
+              {/* Duplicates */}
+              <div className="h-[84px] bg-white dark:bg-[#131C2F] px-4 py-3 rounded-[14px] border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
                 <div>
-                  <span className="block text-lg font-mono font-black text-amber-600 dark:text-amber-400 leading-none">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Duplicates</span>
+                  <span className="text-2xl font-black font-mono text-amber-600 dark:text-amber-400 leading-none mt-1 block">
                     {evaluatedRows.dupes}
                   </span>
-                  <span className="text-[11px] font-bold uppercase text-slate-400">In-File Duplicates</span>
+                </div>
+                <div className="p-2 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-lg">
+                  <RotateCcw className="h-4 w-4" />
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-[#131C2F] p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 rounded-xl">
-                  <AlertCircle className="h-5 w-5" />
-                </div>
+              {/* Invalid */}
+              <div className="h-[84px] bg-white dark:bg-[#131C2F] px-4 py-3 rounded-[14px] border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
                 <div>
-                  <span className="block text-lg font-mono font-black text-rose-600 dark:text-rose-400 leading-none">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Invalid</span>
+                  <span className="text-2xl font-black font-mono text-rose-600 dark:text-rose-400 leading-none mt-1 block">
                     {evaluatedRows.invalid}
                   </span>
-                  <span className="text-[11px] font-bold uppercase text-slate-400">Invalid Records</span>
+                </div>
+                <div className="p-2 bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg">
+                  <AlertCircle className="h-4 w-4" />
                 </div>
               </div>
             </div>
 
-            {/* Validation Warning Alert if required columns missing */}
+            {/* Validation Alert Warning if Required Fields Unmapped */}
             {!isValidMapping && (
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-2xl flex items-start gap-3 text-amber-800 dark:text-amber-300">
-                <ShieldAlert className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
-                <div className="text-xs">
-                  <span className="font-extrabold block">Missing Required Column Mapping</span>
-                  Please select which CSV headers link to <strong>Customer Name</strong> and <strong>Phone Number</strong>.
-                </div>
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl flex items-center gap-2.5 text-amber-800 dark:text-amber-300 text-xs">
+                <ShieldAlert className="h-4 w-4 shrink-0 text-amber-600" />
+                <span>
+                  <strong>Action Required:</strong> Please map both <strong>Lead Name</strong> and <strong>Phone Number</strong> columns to enable import.
+                </span>
               </div>
             )}
 
-            {/* Section 1: Header Mapping Grid */}
-            <div className="bg-white dark:bg-[#131C2F] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
-              <div className="pb-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            {/* 2. Column Mapping Section (Clean 2-Column Responsive Grid) */}
+            <div className="bg-white dark:bg-[#131C2F] border border-slate-200/80 dark:border-slate-800 rounded-[16px] p-4 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                     <Layers className="h-4 w-4 text-[#0F4FA8] dark:text-blue-400" />
-                    <span>Header Mapping</span>
+                    <span>Column Mapping</span>
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Match CSV columns to CRM database fields
+                    Map CSV columns to Forge CRM fields
                   </p>
                 </div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Detected {previewData.headers.length} Columns
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
+                  {previewData.headers.length} columns detected
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* 2-Column Mapping Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 pt-1">
+                {/* Required: Lead Name */}
                 <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-slate-300 block mb-1">
-                    Customer Name <span className="text-rose-500">*</span>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">
+                    Lead Name <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <CustomSelect
                     value={mapping.name}
                     onChange={(val) => setMapping(prev => ({ ...prev, name: val }))}
                     options={headerOptions}
-                    placeholder="Select Name Column"
-                    triggerClassName="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
+                    placeholder="Select Lead Name Column"
+                    triggerClassName="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
                   />
                 </div>
 
+                {/* Required: Phone Number */}
                 <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-slate-300 block mb-1">
-                    Phone Number <span className="text-rose-500">*</span>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">
+                    Phone Number <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <CustomSelect
                     value={mapping.phone}
                     onChange={(val) => setMapping(prev => ({ ...prev, phone: val }))}
                     options={headerOptions}
-                    placeholder="Select Phone Column"
-                    triggerClassName="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
+                    placeholder="Select Phone Number Column"
+                    triggerClassName="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
                   />
                 </div>
 
+                {/* Optional: Email */}
                 <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-slate-300 block mb-1">
-                    Email Address <span className="text-slate-400 font-normal">(optional)</span>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1 flex items-center justify-between">
+                    <span>Email</span>
+                    <span className="text-[10px] font-normal text-slate-400">optional</span>
                   </label>
                   <CustomSelect
                     value={mapping.email}
                     onChange={(val) => setMapping(prev => ({ ...prev, email: val }))}
                     options={headerOptions}
                     placeholder="Select Email Column"
-                    triggerClassName="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
+                    triggerClassName="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
                   />
                 </div>
 
+                {/* Optional: City */}
                 <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-slate-300 block mb-1">
-                    Location / City <span className="text-slate-400 font-normal">(optional)</span>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1 flex items-center justify-between">
+                    <span>City / Location</span>
+                    <span className="text-[10px] font-normal text-slate-400">optional</span>
                   </label>
                   <CustomSelect
                     value={mapping.location}
                     onChange={(val) => setMapping(prev => ({ ...prev, location: val }))}
                     options={headerOptions}
-                    placeholder="Select Location Column"
-                    triggerClassName="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
+                    placeholder="Select City Column"
+                    triggerClassName="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
                   />
                 </div>
 
+                {/* Optional: Preferred Language */}
                 <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-slate-300 block mb-1">
-                    Preferred Language <span className="text-slate-400 font-normal">(optional)</span>
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1 flex items-center justify-between">
+                    <span>Preferred Language</span>
+                    <span className="text-[10px] font-normal text-slate-400">optional</span>
                   </label>
                   <CustomSelect
                     value={mapping.language}
                     onChange={(val) => setMapping(prev => ({ ...prev, language: val }))}
                     options={headerOptions}
                     placeholder="Select Language Column"
-                    triggerClassName="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
+                    triggerClassName="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
                   />
                 </div>
 
-                <div className="flex flex-col justify-end">
-                  <div className="p-2.5 bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-xl text-[11px] text-blue-700 dark:text-blue-300">
-                    Indian phone numbers (`9444667411`, `919444...`) will be automatically normalized to `+91XXXXXXXXXX`.
+                {/* Compact Inline Phone Normalization Info (Point 5) */}
+                <div className="flex items-end">
+                  <div className="w-full px-3 py-2 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/50 rounded-lg flex items-center gap-2 text-[11px] text-[#0F4FA8] dark:text-blue-300">
+                    <Info className="h-3.5 w-3.5 shrink-0" />
+                    <span>Indian phone numbers are automatically normalized to +91XXXXXXXXXX</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Section 2: Pipeline Target & Duplicate Handling */}
+            {/* 3. Lead Pool & Duplicate Strategy Grid (Height ~150-180px) */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Target Assignment */}
-              <div className="bg-white dark:bg-[#131C2F] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
-                <div className="pb-2 border-b border-slate-100 dark:border-slate-800">
+              {/* Lead Pool & Assignment */}
+              <div className="bg-white dark:bg-[#131C2F] border border-slate-200/80 dark:border-slate-800 rounded-[16px] p-4 shadow-2xs space-y-3 flex flex-col justify-between">
+                <div className="pb-1 border-b border-slate-100 dark:border-slate-800">
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                     <UserCheck className="h-4 w-4 text-emerald-500" />
-                    <span>Target Pool &amp; Assignment</span>
+                    <span>Lead Pool &amp; Assignment</span>
                   </h4>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Assign imported leads to department pool and optional agent
                   </p>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-slate-300 block mb-1">
-                      Target Lead Pool <span className="text-rose-500">*</span>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1">
+                      Lead Pool <span className="text-rose-500 font-bold">*</span>
                     </label>
                     <CustomSelect
                       value={targetPoolId}
                       onChange={setTargetPoolId}
                       options={poolOptions}
                       placeholder="Select Lead Pool"
-                      triggerClassName="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
+                      triggerClassName="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-slate-300 block mb-1">
-                        Campaign (optional)
-                      </label>
-                      <CustomSelect
-                        value={targetCampaignId}
-                        onChange={setTargetCampaignId}
-                        options={campaignOptions}
-                        placeholder="Select Campaign"
-                        triggerClassName="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-slate-300 block mb-1">
-                        Assigned Agent (optional)
-                      </label>
-                      <CustomSelect
-                        value={targetAgentId}
-                        onChange={setTargetAgentId}
-                        options={agentOptions}
-                        placeholder="Select Agent"
-                        triggerClassName="h-10 text-xs rounded-xl border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
-                      />
-                    </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-200 block mb-1 flex items-center justify-between">
+                      <span>Agent</span>
+                      <span className="text-[10px] font-normal text-slate-400">optional</span>
+                    </label>
+                    <CustomSelect
+                      value={targetAgentId}
+                      onChange={setTargetAgentId}
+                      options={agentOptions}
+                      placeholder="Auto assign"
+                      triggerClassName="h-9 text-xs rounded-lg border-slate-200 dark:border-slate-700 dark:bg-[#0B1120]"
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Duplicate Handling Strategy */}
-              <div className="bg-white dark:bg-[#131C2F] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
-                <div className="pb-2 border-b border-slate-100 dark:border-slate-800">
+              {/* Duplicate Strategy (Compact Radio Cards 60-70px high) */}
+              <div className="bg-white dark:bg-[#131C2F] border border-slate-200/80 dark:border-slate-800 rounded-[16px] p-4 shadow-2xs space-y-2">
+                <div className="pb-1 border-b border-slate-100 dark:border-slate-800">
                   <h4 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
                     <RotateCcw className="h-4 w-4 text-amber-500" />
                     <span>Duplicate Strategy</span>
@@ -541,102 +565,128 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
                   </p>
                 </div>
 
-                <div className="space-y-3 pt-1">
-                  <label
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                  {/* Skip */}
+                  <div
                     onClick={() => setDuplicateStrategy("skip")}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    className={`h-[64px] p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between select-none ${
                       duplicateStrategy === "skip"
-                        ? "bg-blue-50/80 dark:bg-blue-950/40 border-[#0F4FA8] dark:border-blue-600 text-slate-900 dark:text-white"
+                        ? "bg-blue-50/80 dark:bg-blue-950/40 border-[#0F4FA8] dark:border-blue-600 text-[#0F4FA8] dark:text-blue-300"
                         : "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name="dup_strat"
-                      checked={duplicateStrategy === "skip"}
-                      onChange={() => setDuplicateStrategy("skip")}
-                      className="mt-0.5"
-                    />
-                    <div>
-                      <span className="text-xs font-bold block">Skip duplicates (Recommended)</span>
-                      <span className="text-[11px] opacity-80 block">
-                        Keep existing database lead records intact and ignore duplicate entries.
-                      </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="dup_strat"
+                        checked={duplicateStrategy === "skip"}
+                        onChange={() => setDuplicateStrategy("skip")}
+                        className="accent-[#0F4FA8]"
+                      />
+                      <span className="text-[11.5px] font-bold tracking-tight">Skip duplicates</span>
                     </div>
-                  </label>
+                    <span className="text-[10px] text-slate-400 leading-tight block truncate pl-4">
+                      Keep existing records
+                    </span>
+                  </div>
 
-                  <label
+                  {/* Update */}
+                  <div
                     onClick={() => setDuplicateStrategy("update")}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                    className={`h-[64px] p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between select-none ${
                       duplicateStrategy === "update"
-                        ? "bg-blue-50/80 dark:bg-blue-950/40 border-[#0F4FA8] dark:border-blue-600 text-slate-900 dark:text-white"
+                        ? "bg-blue-50/80 dark:bg-blue-950/40 border-[#0F4FA8] dark:border-blue-600 text-[#0F4FA8] dark:text-blue-300"
                         : "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
                     }`}
                   >
-                    <input
-                      type="radio"
-                      name="dup_strat"
-                      checked={duplicateStrategy === "update"}
-                      onChange={() => setDuplicateStrategy("update")}
-                      className="mt-0.5"
-                    />
-                    <div>
-                      <span className="text-xs font-bold block">Update existing leads</span>
-                      <span className="text-[11px] opacity-80 block">
-                        Overwrite location, campaign, and assignment for existing lead matches.
-                      </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="dup_strat"
+                        checked={duplicateStrategy === "update"}
+                        onChange={() => setDuplicateStrategy("update")}
+                        className="accent-[#0F4FA8]"
+                      />
+                      <span className="text-[11.5px] font-bold tracking-tight">Update existing</span>
                     </div>
-                  </label>
+                    <span className="text-[10px] text-slate-400 leading-tight block truncate pl-4">
+                      Overwrite lead info
+                    </span>
+                  </div>
+
+                  {/* Import as new */}
+                  <div
+                    onClick={() => setDuplicateStrategy("new")}
+                    className={`h-[64px] p-2.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between select-none ${
+                      duplicateStrategy === "new"
+                        ? "bg-blue-50/80 dark:bg-blue-950/40 border-[#0F4FA8] dark:border-blue-600 text-[#0F4FA8] dark:text-blue-300"
+                        : "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="dup_strat"
+                        checked={duplicateStrategy === "new"}
+                        onChange={() => setDuplicateStrategy("new")}
+                        className="accent-[#0F4FA8]"
+                      />
+                      <span className="text-[11.5px] font-bold tracking-tight">Import as new</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 leading-tight block truncate pl-4">
+                      Create separate lead
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Section 3: Interactive Records Preview Table */}
-            <div className="bg-white dark:bg-[#131C2F] border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-xs">
+            {/* 4. CSV Preview Table (Compact 5-10 rows max height ~180px) */}
+            <div className="bg-white dark:bg-[#131C2F] border border-slate-200/80 dark:border-slate-800 rounded-[16px] p-4 space-y-2 shadow-2xs">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                  Preview Imported Records (Showing first {Math.min(evaluatedRows.rows.length, 50)})
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                  CSV Preview
                 </h4>
-                <span className="text-xs font-mono text-slate-400 font-bold">
-                  {evaluatedRows.valid} Valid / {evaluatedRows.rows.length} Total
+                <span className="text-[11px] font-mono font-bold text-slate-400">
+                  {evaluatedRows.valid} valid / {evaluatedRows.rows.length} total records
                 </span>
               </div>
 
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl max-h-[220px]">
+              <div className="overflow-x-auto border border-slate-200/80 dark:border-slate-800 rounded-lg max-h-[180px]">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-500 font-bold uppercase sticky top-0">
+                  <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-500 font-bold uppercase text-[10px] sticky top-0">
                     <tr>
-                      <th className="px-3 py-2.5">#</th>
-                      <th className="px-3 py-2.5">Name</th>
-                      <th className="px-3 py-2.5">Phone</th>
-                      <th className="px-3 py-2.5">Email</th>
-                      <th className="px-3 py-2.5">Location</th>
-                      <th className="px-3 py-2.5 text-right">Status</th>
+                      <th className="px-3 py-2">#</th>
+                      <th className="px-3 py-2">Lead Name</th>
+                      <th className="px-3 py-2">Phone</th>
+                      <th className="px-3 py-2">Email</th>
+                      <th className="px-3 py-2">City</th>
+                      <th className="px-3 py-2 text-right">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {evaluatedRows.rows.slice(0, 50).map((r) => (
+                    {evaluatedRows.rows.slice(0, 10).map((r) => (
                       <tr key={r.index} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                        <td className="px-3 py-2 text-slate-400 font-mono">{r.index}</td>
-                        <td className="px-3 py-2 font-bold text-slate-900 dark:text-slate-100">{r.name}</td>
-                        <td className="px-3 py-2 font-mono font-semibold text-slate-700 dark:text-slate-300">
+                        <td className="px-3 py-1.5 text-slate-400 font-mono text-[11px]">{r.index}</td>
+                        <td className="px-3 py-1.5 font-bold text-slate-900 dark:text-slate-100">{r.name}</td>
+                        <td className="px-3 py-1.5 font-mono font-semibold text-slate-700 dark:text-slate-300">
                           {r.phone}
                         </td>
-                        <td className="px-3 py-2 text-slate-500">{r.email || "—"}</td>
-                        <td className="px-3 py-2 text-slate-500">{r.location || "—"}</td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-1.5 text-slate-500 text-[11px]">{r.email || "—"}</td>
+                        <td className="px-3 py-1.5 text-slate-500 text-[11px]">{r.location || "—"}</td>
+                        <td className="px-3 py-1.5 text-right">
                           {r.status === "valid" && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                              Valid
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                              ✓ Valid
                             </span>
                           )}
                           {r.status === "duplicate" && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
                               Duplicate
                             </span>
                           )}
                           {r.status === "invalid" && (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800" title={r.errors.join(", ")}>
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800" title={r.errors.join(", ")}>
                               Error
                             </span>
                           )}
@@ -651,38 +701,65 @@ export const ImportCsvModal: React.FC<ImportCsvModalProps> = ({
           </div>
         )}
 
-        {/* Footer Controls */}
+        {/* 5. Fixed Bottom Action Bar (Height 72px, Padding 12px 24px) */}
         {!importReport && (
-          <div className="h-18 px-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#0F172A]">
+          <div className="h-[72px] px-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#0F172A] z-20 shadow-md">
             <button
               onClick={onClose}
               disabled={isImporting}
-              className="h-10 px-5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+              className="h-10 px-4 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              Cancel
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back</span>
             </button>
 
-            <button
-              onClick={handleConfirmImport}
-              disabled={isImporting || !isValidMapping || evaluatedRows.valid === 0}
-              className={`h-11 px-7 text-white font-extrabold text-xs rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md ${
-                isImporting || !isValidMapping || evaluatedRows.valid === 0
-                  ? "bg-blue-600/50 cursor-not-allowed shadow-none"
-                  : "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] shadow-blue-500/25 active:scale-95"
-              }`}
-            >
-              {isImporting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Importing {evaluatedRows.valid} Records...</span>
-                </>
-              ) : (
-                <>
-                  <span>Import {evaluatedRows.valid} Leads</span>
-                  <ArrowRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
+            {/* Dynamic Progress indicator during import */}
+            {isImporting ? (
+              <div className="flex-1 max-w-xs mx-4 space-y-1">
+                <div className="flex justify-between text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                  <span>Importing leads...</span>
+                  <span className="font-mono">{importProgress}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#0F4FA8] to-[#2563EB] transition-all duration-300"
+                    style={{ width: `${importProgress}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onClose}
+                disabled={isImporting}
+                className="h-10 px-5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleConfirmImport}
+                disabled={isImporting || !isValidMapping || evaluatedRows.valid === 0}
+                className={`h-10 px-6 text-white font-extrabold text-xs rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md ${
+                  isImporting || !isValidMapping || evaluatedRows.valid === 0
+                    ? "bg-blue-600/50 cursor-not-allowed shadow-none"
+                    : "bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] shadow-blue-500/25 active:scale-95"
+                }`}
+              >
+                {isImporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Processing Import...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Import {evaluatedRows.valid} Leads</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </motion.div>
