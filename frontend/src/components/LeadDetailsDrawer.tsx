@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Phone, PhoneCall, MessageSquare, Mail, User, MapPin, Clock,
   Sparkles, CheckCircle2, AlertCircle, Send, Activity, ChevronDown,
-  FileText, Edit3, ExternalLink, Loader2, Save, Star, Target, Users
+  FileText, Edit3, ExternalLink, Loader2, Save, Star, Target, Users,
+  Building2, ArrowRight
 } from "lucide-react";
 
 export type LeadDrawerData = {
@@ -40,18 +41,10 @@ const DISPOSITION_STATUS_OPTIONS = [
   { value: "not_interested", label: "Not Interested" }, { value: "closed", label: "Closed / Won" }
 ];
 
-const getTimelineIcon = (action: string) => {
-  const a = action.toLowerCase();
-  if (a.includes("creat")) return <div className="h-2 w-2 rounded-full bg-blue-500" />;
-  if (a.includes("assign")) return <div className="h-2 w-2 rounded-full bg-amber-500" />;
-  return <div className="h-2 w-2 rounded-full bg-slate-400" />;
-};
-
 export default function LeadDetailsDrawer({ lead, onClose, onUpdateDisposition, users = [], pools = [], onCall, showToast }: LeadDetailsDrawerProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"overview" | "disposition" | "timeline">("overview");
   const [isAiExpanded, setIsAiExpanded] = useState(true);
-  const [isNotesExpanded, setIsNotesExpanded] = useState(true);
   const [status, setStatus] = useState(lead?.status || "new");
   const [notes, setNotes] = useState(lead?.notes || "");
   const [followUpDate, setFollowUpDate] = useState("");
@@ -101,164 +94,376 @@ export default function LeadDetailsDrawer({ lead, onClose, onUpdateDisposition, 
     finally { setIsSubmitting(false); }
   };
 
-  const TABS = [{ id: "overview", label: "Overview" }, { id: "disposition", label: "Disposition" }, { id: "timeline", label: "Timeline" }] as const;
+  const TABS = [
+    { id: "overview", label: "Overview" },
+    { id: "disposition", label: "Disposition" },
+    { id: "timeline", label: "Timeline" }
+  ] as const;
 
   return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden">
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden box-border">
+        {/* Professional Translucent Dark Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm cursor-pointer z-[99998]"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-md cursor-pointer z-[99998]"
         />
+
+        {/* Desktop-First Large Centered Workspace Modal Container */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          initial={{ opacity: 0, scale: 0.97, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          exit={{ opacity: 0, scale: 0.97, y: 12 }}
           transition={{ type: "spring", damping: 26, stiffness: 280 }}
-          className="w-[min(1050px,calc(100vw-64px))] max-h-[calc(100vh-48px)] flex flex-col bg-white dark:bg-[#0D1526] border border-slate-200/80 dark:border-white/[.10] rounded-[20px] shadow-2xl overflow-hidden relative z-[100000] box-border"
+          className="w-[min(1380px,calc(100vw-80px))] h-[min(860px,calc(100vh-40px))] max-w-[1380px] max-h-[calc(100vh-40px)] flex flex-col bg-white dark:bg-[#0D1526] border border-slate-200 dark:border-slate-800 rounded-[22px] shadow-2xl overflow-hidden relative z-[100000] box-border"
         >
+          {/* Subtle Ambient Background Gradients */}
           <div className="absolute top-0 left-0 w-96 h-96 bg-[#2563EB]/5 dark:bg-[#2563EB]/10 blur-3xl rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#F4B400]/5 dark:bg-[#F4B400]/8 blur-3xl rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
-          <div className="sticky top-0 z-20 shrink-0 bg-white/95 dark:bg-[#0D1526]/95 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/[.07] px-6 pt-5 pb-4 space-y-4">
-            <div className="flex items-start justify-between gap-3">
+          <div className="absolute bottom-0 right-0 w-80 h-80 bg-[#FACC15]/5 dark:bg-[#FACC15]/8 blur-3xl rounded-full pointer-events-none translate-x-1/3 translate-y-1/3" />
+
+          {/* 1. FIXED MODAL HEADER */}
+          <div className="sticky top-0 z-20 shrink-0 bg-white/95 dark:bg-[#0D1526]/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 px-7 py-5">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4 min-w-0">
+                {/* 58-64px Avatar with Status Dot */}
                 <div className="relative shrink-0">
-                  <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#1D4ED8] to-[#2563EB] text-white font-black text-lg flex items-center justify-center shadow-[0_4px_16px_rgba(37,99,235,0.35)] border-2 border-white dark:border-[#1E293B] select-none">
+                  <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-[18px] bg-gradient-to-br from-[#0F4FA8] via-[#1D4ED8] to-[#2563EB] text-white font-black text-xl flex items-center justify-center shadow-md border-2 border-white dark:border-[#1E293B] select-none">
                     {lead.name?.[0]?.toUpperCase() || "L"}
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#0D1526] shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-emerald-500 border-2 border-white dark:border-[#0D1526] shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                 </div>
+
                 <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-base font-black text-slate-900 dark:text-white tracking-tight truncate leading-none">{lead.name}</h2>
-                    <span className="text-[10px] font-black text-[#1D4ED8] dark:text-[#F4B400] uppercase bg-amber-100/70 dark:bg-[#F4B400]/15 border border-amber-300 dark:border-[#F4B400]/30 px-2.5 py-0.5 rounded-full tracking-wider shadow-2xs">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight truncate leading-tight">
+                      {lead.name}
+                    </h2>
+                    <span className="text-xs font-black text-[#0F4FA8] dark:text-[#FACC15] uppercase bg-amber-50 dark:bg-[#FACC15]/15 border border-amber-300 dark:border-[#FACC15]/30 px-3 py-1 rounded-full tracking-wider shadow-2xs">
                       {lead.status ? lead.status.replace(/_/g, " ").toUpperCase() : "QUALIFIED"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-                    <span className="flex items-center gap-1 font-semibold"><Phone className="h-3 w-3 text-[#F4B400]" />{lead.phone}</span>
-                    <span className="font-mono text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/8 border border-slate-200 dark:border-white/10 px-2 py-0.5 rounded-md tracking-wider">{lead.lead_id || "—"}</span>
-                    <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 px-2 py-0.5 rounded-full">
-                      <Sparkles className="h-3 w-3" />{aiScore}% AI Fit
+
+                  <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                      <Phone className="h-3.5 w-3.5 text-[#0F4FA8] dark:text-blue-400" />
+                      {lead.phone}
+                    </span>
+                    <span className="font-mono text-[11px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/10 px-2.5 py-0.5 rounded-md tracking-wider">
+                      {lead.lead_id || "LD295084"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-300 dark:border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                      {aiScore}% AI Fit
                     </span>
                   </div>
                 </div>
               </div>
-              <button onClick={onClose} className="h-9 w-9 flex items-center justify-center rounded-xl shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/8 border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all duration-200 cursor-pointer"><X className="h-4.5 w-4.5" /></button>
-            </div>
-            <div className="flex w-full items-center gap-1.5 p-1 rounded-[14px] bg-slate-100/90 dark:bg-white/[.05] border border-slate-200/60 dark:border-white/[.07] h-[52px]">
-              {TABS.map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 h-11 rounded-[11px] text-[13px] font-black transition-all duration-200 ease-out cursor-pointer flex items-center justify-center active:scale-95 ${
-                    activeTab === tab.id
-                      ? "bg-gradient-to-r from-[#F4B400] to-[#FFD54A] text-[#1E3A8A] shadow-[0_4px_14px_rgba(244,180,0,0.35)] border border-amber-300/60"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/8"
-                  }`}>{tab.label}</button>
-              ))}
+
+              <button
+                onClick={onClose}
+                className="h-10 w-10 flex items-center justify-center rounded-xl shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 border border-transparent hover:border-slate-200 dark:hover:border-white/10 transition-all duration-200 cursor-pointer"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
           </div>
-          <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-6 py-5 space-y-5 text-xs font-sans softphone-scrollbar">
+
+          {/* 2. TABS BAR (Height 64px, rounded 16px, grid 3-columns) */}
+          <div className="px-7 pt-4 shrink-0 bg-white dark:bg-[#0D1526]">
+            <div className="h-[64px] p-1 rounded-[16px] bg-[#f1f5f9] dark:bg-[#172033] grid grid-cols-3 gap-1">
+              {TABS.map(tab => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`h-full rounded-[12px] text-sm font-extrabold transition-all duration-200 ease-out cursor-pointer flex items-center justify-center active:scale-98 ${
+                      isActive
+                        ? "bg-gradient-to-r from-[#FACC15] to-[#EAB308] text-[#0F4FA8] font-black shadow-[0_4px_16px_rgba(234,179,8,0.35)] border border-amber-300/60"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. SCROLLABLE CONTENT BODY */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-7 py-6 space-y-6 text-xs font-sans custom-scrollbar">
+
+            {/* ── OVERVIEW TAB ── */}
             {activeTab === "overview" && (
-              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-4">
-                <div className="bg-white dark:bg-[#131F35] rounded-[18px] border border-slate-200/80 dark:border-white/[.07] shadow-sm overflow-hidden">
-                  <div className="px-5 py-3.5 bg-gradient-to-r from-blue-50/80 via-white to-white dark:from-[#1E293B] dark:via-[#131F35] dark:to-[#131F35] border-b border-slate-100 dark:border-white/[.06] flex items-center gap-2.5">
-                    <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-[#1D4ED8]/20 border border-blue-200 dark:border-[#2563EB]/30 flex items-center justify-center shrink-0"><User className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#3B82F6]" /></div>
-                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Contact Profile</span>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6"
+              >
+                {/* Contact Profile Card */}
+                <div className="bg-white dark:bg-[#131F35] rounded-[20px] border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+                  <div className="px-6 py-3.5 bg-[#f8fafc] dark:bg-[#1e293b] border-b border-slate-200 dark:border-slate-800 flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                    <User className="h-4 w-4 text-[#0F4FA8] dark:text-blue-400" />
+                    <span>CONTACT PROFILE</span>
                   </div>
-                  <div className="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
-                    <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Phone</span><span className="font-bold text-slate-900 dark:text-white text-[12px] flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-[#F4B400] shrink-0" />{lead.phone}</span></div>
-                    <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Email</span><span className="font-semibold text-slate-800 dark:text-slate-200 truncate block text-[12px]">{lead.email || "N/A"}</span></div>
-                    <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Location</span><span className="font-semibold text-slate-800 dark:text-slate-200 text-[12px] flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />{lead.location || "N/A"}</span></div>
-                    <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Target Pool</span><span className="text-[10px] font-extrabold text-[#1D4ED8] dark:text-[#F4B400] uppercase bg-blue-50 dark:bg-[#F4B400]/10 border border-blue-200 dark:border-[#F4B400]/25 px-2.5 py-1 rounded-full inline-block tracking-wider">{poolObj?.name.replace(/_/g, " ") || "RECRUITMENT"}</span></div>
-                    <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Assigned Agent</span><span className="font-bold text-slate-900 dark:text-white text-[12px]">{assignedAgent?.name || "Unassigned"}</span></div>
-                    <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Priority</span>
-                      <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full inline-block border tracking-wider ${lead.priority === "high" || lead.priority === "urgent" ? "bg-rose-50 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-400" : "bg-amber-50 dark:bg-amber-500/12 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300"}`}>{lead.priority || "Medium"}</span>
+
+                  <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6">
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        PHONE
+                      </span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-[#0F4FA8] shrink-0" />
+                        {lead.phone}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        EMAIL
+                      </span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate block">
+                        {lead.email || "N/A"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        LOCATION
+                      </span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-slate-400 shrink-0" />
+                        {lead.location || "N/A"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        TARGET POOL
+                      </span>
+                      <span className="text-xs font-black text-[#0F4FA8] dark:text-[#FACC15] uppercase bg-blue-50 dark:bg-[#FACC15]/10 border border-blue-200 dark:border-[#FACC15]/25 px-3 py-1 rounded-full inline-block tracking-wider">
+                        {poolObj?.name.replace(/_/g, " ") || "CUSTOMER SUPPORT"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        ASSIGNED AGENT
+                      </span>
+                      <span className="font-bold text-slate-900 dark:text-white text-sm">
+                        {assignedAgent?.name || "Unassigned"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        PRIORITY
+                      </span>
+                      <span className={`text-xs font-black uppercase px-3 py-1 rounded-full inline-block border tracking-wider ${
+                        lead.priority === "high" || lead.priority === "urgent"
+                          ? "bg-rose-50 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-400"
+                          : "bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-300"
+                      }`}>
+                        {lead.priority || "MEDIUM"}
+                      </span>
                     </div>
                   </div>
                 </div>
-                <div className="bg-white dark:bg-[#131F35] rounded-[18px] border border-slate-200/80 dark:border-white/[.07] shadow-sm overflow-hidden">
-                  <button onClick={() => setIsAiExpanded(!isAiExpanded)} className="w-full px-5 py-3.5 flex items-center justify-between bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white dark:from-[#1E293B] dark:via-[#1a2740] dark:to-[#131F35] border-b border-slate-100 dark:border-white/[.06] cursor-pointer text-left hover:brightness-[1.02] transition-all duration-200">
-                    <span className="flex items-center gap-2.5 text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest"><Sparkles className="h-4 w-4 text-[#F4B400] animate-pulse" />AI Telemetry & Copilot</span>
-                    <div className="flex items-center gap-2"><span className="text-[11px] font-black font-mono bg-gradient-to-r from-[#F4B400] to-[#FFD54A] text-[#1E3A8A] px-2.5 py-0.5 rounded-full border border-amber-300/50 shadow-sm">{lead.ai_score || 85}%</span><ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isAiExpanded ? "rotate-180" : ""}`} /></div>
+
+                {/* AI Telemetry & Copilot Card */}
+                <div className="bg-white dark:bg-[#131F35] rounded-[20px] border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+                  <button
+                    onClick={() => setIsAiExpanded(!isAiExpanded)}
+                    className="w-full px-6 py-4 flex items-center justify-between bg-[#f8fafc] dark:bg-[#1e293b] border-b border-slate-200 dark:border-slate-800 cursor-pointer text-left hover:brightness-[1.01] transition-all duration-200"
+                  >
+                    <span className="flex items-center gap-2.5 text-xs font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-widest">
+                      <Sparkles className="h-4.5 w-4.5 text-[#FACC15]" />
+                      <span>AI TELEMETRY &amp; COPILOT</span>
+                    </span>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-black font-mono bg-gradient-to-r from-[#FACC15] to-[#EAB308] text-[#0F4FA8] px-3 py-0.5 rounded-full border border-amber-300/50 shadow-2xs">
+                        {aiScore}%
+                      </span>
+                      <ChevronDown className={`h-4.5 w-4.5 text-slate-400 transition-transform duration-200 ${isAiExpanded ? "rotate-180" : ""}`} />
+                    </div>
                   </button>
+
                   {isAiExpanded && (
-                    <div className="p-5 space-y-4">
-                      <div><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Detected Intent</span>
-                        <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#0D1526] p-3.5 rounded-[12px] border border-slate-200/80 dark:border-white/[.07] transition-all duration-200 leading-relaxed">{lead.intent || "Product tier inquiry & subscription pricing request"}</p>
+                    <div className="p-6 space-y-5">
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                          DETECTED INTENT
+                        </span>
+                        <div className="p-4 bg-slate-50 dark:bg-[#0D1526] rounded-xl border border-slate-200/80 dark:border-slate-800 text-sm font-semibold text-slate-800 dark:text-slate-200">
+                          {lead.intent || "Product tier inquiry & subscription pricing request"}
+                        </div>
                       </div>
-                      <div className="space-y-2"><span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-2">Copilot Recommendations</span>
-                        {(lead.suggestions || ["Share official enterprise product brochure link", "Confirm preferred callback slot for technical demo"]).map((sug: string, i: number) => (
-                          <div key={i} className="flex items-start gap-3 p-3.5 bg-slate-50 dark:bg-[#0D1526] rounded-[12px] border border-slate-200/80 dark:border-white/[.07] shadow-sm">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" /><span className="text-[12px] font-semibold text-slate-700 dark:text-slate-300 leading-snug">{sug}</span>
-                          </div>
-                        ))}
+
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                          COPILOT RECOMMENDATIONS
+                        </span>
+                        <div className="space-y-2.5">
+                          {(lead.suggestions || [
+                            "Share official enterprise product brochure link",
+                            "Confirm preferred callback slot for technical demo"
+                          ]).map((sug: string, i: number) => (
+                            <div key={i} className="flex items-center gap-3 p-3.5 bg-slate-50 dark:bg-[#0D1526] rounded-xl border border-slate-200/80 dark:border-slate-800">
+                              <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                {sug}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
                 </div>
               </motion.div>
             )}
+
+            {/* ── DISPOSITION TAB ── */}
             {activeTab === "disposition" && (
-              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-4">
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
                 {user?.role === "agent" && lead.status !== "new" ? (
-                  <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 rounded-[18px] p-5 flex items-start gap-3 shadow-sm">
+                  <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 rounded-[20px] p-6 flex items-start gap-3 shadow-xs">
                     <AlertCircle className="h-5 w-5 text-rose-500 shrink-0 mt-0.5" />
-                    <div><p className="font-extrabold text-[11px] uppercase tracking-wider text-rose-800 dark:text-rose-400 mb-1">Read-Only Lead</p><p className="text-[12px] font-medium text-rose-600 dark:text-rose-400/80 leading-relaxed">Agents are only permitted to update the disposition of leads that are in NEW status.</p></div>
+                    <div>
+                      <p className="font-extrabold text-xs uppercase tracking-wider text-rose-800 dark:text-rose-400 mb-1">
+                        Read-Only Lead
+                      </p>
+                      <p className="text-xs font-medium text-rose-600 dark:text-rose-400/80 leading-relaxed">
+                        Agents are only permitted to update the disposition of leads that are in NEW status.
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  <form onSubmit={handleSaveDisposition} className="bg-white dark:bg-[#131F35] rounded-[18px] p-6 border border-slate-200/80 dark:border-white/[.07] shadow-sm space-y-5">
-                    <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-white/[.06] pb-3.5">
-                      <div className="h-7 w-7 rounded-lg bg-blue-50 dark:bg-[#1D4ED8]/20 border border-blue-100 dark:border-[#2563EB]/20 flex items-center justify-center"><Edit3 className="h-3.5 w-3.5 text-[#2563EB]" /></div>
-                      <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Update Disposition & Follow-Up</span>
+                  <form onSubmit={handleSaveDisposition} className="bg-white dark:bg-[#131F35] rounded-[20px] p-6 border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-6">
+                    <div className="flex items-center gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-4">
+                      <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center">
+                        <Edit3 className="h-4 w-4 text-[#0F4FA8] dark:text-blue-400" />
+                      </div>
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-widest">
+                        UPDATE DISPOSITION &amp; FOLLOW-UP
+                      </span>
                     </div>
-                    <div><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Status Disposition</label><CustomSelect value={status} onChange={setStatus} options={DISPOSITION_STATUS_OPTIONS} placeholder="Select Status" /></div>
-                    {(status === "follow_up" || status === "in_progress") && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
-                        <CustomDateTimePicker
-                          label="Follow-up Date & Time"
-                          value={followUpDate}
-                          onChange={setFollowUpDate}
-                          placeholder="Select Follow-up Date & Time"
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                          Status Disposition
+                        </label>
+                        <CustomSelect
+                          value={status}
+                          onChange={setStatus}
+                          options={DISPOSITION_STATUS_OPTIONS}
+                          placeholder="Select Disposition"
+                          triggerClassName="h-11 rounded-xl text-xs border-slate-200 dark:border-slate-700 dark:bg-[#0D1526]"
                         />
-                      </motion.div>
-                    )}
-                    <div>
-                      <div className="flex justify-between items-center mb-2"><label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Call Notes / Summary</label><span className={`text-[10px] font-mono font-bold ${notes.length > 450 ? "text-rose-500" : "text-slate-400"}`}>{notes.length} / 500</span></div>
-                      <textarea rows={4} maxLength={500} placeholder="Enter conversation notes or next steps..." value={notes} onChange={e => { setNotes(e.target.value); if (notesError) setNotesError(""); }} className={`w-full bg-slate-50 dark:bg-[#0D1526] border rounded-[12px] p-3.5 text-[12px] font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/50 transition-all duration-200 resize-none ${notesError ? "border-rose-400 dark:border-rose-500" : "border-slate-200 dark:border-white/10"}`} />
-                      {notesError && <p className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1.5"><AlertCircle className="h-3.5 w-3.5 shrink-0" />{notesError}</p>}
+                      </div>
+
+                      {(status === "follow_up" || status === "in_progress") && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+                          <CustomDateTimePicker
+                            label="Follow-up Date & Time"
+                            value={followUpDate}
+                            onChange={setFollowUpDate}
+                            placeholder="Select Follow-up Date & Time"
+                          />
+                        </motion.div>
+                      )}
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Notes / Call Summary
+                          </label>
+                          <span className={`text-[10px] font-mono font-bold ${notes.length > 450 ? "text-rose-500" : "text-slate-400"}`}>
+                            {notes.length} / 500
+                          </span>
+                        </div>
+                        <textarea
+                          rows={4}
+                          maxLength={500}
+                          placeholder="Enter conversation notes or next steps..."
+                          value={notes}
+                          onChange={e => {
+                            setNotes(e.target.value);
+                            if (notesError) setNotesError("");
+                          }}
+                          className={`w-full bg-slate-50 dark:bg-[#0D1526] border rounded-xl p-4 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/50 transition-all duration-200 resize-none ${
+                            notesError ? "border-rose-400 dark:border-rose-500" : "border-slate-200 dark:border-slate-800"
+                          }`}
+                        />
+                        {notesError && (
+                          <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1.5 flex items-center gap-1.5">
+                            <AlertCircle className="h-4 w-4 shrink-0" />
+                            {notesError}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </form>
                 )}
               </motion.div>
             )}
+
+            {/* ── TIMELINE TAB ── */}
             {activeTab === "timeline" && (
-              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="space-y-4">
-                <div className="bg-white dark:bg-[#131F35] rounded-[18px] border border-slate-200/80 dark:border-white/[.07] shadow-sm overflow-hidden">
-                  <div className="px-5 py-3.5 bg-gradient-to-r from-blue-50/80 via-white to-white dark:from-[#1E293B] dark:via-[#131F35] dark:to-[#131F35] border-b border-slate-100 dark:border-white/[.06] flex items-center justify-between">
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-5"
+              >
+                <div className="bg-white dark:bg-[#131F35] rounded-[20px] border border-slate-200/90 dark:border-slate-800 shadow-xs overflow-hidden">
+                  <div className="px-6 py-4 bg-[#f8fafc] dark:bg-[#1e293b] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-[#1D4ED8]/20 border border-blue-200 dark:border-[#2563EB]/30 flex items-center justify-center shrink-0"><Activity className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#3B82F6]" /></div>
-                      <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Activity Log & History</span>
+                      <Activity className="h-4.5 w-4.5 text-[#0F4FA8] dark:text-blue-400" />
+                      <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 uppercase tracking-widest">
+                        ACTIVITY LOG &amp; HISTORY
+                      </span>
                     </div>
-                    <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/10 px-2.5 py-1 rounded-full">{(lead.history || []).length || 2} Events</span>
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-white/10 px-3 py-1 rounded-full">
+                      {(lead.history || []).length || 3} Events
+                    </span>
                   </div>
-                  <div className="px-5 py-5">
-                    <div className="relative pl-6 space-y-4 border-l-2 border-[#2563EB]/30 dark:border-white/10 ml-2">
+
+                  <div className="p-6">
+                    <div className="relative pl-6 space-y-6 border-l-2 border-slate-200 dark:border-slate-800 ml-3">
                       {(lead.history || [
-                        { timestamp: lead.created_at || "11 Aug 2026 9:39 AM", action: "Created in CRM", actor: "System Automation", notes: "" },
-                        { timestamp: "Today", action: "Assigned to Pool", actor: "Supervisor Protocol", notes: "" }
+                        { timestamp: lead.created_at || "11 Aug 2026 · 9:39 AM", action: "Created in CRM", actor: "System Automation" },
+                        { timestamp: "Today", action: "Assigned to Pool", actor: "Supervisor Protocol" },
+                        { timestamp: "14 Aug 2026 · 4:15 AM", action: "Follow-up Scheduled", actor: "Admin" }
                       ]).map((item: any, idx: number) => (
                         <div key={idx} className="relative group">
-                          <div className="absolute -left-[31px] top-1.5 h-4 w-4 rounded-full bg-[#2563EB] border-2 border-white dark:border-[#0D1526] shadow-sm flex items-center justify-center" />
-                          <div className="bg-slate-50 dark:bg-[#0D1526] border border-slate-200/80 dark:border-white/[.07] rounded-[12px] p-3.5 transition-all">
+                          <div className="absolute -left-[31px] top-1.5 h-3.5 w-3.5 rounded-full bg-[#0F4FA8] border-2 border-white dark:border-[#0D1526] shadow-2xs" />
+                          <div className="bg-slate-50 dark:bg-[#0D1526] border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 transition-all">
                             <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="text-[13px] font-extrabold text-slate-900 dark:text-white leading-tight">{item.action}</span>
-                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1 shrink-0"><Clock className="h-3 w-3" />{item.timestamp}</span>
+                              <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                                {item.action}
+                              </span>
+                              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {item.timestamp}
+                              </span>
                             </div>
-                            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1"><User className="h-3 w-3" />{item.actor}</span>
-                            {item.notes && <p className="mt-2 text-[11px] font-medium text-slate-600 dark:text-slate-400 bg-white dark:bg-[#131F35] p-2.5 rounded-[8px] border border-slate-200 dark:border-white/[.06]">{item.notes}</p>}
+                            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {item.actor}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -267,72 +472,134 @@ export default function LeadDetailsDrawer({ lead, onClose, onUpdateDisposition, 
                 </div>
               </motion.div>
             )}
+
           </div>
-          <div className="sticky bottom-0 z-20 shrink-0 bg-white/95 dark:bg-[#0D1526]/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-white/[.07] px-6 py-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <button onClick={handleCall} title="Call Lead" className="h-11 px-5 flex items-center justify-center gap-2 rounded-[12px] text-xs font-extrabold bg-emerald-50/80 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/50 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white transition-all cursor-pointer">
-                <PhoneCall className="h-4 w-4 shrink-0" /><span>Call</span>
+
+          {/* 4. FIXED MODAL FOOTER (Height 80px, padding 16px 28px, fixed at bottom) */}
+          <div className="h-[80px] shrink-0 px-7 py-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0D1526] flex items-center justify-between gap-4 z-20 shadow-md">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleCall}
+                title="Call Lead"
+                className="h-[48px] px-5 flex items-center justify-center gap-2 rounded-[14px] text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-2xs"
+              >
+                <PhoneCall className="h-4 w-4 shrink-0" />
+                <span>Call</span>
               </button>
-              <button onClick={() => setShowWhatsAppModal(true)} title="WhatsApp" className="h-11 px-5 flex items-center justify-center gap-2 rounded-[12px] text-xs font-extrabold bg-emerald-50/80 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/50 hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white transition-all cursor-pointer">
-                <MessageSquare className="h-4 w-4 shrink-0" /><span>WhatsApp</span>
+
+              <button
+                onClick={() => setShowWhatsAppModal(true)}
+                title="WhatsApp"
+                className="h-[48px] px-5 flex items-center justify-center gap-2 rounded-[14px] text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-2xs"
+              >
+                <MessageSquare className="h-4 w-4 shrink-0" />
+                <span>WhatsApp</span>
               </button>
-              <button onClick={() => setShowEmailModal(true)} title="Email" className="h-11 px-5 flex items-center justify-center gap-2 rounded-[12px] text-xs font-extrabold bg-blue-50/80 dark:bg-[#2563EB]/10 text-[#2563EB] dark:text-[#3B82F6] border border-blue-500/50 hover:bg-[#2563EB] hover:text-white dark:hover:bg-[#2563EB] dark:hover:text-white transition-all cursor-pointer">
-                <Mail className="h-4 w-4 shrink-0" /><span>Email</span>
+
+              <button
+                onClick={() => setShowEmailModal(true)}
+                title="Email"
+                className="h-[48px] px-5 flex items-center justify-center gap-2 rounded-[14px] text-xs font-extrabold bg-blue-50 dark:bg-blue-950/40 text-[#0F4FA8] dark:text-blue-400 border border-blue-200 dark:border-blue-800 hover:bg-[#0F4FA8] hover:text-white transition-all cursor-pointer shadow-2xs"
+              >
+                <Mail className="h-4 w-4 shrink-0" />
+                <span>Email</span>
               </button>
             </div>
-            <div className="flex items-center gap-2.5">
-              <button onClick={() => handleSaveDisposition()} disabled={isSubmitting || (user?.role === "agent" && lead.status !== "new")} title="Save Disposition" className="h-11 px-6 flex items-center justify-center gap-2 rounded-[12px] text-xs font-extrabold bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-md hover:from-[#1E40AF] hover:to-[#1D4ED8] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}<span>Save</span>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleSaveDisposition()}
+                disabled={isSubmitting || (user?.role === "agent" && lead.status !== "new")}
+                title="Save Disposition"
+                className="h-[48px] px-7 flex items-center justify-center gap-2 rounded-[14px] text-xs font-extrabold bg-gradient-to-r from-[#0F4FA8] to-[#1D4ED8] hover:from-[#0B3C80] hover:to-[#1656B3] text-white shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+              >
+                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span>Save</span>
               </button>
-              <button onClick={onClose} title="Close Modal" className="h-11 px-5 flex items-center justify-center gap-2 rounded-[12px] text-xs font-extrabold bg-slate-100 dark:bg-white/[.06] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 transition-all cursor-pointer">
-                <X className="h-4 w-4" /><span>Close</span>
+
+              <button
+                onClick={onClose}
+                title="Close Modal"
+                className="h-[48px] px-6 flex items-center justify-center gap-2 rounded-[14px] text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 transition-all cursor-pointer active:scale-95"
+              >
+                <X className="h-4 w-4" />
+                <span>Close</span>
               </button>
             </div>
           </div>
         </motion.div>
       </div>
+
+      {/* WHATSAPP MODAL */}
       {showWhatsAppModal && (
         <div className="fixed inset-0 z-[100001] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-5 font-sans">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-[#131F35] rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200 dark:border-white/[.08]">
-            <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/[.07] pb-4">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-[#131F35] rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/25 flex items-center justify-center"><MessageSquare className="h-4 w-4 text-emerald-600" /></div>
-                <div><h3 className="font-black text-slate-900 dark:text-white text-[14px]">Send WhatsApp Message</h3><p className="text-[11px] font-semibold text-slate-400">{lead.name} · {lead.phone}</p></div>
+                <div className="h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/25 flex items-center justify-center">
+                  <MessageSquare className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-white text-sm">Send WhatsApp Message</h3>
+                  <p className="text-[11px] font-semibold text-slate-400">{lead.name} · {lead.phone}</p>
+                </div>
               </div>
               <button onClick={() => setShowWhatsAppModal(false)} className="h-8 w-8 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/8 rounded-lg text-slate-400 cursor-pointer transition"><X className="h-4 w-4" /></button>
             </div>
             <div className="space-y-3">
-              <div><label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Select Template</label>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Select Template</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {TEMPLATES.map(t => (<button key={t.id} type="button" onClick={() => handleTemplateChange(t.id)} className={`p-2 rounded-xl text-[10px] font-extrabold transition border cursor-pointer active:scale-95 ${selectedTemplate === t.id ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" : "bg-slate-50 dark:bg-[#0D1526] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5"}`}>{t.label}</button>))}
+                  {TEMPLATES.map(t => (
+                    <button key={t.id} type="button" onClick={() => handleTemplateChange(t.id)} className={`p-2 rounded-xl text-[10px] font-extrabold transition border cursor-pointer active:scale-95 ${selectedTemplate === t.id ? "bg-emerald-600 text-white border-emerald-600 shadow-xs" : "bg-slate-50 dark:bg-[#0D1526] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/10 hover:bg-slate-100"}`}>{t.label}</button>
+                  ))}
                 </div>
               </div>
-              <div><label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Message Preview</label><textarea rows={3} value={waMessage} onChange={e => setWaMessage(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[12px] p-3 text-[12px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-medium resize-none" /></div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Message Preview</label>
+                <textarea rows={3} value={waMessage} onChange={e => setWaMessage(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[12px] p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 font-medium resize-none" />
+              </div>
               <div className="flex gap-2.5 pt-1">
-                <button onClick={() => setShowWhatsAppModal(false)} className="flex-1 py-2.5 bg-slate-100 dark:bg-white/[.06] hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-[12px] font-extrabold text-[12px] transition cursor-pointer">Cancel</button>
-                <button onClick={handleSendWhatsApp} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[12px] font-extrabold text-[12px] transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"><Send className="h-3.5 w-3.5" />Open WhatsApp</button>
+                <button onClick={() => setShowWhatsAppModal(false)} className="flex-1 py-2.5 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-[12px] font-extrabold text-xs transition cursor-pointer">Cancel</button>
+                <button onClick={handleSendWhatsApp} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[12px] font-extrabold text-xs transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"><Send className="h-3.5 w-3.5" />Open WhatsApp</button>
               </div>
             </div>
           </motion.div>
         </div>
       )}
+
+      {/* EMAIL MODAL */}
       {showEmailModal && (
         <div className="fixed inset-0 z-[100001] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-5 font-sans">
-          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-[#131F35] rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200 dark:border-white/[.08]">
-            <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/[.07] pb-4">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white dark:bg-[#131F35] rounded-[24px] p-6 max-w-md w-full shadow-2xl space-y-4 border border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-4">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-[#2563EB]/15 border border-blue-200 dark:border-[#2563EB]/25 flex items-center justify-center"><Mail className="h-4 w-4 text-[#2563EB]" /></div>
-                <div><h3 className="font-black text-slate-900 dark:text-white text-[14px]">Send Email to Lead</h3><p className="text-[11px] font-semibold text-slate-400">{lead.name}</p></div>
+                <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
+                  <Mail className="h-4 w-4 text-[#0F4FA8] dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 dark:text-white text-sm">Send Email to Lead</h3>
+                  <p className="text-[11px] font-semibold text-slate-400">{lead.name}</p>
+                </div>
               </div>
               <button onClick={() => setShowEmailModal(false)} className="h-8 w-8 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-white/8 rounded-lg text-slate-400 cursor-pointer transition"><X className="h-4 w-4" /></button>
             </div>
             <div className="space-y-3">
-              <div><label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Recipient Email</label><input type="email" placeholder="Enter email address" value={customEmail} onChange={e => setCustomEmail(e.target.value)} className="w-full h-10 bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[12px] px-3 text-[12px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/50 transition" /></div>
-              <div><label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Subject</label><input type="text" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} className="w-full h-10 bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[12px] px-3 text-[12px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/50 transition" /></div>
-              <div><label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Email Body</label><textarea rows={3} value={emailBody} onChange={e => setEmailBody(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[12px] p-3 text-[12px] text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB]/50 font-medium resize-none" /></div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Recipient Email</label>
+                <input type="email" placeholder="Enter email address" value={customEmail} onChange={e => setCustomEmail(e.target.value)} className="w-full h-10 bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[12px] px-3 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/50 transition" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Subject</label>
+                <input type="text" value={emailSubject} onChange={e => setEmailSubject(e.target.value)} className="w-full h-10 bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[12px] px-3 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/50 transition" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Email Body</label>
+                <textarea rows={3} value={emailBody} onChange={e => setEmailBody(e.target.value)} className="w-full bg-slate-50 dark:bg-[#0D1526] border border-slate-200 dark:border-white/10 rounded-[12px] p-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0F4FA8]/50 font-medium resize-none" />
+              </div>
               <div className="flex gap-2.5 pt-1">
-                <button onClick={() => setShowEmailModal(false)} className="flex-1 py-2.5 bg-slate-100 dark:bg-white/[.06] hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-[12px] font-extrabold text-[12px] transition cursor-pointer">Cancel</button>
-                <button onClick={handleSendEmail} className="flex-1 py-2.5 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-[12px] font-extrabold text-[12px] transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"><ExternalLink className="h-3.5 w-3.5" />Open Mail Client</button>
+                <button onClick={() => setShowEmailModal(false)} className="flex-1 py-2.5 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-[12px] font-extrabold text-xs transition cursor-pointer">Cancel</button>
+                <button onClick={handleSendEmail} className="flex-1 py-2.5 bg-[#0F4FA8] hover:bg-[#0B3C80] text-white rounded-[12px] font-extrabold text-xs transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"><ExternalLink className="h-3.5 w-3.5" />Open Mail Client</button>
               </div>
             </div>
           </motion.div>
