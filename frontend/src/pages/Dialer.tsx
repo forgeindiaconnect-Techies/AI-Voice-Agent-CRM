@@ -101,6 +101,7 @@ export default function Dialer() {
   const isDialingRef = useRef(false); // duplicate-click guard
   const callEndReasonRef = useRef<string>(""); // track why call ended
   const [isCreatingLead, setIsCreatingLead] = useState(false);
+  const [quickCallingLeadId, setQuickCallingLeadId] = useState<string | null>(null);
 
   // Helper to sanitize incoming value (from input, paste, or quick call)
   const sanitizeMobileNumber = useCallback((val: string): string => {
@@ -693,10 +694,70 @@ export default function Dialer() {
     }
   };
 
-  const handleQuickCall = (phone: string) => {
+  const handleQuickCall = async (leadOrPhone: Lead | string) => {
     if (callStatus !== "idle" || isDialing || isDialingRef.current) return;
-    const sanitized = sanitizeMobileNumber(phone);
+
+    let targetPhone = "";
+    let targetName = "";
+    let targetPoolId = "";
+    let targetLeadId = "";
+
+    if (typeof leadOrPhone === "string") {
+      targetPhone = leadOrPhone;
+    } else if (leadOrPhone && typeof leadOrPhone === "object") {
+      targetPhone = leadOrPhone.phone;
+      targetName = leadOrPhone.name;
+      targetPoolId = leadOrPhone.pool_id || "";
+      targetLeadId = leadOrPhone._id;
+    }
+
+    const sanitized = sanitizeMobileNumber(targetPhone);
+    if (!sanitized || sanitized.length < 10) {
+      showToast("Enter a valid 10-digit Indian mobile number before placing Quick Call", "error");
+      return;
+    }
+
     setOutboundPhone(sanitized);
+    setCallMode("ai");
+    setQuickCallingLeadId(targetLeadId || "active");
+    isDialingRef.current = true;
+    setIsDialing(true);
+    setCallStatus("calling");
+    setCallDuration(0);
+    setIsMuted(false);
+    setIsSpeaker(false);
+
+    const fullPhoneNumber = `+91${sanitized}`;
+    const idempotencyKey = `quick_${user?.id || 'agent'}_${sanitized}_${Date.now()}`;
+
+    try {
+      const res = await api.post("/api/calls/vapi-dial", {
+        phone: fullPhoneNumber,
+        name: targetName || `Quick Lead - ${sanitized}`,
+        pool_id: targetPoolId || user?.pool_id || "general",
+        idempotency_key: idempotencyKey
+      });
+
+      if (res && res.success !== false) {
+        const vapiCallId = res.callId || res.vapi_call_id || res.id || res._id || "vapi-call";
+        setCurrentCallId(res.id || res._id || res.call_id || vapiCallId);
+        setCallStatus("connected");
+        setCallDuration(0);
+        showToast(res.message || `Call Started — Vapi AI Call created successfully (Call ID: ${vapiCallId})`, "success");
+      } else {
+        const errMsg = res?.details || res?.error || "Vapi Call creation failed";
+        showToast(errMsg, "error");
+        setCallStatus("idle");
+      }
+    } catch (err: any) {
+      const errMsg = err.details || err.message || "Failed to initiate Vapi Quick Call";
+      showToast(errMsg, "error");
+      setCallStatus("idle");
+    } finally {
+      setQuickCallingLeadId(null);
+      isDialingRef.current = false;
+      setIsDialing(false);
+    }
   };
 
   const formatTime = (secs: number) => {
@@ -1233,7 +1294,7 @@ export default function Dialer() {
 
                             <div className="flex gap-2">
                               <button
-                                onClick={() => handleQuickCall(lead.phone)}
+                                onClick={() => handleQuickCall(lead)}
                                 disabled={callStatus !== "idle" || isDialing}
                                 className={`flex-1 py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none cursor-pointer ${
                                   outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone
@@ -1241,7 +1302,17 @@ export default function Dialer() {
                                     : 'bg-[#2563EB]/10 text-[#2563EB] dark:text-[#60A5FA] hover:bg-[#2563EB]/20 border border-[#2563EB]/20'
                                 }`}
                               >
-                                <Phone className="h-4 w-4" /> Quick Call
+                                {quickCallingLeadId === lead._id ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 animate-spin text-current" />
+                                    <span>Starting Call...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Phone className="h-4 w-4" />
+                                    <span>Quick Call</span>
+                                  </>
+                                )}
                               </button>
                               <button className="px-4 py-2.5 bg-slate-100 dark:bg-[#111827] hover:bg-slate-200 dark:hover:bg-[#1F2B45] text-slate-700 dark:text-[#F8FAFC] rounded-xl font-bold text-xs border border-slate-200 dark:border-white/10 transition cursor-pointer"
                                 onClick={() => setSelectedLead(lead)}

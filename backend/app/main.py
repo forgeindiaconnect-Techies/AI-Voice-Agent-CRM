@@ -111,6 +111,22 @@ async def on_startup():
             "Local MongoDB is not accessible during startup. "
             "Make sure local MongoDB is running on mongodb://127.0.0.1:27017"
         )
+
+    # Validate Vapi AI environment variables on startup
+    import os
+    vapi_api_key = getattr(settings, 'VAPI_API_KEY', '') or os.getenv('VAPI_API_KEY', '')
+    vapi_assistant_id = getattr(settings, 'VAPI_ASSISTANT_ID', '') or os.getenv('VAPI_ASSISTANT_ID', '')
+    vapi_phone_id = getattr(settings, 'VAPI_PHONE_NUMBER_ID', '') or os.getenv('VAPI_PHONE_NUMBER_ID', '')
+    missing_vapi = []
+    if not vapi_api_key: missing_vapi.append("VAPI_API_KEY")
+    if not vapi_assistant_id: missing_vapi.append("VAPI_ASSISTANT_ID")
+    if not vapi_phone_id: missing_vapi.append("VAPI_PHONE_NUMBER_ID")
+
+    if missing_vapi:
+        logger.warning(f"Vapi AI Configuration warning: Missing required env vars {', '.join(missing_vapi)}")
+    else:
+        logger.info("Vapi AI Configuration: All required credentials loaded successfully.")
+
         
     # Seed default system accounts if missing or password hash needs updating
     from app.core.database import users_col, pools_col

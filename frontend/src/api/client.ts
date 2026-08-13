@@ -123,13 +123,16 @@ export async function apiFetch(
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ detail: res.statusText }));
-        let detailMsg = errorData.detail;
+        let detailMsg = errorData.details || errorData.error || errorData.detail;
         if (Array.isArray(detailMsg)) {
-          detailMsg = detailMsg.map((e: any) => e.msg || e.detail || JSON.stringify(e)).join("; ");
+          detailMsg = detailMsg.map((e: any) => e.msg || e.detail || e.details || JSON.stringify(e)).join("; ");
         } else if (typeof detailMsg === "object" && detailMsg !== null) {
-          detailMsg = detailMsg.msg || detailMsg.detail || JSON.stringify(detailMsg);
+          detailMsg = detailMsg.details || detailMsg.error || detailMsg.msg || detailMsg.detail || JSON.stringify(detailMsg);
         }
-        throw new Error(detailMsg || `Server returned error (${res.status})`);
+        const err = new Error(detailMsg || `Server returned error (${res.status})`);
+        (err as any).status = res.status;
+        (err as any).details = detailMsg;
+        throw err;
       }
 
       return await res.json();

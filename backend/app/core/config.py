@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     VAPI_API_KEY: str = ""
     VAPI_ASSISTANT_ID: str = ""
     VAPI_PHONE_NUMBER_ID: str = ""
+    VAPI_BASE_URL: str = "https://api.vapi.ai"
     BASE_URL: str = "https://ai-voice-agent-crm.onrender.com"
 
     class Config:
