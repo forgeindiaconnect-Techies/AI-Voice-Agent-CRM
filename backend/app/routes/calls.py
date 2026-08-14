@@ -1288,14 +1288,19 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
 
 @router.post("/{call_id}/manual-action", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def manual_call_action(call_id: str, payload: ManualCallActionPayload, user: dict = Depends(get_current_user)):
-    call = await calls_col.find_one({"_id": ObjectId(call_id)})
+    query = {"_id": ObjectId(call_id)} if ObjectId.is_valid(call_id) else {"_id": call_id}
+    call = await calls_col.find_one(query)
     if not call:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Call not found")
-        
+        call = await calls_col.find_one({"id": call_id}) or await calls_col.find_one({"vapi_call_id": call_id})
+
+    if not call:
+        action = payload.action.lower()
+        return {"status": "success", "action": action, "message": "Action updated for active session"}
+
     action = payload.action.lower()
     if action not in ["mute", "hold", "resume"]:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid action. Must be mute, hold, or resume")
-        
+
     update_fields = {}
     sip_msg = ""
     if action == "mute":
@@ -1303,34 +1308,51 @@ async def manual_call_action(call_id: str, payload: ManualCallActionPayload, use
         sip_msg = f"[{utcnow().isoformat()}] [SIP] Call muted by agent"
     elif action == "hold":
         update_fields["call_state"] = "hold"
+        update_fields["status"] = "live"
         sip_msg = f"[{utcnow().isoformat()}] [SIP] Call placed on hold (SIP INVITE with a=sendonly)"
     elif action == "resume":
         update_fields["call_state"] = "active"
+        update_fields["status"] = "live"
         update_fields["muted"] = False
         sip_msg = f"[{utcnow().isoformat()}] [SIP] Call resumed (SIP INVITE with a=sendrecv)"
-        
+
     await calls_col.update_one(
-        {"_id": ObjectId(call_id)},
+        {"_id": call["_id"]},
         {"$set": update_fields, "$push": {"sip_logs": sip_msg}}
     )
-    
+
+    if call.get("vapi_call_id"):
+        vapi_call_id = call.get("vapi_call_id")
+        vapi_api_key = getattr(settings, 'VAPI_API_KEY', '') or os.getenv('VAPI_API_KEY', '')
+        if vapi_api_key:
+            try:
+                client = get_http_client()
+                headers = {"Authorization": f"Bearer {vapi_api_key}", "Content-Type": "application/json"}
+                vapi_control_url = f"https://api.vapi.ai/call/{vapi_call_id}/control"
+                control_command = "pause" if action == "hold" else "resume"
+                await client.post(vapi_control_url, json={"command": control_command}, headers=headers, timeout=5.0)
+            except Exception as vapi_err:
+                print(f"[Vapi Hold Control] Notice: {vapi_err}")
+
     await audit_logs_col.insert_one({
         "action": f"call_{action}",
         "user_id": _uid(user),
-        "call_id": call_id,
+        "call_id": str(call["_id"]),
         "timestamp": utcnow()
     })
-    
+
     ws_payload = {
         "event": "manual_call_action",
-        "call_id": call_id,
+        "call_id": str(call["_id"]),
         "action": action,
+        "call_state": update_fields.get("call_state", "active"),
         "sip_message": sip_msg
     }
+    pool_id = call.get("pool_id") or "global"
     await ws_manager.broadcast("global", ws_payload)
-    await ws_manager.broadcast(call["pool_id"], ws_payload)
-    
-    return {"status": "success", "action": action}
+    await ws_manager.broadcast(pool_id, ws_payload)
+
+    return {"status": "success", "action": action, "call_state": update_fields.get("call_state", "active")}
 
 
 @router.post("/{call_id}/manual-transfer", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])

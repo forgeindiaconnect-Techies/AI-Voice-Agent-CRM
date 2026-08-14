@@ -150,6 +150,7 @@ export default function Dialer() {
   const [outcome, setOutcome] = useState("answered");
   const [notes, setNotes] = useState("");
   const [isSavingOutcome, setIsSavingOutcome] = useState(false);
+  const [isHoldProcessing, setIsHoldProcessing] = useState(false);
 
   // SUPERVISOR STATE
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
@@ -260,6 +261,19 @@ export default function Dialer() {
             if (data.event === "call_ended") {
               setCallStatus("ended");
               fetchCallHistory();
+            }
+            if (data.event === "manual_call_action") {
+              if (data.action === "hold") {
+                setCallStatus("hold");
+                if (callRef.current) {
+                  try { callRef.current.mute(true); } catch {}
+                }
+              } else if (data.action === "resume") {
+                setCallStatus("connected");
+                if (callRef.current) {
+                  try { callRef.current.mute(false); } catch {}
+                }
+              }
             }
             // Real-time call status updates from Twilio status-callback via backend
             if (data.event === "call_status_update" && data.call_sid) {
@@ -690,26 +704,51 @@ export default function Dialer() {
     }
   }, [isMuted, currentCallId]);
 
-  const handleToggleHold = useCallback(() => {
+  const handleToggleHold = useCallback(async () => {
+    if (callStatus !== "connected" && callStatus !== "hold") {
+      showToast("Hold is only available during an active call", "warning");
+      return;
+    }
+    if (isHoldProcessing) return;
+
     const isCurrentlyHold = callStatus === "hold";
-    const nextStatus = isCurrentlyHold ? "connected" : "hold";
+    const targetAction = isCurrentlyHold ? "resume" : "hold";
+    const prevStatus = callStatus;
 
-    setCallStatus(nextStatus);
-    if (callRef.current) {
-      try {
-        callRef.current.mute(!isCurrentlyHold);
-      } catch (err) {
-        console.warn("Local hold mute error:", err);
+    setIsHoldProcessing(true);
+    showToast(isCurrentlyHold ? "Resuming call session..." : "Placing call on hold...", "info");
+
+    try {
+      if (callRef.current) {
+        try {
+          callRef.current.mute(!isCurrentlyHold);
+        } catch (err) {
+          console.warn("Local telephony mute error:", err);
+        }
       }
-    }
-    showToast(isCurrentlyHold ? "Call Resumed" : "Call Placed on Hold", "info");
 
-    if (currentCallId) {
-      api.post(`/api/calls/${currentCallId}/manual-action`, {
-        action: isCurrentlyHold ? "resume" : "hold"
-      }).catch((err) => console.warn("Backend hold sync notice:", err));
+      if (currentCallId) {
+        await api.post(`/api/calls/${currentCallId}/manual-action`, {
+          action: targetAction
+        });
+      }
+
+      const finalStatus = isCurrentlyHold ? "connected" : "hold";
+      setCallStatus(finalStatus);
+      showToast(isCurrentlyHold ? "Call Resumed — Live audio restored" : "Call Placed on Hold — Audio muted", "success");
+    } catch (err: any) {
+      console.error("[Dialer] Hold/Resume error:", err);
+      setCallStatus(prevStatus);
+      if (callRef.current) {
+        try {
+          callRef.current.mute(prevStatus === "hold");
+        } catch {}
+      }
+      showToast(err.message || `Failed to ${targetAction} call session`, "error");
+    } finally {
+      setIsHoldProcessing(false);
     }
-  }, [callStatus, currentCallId]);
+  }, [callStatus, currentCallId, isHoldProcessing]);
 
   const handleToggleSpeaker = useCallback(() => {
     const nextSpeaker = !isSpeaker;
@@ -1244,14 +1283,31 @@ export default function Dialer() {
                         </button>
                         <button
                           onClick={handleToggleHold}
+                          disabled={isHoldProcessing}
                           className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
-                            callStatus === "hold"
+                            isHoldProcessing
+                              ? "bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-slate-500 border-slate-300 dark:border-white/10 cursor-not-allowed"
+                              : callStatus === "hold"
                               ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white border-amber-400 shadow-md shadow-amber-500/25"
                               : "bg-blue-50/90 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#1D4ED8] dark:text-[#60A5FA] hover:bg-[#1D4ED8] hover:text-white dark:hover:bg-[#2563EB] hover:border-transparent"
                           }`}
                         >
-                          {callStatus === "hold" ? <Play className="h-5 w-5" /> : <CustomPauseIcon size={22} />}
-                          <span className="text-[10px] font-black uppercase tracking-wider">{callStatus === "hold" ? "Resume" : "Hold"}</span>
+                          {isHoldProcessing ? (
+                            <Loader2 className="h-5 w-5 animate-spin text-current" />
+                          ) : callStatus === "hold" ? (
+                            <Play className="h-5 w-5 fill-current" />
+                          ) : (
+                            <CustomPauseIcon size={22} />
+                          )}
+                          <span className="text-[10px] font-black uppercase tracking-wider">
+                            {isHoldProcessing
+                              ? callStatus === "hold"
+                                ? "Resuming..."
+                                : "Holding..."
+                              : callStatus === "hold"
+                              ? "Resume"
+                              : "Hold"}
+                          </span>
                         </button>
                         <button
                           onClick={() => setShowInCallKeypad(!showInCallKeypad)}
