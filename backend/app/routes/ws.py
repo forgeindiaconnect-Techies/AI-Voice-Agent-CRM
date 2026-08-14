@@ -29,8 +29,13 @@ async def authenticate_ws(websocket: WebSocket, token: str | None = None) -> dic
 
     try:
         payload = decode_token(token)
-        if not payload or payload.get("type") != "access":
-            logger.warning("[WS AUTH] Invalid or non-access token type")
+        if not payload:
+            logger.warning("[WS AUTH] Token decode returned empty payload")
+            return None
+
+        token_type = payload.get("type")
+        if token_type and token_type != "access":
+            logger.warning(f"[WS AUTH] Non-access token type rejected: {token_type}")
             return None
 
         sub = payload.get("sub")
@@ -43,7 +48,7 @@ async def authenticate_ws(websocket: WebSocket, token: str | None = None) -> dic
             logger.warning(f"[WS AUTH] User inactive or not found for sub: {sub}")
             return None
 
-        logger.info(f"[WS AUTH SUCCESS] Authenticated WS user: {user.get('email')}")
+        logger.info(f"[WS AUTH SUCCESS] Authenticated WS user: {user.get('name') or user.get('email')}")
         return user
     except Exception as e:
         logger.warning(f"[WS AUTH ERROR] Token decode failed: {e}")
