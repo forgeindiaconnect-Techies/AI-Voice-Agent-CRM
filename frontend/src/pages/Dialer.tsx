@@ -174,8 +174,48 @@ export default function Dialer() {
     }
   }, []);
 
+  // CALL HISTORY STATE
+  type CallHistoryItem = {
+    id?: string;
+    _id?: string;
+    lead_id?: string;
+    phone?: string;
+    phone_number?: string;
+    lead_name?: string;
+    direction?: string;
+    duration_seconds?: number;
+    duration?: number;
+    outcome?: string;
+    status?: string;
+    started_at?: string;
+    ended_at?: string;
+    created_at?: string;
+    notes?: string;
+  };
+
+  const [callHistory, setCallHistory] = useState<CallHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historySearchQuery, setHistorySearchQuery] = useState("");
+
+  const fetchCallHistory = useCallback(async () => {
+    setIsLoadingHistory(true);
+    setHistoryError(null);
+    try {
+      const res = await api.get("/api/calls");
+      const list = Array.isArray(res) ? res : (res?.calls || res?.items || []);
+      setCallHistory(list);
+    } catch (err: any) {
+      console.error("[Dialer] fetchCallHistory error:", err);
+      setHistoryError(err.message || "Failed to load recent call history.");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchLeads();
+    fetchCallHistory();
 
     const checkActiveSession = async () => {
       try {
@@ -204,6 +244,7 @@ export default function Dialer() {
             const data = JSON.parse(event.data);
             if (data.event === "leads_updated") {
               fetchLeads();
+              fetchCallHistory();
             }
             if (data.event === "vapi_call_status") {
               const st = (data.call_status || "").toLowerCase();
@@ -213,10 +254,12 @@ export default function Dialer() {
                 setCallStatus("connected");
               } else if (st === "ended" || st === "completed") {
                 setCallStatus("ended");
+                fetchCallHistory();
               }
             }
             if (data.event === "call_ended") {
               setCallStatus("ended");
+              fetchCallHistory();
             }
             // Real-time call status updates from Twilio status-callback via backend
             if (data.event === "call_status_update" && data.call_sid) {
@@ -256,7 +299,13 @@ export default function Dialer() {
       if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
       if (ws) ws.close();
     };
-  }, []);
+  }, [fetchLeads, fetchCallHistory]);
+
+  useEffect(() => {
+    if (activeTab === "history") {
+      fetchCallHistory();
+    }
+  }, [activeTab, fetchCallHistory]);
 
   // TWILIO DEVICE STATE
   const [deviceReady, setDeviceReady] = useState(false);
@@ -687,6 +736,7 @@ export default function Dialer() {
       setOutboundPhone("");
       setNotes("");
       setCallDuration(0);
+      fetchCallHistory();
     } catch (err: any) {
       showToast(err.message || "Failed to save outcome", "error");
     } finally {
@@ -769,6 +819,81 @@ export default function Dialer() {
   const formatDate = (ds: string) => {
     if (!ds) return "N/A";
     return new Date(ds).toLocaleString();
+  };
+
+  const filteredCallHistory = useMemo(() => {
+    if (!historySearchQuery.trim()) return callHistory;
+    const q = historySearchQuery.toLowerCase();
+    return callHistory.filter((item) => {
+      const phoneMatch = (item.phone || item.phone_number || "").toLowerCase().includes(q);
+      const nameMatch = (item.lead_name || "").toLowerCase().includes(q);
+      const outcomeMatch = (item.outcome || item.status || "").toLowerCase().includes(q);
+      return phoneMatch || nameMatch || outcomeMatch;
+    });
+  }, [callHistory, historySearchQuery]);
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds || seconds <= 0) return "0s";
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    if (m === 0) return `${s}s`;
+    return `${m}m ${s}s`;
+  };
+
+  const formatCallTime = (dateStr?: string) => {
+    if (!dateStr) return "Just now";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const now = new Date();
+      const isToday = date.toDateString() === now.toDateString();
+      const timeFormatted = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (isToday) {
+        return `Today, ${timeFormatted}`;
+      }
+      return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeFormatted}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const renderOutcomeBadge = (outcomeStr?: string) => {
+    const norm = (outcomeStr || "completed").toLowerCase();
+    if (norm === "qualified" || norm === "answered" || norm === "connected") {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-[#22C55E] border border-emerald-200 dark:border-emerald-500/30 inline-flex items-center gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          {norm}
+        </span>
+      );
+    }
+    if (norm === "no_answer" || norm === "no-answer" || norm === "busy" || norm === "failed") {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30 inline-flex items-center gap-1">
+          <XCircle className="h-3 w-3" />
+          {norm.replace("_", " ")}
+        </span>
+      );
+    }
+    if (norm === "not_interested") {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30 inline-flex items-center gap-1">
+          not interested
+        </span>
+      );
+    }
+    if (norm === "follow_up_required" || norm === "follow_up") {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 inline-flex items-center gap-1">
+          follow up
+        </span>
+      );
+    }
+    return (
+      <span className="px-2.5 py-1 rounded-full text-xs font-bold uppercase bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 inline-flex items-center gap-1">
+        {norm}
+      </span>
+    );
   };
 
   // ----------------------------------------------------
@@ -1453,6 +1578,8 @@ export default function Dialer() {
             </motion.div>
           )}
 
+
+
           {/* ---------------- HISTORY TAB ---------------- */}
           {activeTab === "history" && (
             <motion.div
@@ -1462,13 +1589,67 @@ export default function Dialer() {
               exit={{ opacity: 0, y: -10 }}
               className="h-full bg-white dark:bg-[#111827] rounded-[24px] border border-slate-200 dark:border-white/10 shadow-sm p-6 flex flex-col overflow-hidden"
             >
-              <h2 className="text-sm font-black text-slate-800 dark:text-[#F8FAFC] uppercase tracking-widest mb-4 flex items-center gap-2">
-                <History className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" /> My Recent Manual Calls
-              </h2>
+              {/* Header & Controls */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100 dark:border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-500/20">
+                    <History className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-black text-slate-800 dark:text-[#F8FAFC] uppercase tracking-wider leading-none">
+                      My Recent Manual Calls
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+                      Real-time call logs and manual dial session history ({callHistory.length} total)
+                    </p>
+                  </div>
+                </div>
 
-              <div className="flex-1 overflow-y-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 dark:bg-[#172033] text-slate-500 dark:text-[#94A3B8] font-bold text-xs uppercase tracking-wider sticky top-0 border-b border-slate-200 dark:border-white/10">
+                <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-initial">
+                    <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search phone or outcome..."
+                      value={historySearchQuery}
+                      onChange={(e) => setHistorySearchQuery(e.target.value)}
+                      className="h-9 pl-9 pr-3 text-xs rounded-xl bg-slate-50 dark:bg-[#0B1220] border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#2563EB] w-full sm:w-56"
+                    />
+                    {historySearchQuery && (
+                      <button onClick={() => setHistorySearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        <XCircle className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={fetchCallHistory}
+                    disabled={isLoadingHistory}
+                    className="h-9 px-3.5 rounded-xl bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-white/20 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isLoadingHistory ? "animate-spin" : ""}`} />
+                    <span className="hidden sm:inline">Refresh</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Table Container */}
+              <div className="flex-1 overflow-y-auto softphone-scrollbar">
+                {/* Error state */}
+                {historyError && (
+                  <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-semibold flex items-center justify-between my-2">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      <span>{historyError}</span>
+                    </div>
+                    <button onClick={fetchCallHistory} className="underline hover:text-rose-900 cursor-pointer">
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                <table className="w-full text-left text-sm border-separate border-spacing-y-1.5">
+                  <thead className="bg-slate-50 dark:bg-[#172033] text-slate-500 dark:text-[#94A3B8] font-bold text-xs uppercase tracking-wider sticky top-0 border-b border-slate-200 dark:border-white/10 z-10">
                     <tr>
                       <th className="px-4 py-3 rounded-l-xl">Phone</th>
                       <th className="px-4 py-3">Outcome</th>
@@ -1476,12 +1657,76 @@ export default function Dialer() {
                       <th className="px-4 py-3 rounded-r-xl">Time</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-white/10">
-                    <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-slate-400 dark:text-[#64748B] font-medium">
-                        No recent manual calls found.
-                      </td>
-                    </tr>
+                  <tbody>
+                    {/* Loading Skeleton */}
+                    {isLoadingHistory && (
+                      [1, 2, 3, 4].map((i) => (
+                        <tr key={i} className="animate-pulse bg-slate-50/60 dark:bg-slate-900/40 rounded-xl">
+                          <td className="px-4 py-3.5"><div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded-md" /></td>
+                          <td className="px-4 py-3.5"><div className="h-5 w-24 bg-slate-200 dark:bg-slate-700 rounded-full" /></td>
+                          <td className="px-4 py-3.5"><div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded-md" /></td>
+                          <td className="px-4 py-3.5"><div className="h-4 w-28 bg-slate-200 dark:bg-slate-700 rounded-md" /></td>
+                        </tr>
+                      ))
+                    )}
+
+                    {/* Real Call Records */}
+                    {!isLoadingHistory && filteredCallHistory.map((item) => {
+                      const rawPhone = item.phone || item.phone_number || "";
+                      const displayPhone = rawPhone || item.lead_name || "Unknown";
+                      const callDate = item.started_at || item.created_at || item.ended_at;
+
+                      return (
+                        <tr
+                          key={item.id || item._id}
+                          className="bg-slate-50/70 dark:bg-[#172033]/60 border border-slate-200/80 dark:border-white/10 hover:bg-white dark:hover:bg-[#1F2937] hover:border-blue-300 dark:hover:border-blue-500/40 transition-all rounded-xl shadow-2xs group"
+                        >
+                          <td className="px-4 py-3 rounded-l-xl font-mono font-bold text-xs text-slate-900 dark:text-[#F9FAFB]">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-500/20 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center shrink-0">
+                                <PhoneCall className="h-3.5 w-3.5" />
+                              </div>
+                              <div>
+                                <div className="font-mono text-xs">{displayPhone}</div>
+                                {item.lead_name && item.lead_name !== displayPhone && (
+                                  <div className="text-[10px] text-slate-400 font-sans font-medium">{item.lead_name}</div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {renderOutcomeBadge(item.outcome || item.status)}
+                          </td>
+                          <td className="px-4 py-3 text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
+                            {formatDuration(item.duration_seconds || item.duration)}
+                          </td>
+                          <td className="px-4 py-3 rounded-r-xl text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {formatCallTime(callDate)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Empty state */}
+                    {!isLoadingHistory && filteredCallHistory.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-12 text-center text-slate-400 dark:text-[#64748B] font-medium">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="h-12 w-12 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-400">
+                              <History className="h-6 w-6" />
+                            </div>
+                            <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                              {historySearchQuery ? "No matching manual calls found" : "No recent manual calls found"}
+                            </p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 max-w-xs">
+                              {historySearchQuery
+                                ? `No call logs match "${historySearchQuery}". Try clearing your search query.`
+                                : "Outbound manual calls placed from this dialer will automatically populate here."}
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

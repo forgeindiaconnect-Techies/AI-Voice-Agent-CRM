@@ -292,6 +292,17 @@ async def list_calls(user: dict = Depends(get_current_user), pool_id: str | None
         
     calls = []
     async for c in calls_col.find(query).sort("started_at", -1).limit(500):
+        if not c.get("phone") and c.get("lead_id"):
+            lead_id_val = str(c.get("lead_id"))
+            lead = None
+            if ObjectId.is_valid(lead_id_val):
+                lead = await leads_col.find_one({"_id": ObjectId(lead_id_val)})
+            if not lead:
+                lead = await leads_col.find_one({"lead_id": lead_id_val}) or await leads_col.find_one({"phone": lead_id_val})
+            if lead:
+                c["phone"] = lead.get("phone", "")
+                c["lead_name"] = lead.get("name", "")
+
         calls.append(oid_str(c))
     return calls
 
