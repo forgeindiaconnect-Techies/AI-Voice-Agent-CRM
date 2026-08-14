@@ -398,33 +398,59 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
 
 
 @router.post("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.patch("/assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.post("/bulk-assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.patch("/bulk-assign", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_user)):
-    lead_object_ids = [ObjectId(i) for i in payload.lead_ids if ObjectId.is_valid(i)]
-    
-    agent = await users_col.find_one({"_id": ObjectId(payload.agent_id)}) if ObjectId.is_valid(payload.agent_id) else None
-    supervisor_id = agent.get("supervisor_id") if agent else None
+    lead_ids = payload.lead_ids or []
+    if not lead_ids:
+        return {"assigned_count": 0}
 
-    result = await leads_col.update_many(
-        {"_id": {"$in": lead_object_ids}},
-        {
-            "$set": {
-                "assigned_agent_id": payload.agent_id,
-                "supervisor_id": supervisor_id,
-                "assigned_at": utcnow()
-            }
-        },
-    )
+    target_agent_id = (payload.agent_id or payload.assigned_agent_id or "").strip()
+
+    or_conditions = []
+    oid_list = [ObjectId(i) for i in lead_ids if ObjectId.is_valid(i)]
+    if oid_list:
+        or_conditions.append({"_id": {"$in": oid_list}})
+    or_conditions.append({"_id": {"$in": lead_ids}})
+    or_conditions.append({"lead_id": {"$in": lead_ids}})
+    or_conditions.append({"id": {"$in": lead_ids}})
+
+    db_query = {"$or": or_conditions}
+
+    supervisor_id = payload.supervisor_id
+    agent_name = None
+    if target_agent_id:
+        agent_oid = ObjectId(target_agent_id) if ObjectId.is_valid(target_agent_id) else None
+        agent = await users_col.find_one({"_id": agent_oid}) if agent_oid else await users_col.find_one({"id": target_agent_id})
+        if agent:
+            supervisor_id = supervisor_id or agent.get("supervisor_id")
+            agent_name = agent.get("name")
+
+    update_doc = {
+        "assigned_agent_id": target_agent_id or None,
+        "agent_id": target_agent_id or None,
+        "agent_name": agent_name,
+        "assigned_at": utcnow(),
+        "updated_at": utcnow()
+    }
+    if supervisor_id:
+        update_doc["supervisor_id"] = supervisor_id
+    if payload.pool_id:
+        update_doc["pool_id"] = payload.pool_id
+
+    result = await leads_col.update_many(db_query, {"$set": update_doc})
 
     await audit_logs_col.insert_one({
         "action": "assign_leads",
         "user_id": _uid(user),
-        "agent_id": payload.agent_id,
+        "agent_id": target_agent_id,
         "count": result.modified_count,
         "timestamp": utcnow()
     })
 
     await ws_manager.broadcast("global", {"event": "leads_updated"})
-    return {"assigned_count": result.modified_count}
+    return {"status": "success", "assigned_count": result.modified_count}
 
 
 @router.post("/bulk-status", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])

@@ -172,7 +172,10 @@ class LeadCreate(BaseModel):
 
 class LeadAssign(BaseModel):
     lead_ids: list[str]
-    agent_id: str
+    agent_id: Optional[str] = None
+    assigned_agent_id: Optional[str] = None
+    supervisor_id: Optional[str] = None
+    pool_id: Optional[str] = None
 
 
 class DispositionUpdate(BaseModel):
