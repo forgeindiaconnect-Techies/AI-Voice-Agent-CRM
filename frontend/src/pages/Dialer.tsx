@@ -199,8 +199,9 @@ export default function Dialer() {
   const fetchLeads = useCallback(async () => {
     setIsLoadingLeads(true);
     try {
-      const res = await api.get("/api/leads");
-      setLeads(Array.isArray(res) ? res : []);
+      const res = await api.get("/api/leads?paginate=false");
+      const list = Array.isArray(res) ? res : (res?.items || res?.leads || []);
+      setLeads(list);
     } catch (err: any) {
       console.error("[Dialer] fetchLeads error:", err);
     } finally {
@@ -422,7 +423,9 @@ export default function Dialer() {
     return leads.filter(l => {
       const matchSearch = (l.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (l.phone || "").includes(searchQuery);
-      const matchStatus = statusFilter === "All" || l.status === statusFilter;
+      const s = (l.status || "").toLowerCase();
+      const sf = statusFilter.toLowerCase();
+      const matchStatus = statusFilter === "All" || sf === "all" || s === sf || (sf === "pending" && (s === "new" || s === "pending" || s === "follow_up_required"));
       return matchSearch && matchStatus;
     });
   }, [leads, searchQuery, statusFilter]);
