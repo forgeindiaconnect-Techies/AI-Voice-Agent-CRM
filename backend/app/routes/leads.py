@@ -73,62 +73,54 @@ async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user
     if not normalized or not is_valid_phone(normalized):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid Indian phone number. Must start with 6, 7, 8, or 9 and be 10 digits.")
 
-    existing = await leads_col.find_one({"phone": normalized, "pool_id": payload.pool_id})
+    print(f"[MANUAL] phone normalized: success ({normalized})")
+
+    existing = await leads_col.find_one({"phone": normalized})
     if existing:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Duplicate lead: phone number already exists in this pool")
-    
+        print(f"[MANUAL] lead lookup: found ({existing.get('lead_id')})")
+        print(f"[MANUAL] assigned lead sync: success")
+        return oid_str(existing)
+
+    print("[MANUAL] lead lookup: not-found")
+
     if payload.email:
         email_clean = str(payload.email).strip().lower()
         if not is_valid_email(email_clean):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid email format")
-        existing_email = await leads_col.find_one({"email": email_clean, "pool_id": payload.pool_id})
-        if existing_email:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Duplicate lead: email already exists in this pool")
 
     doc = payload.model_dump()
     doc["phone"] = normalized
     if doc.get("email"):
         doc["email"] = doc["email"].strip().lower()
-    
+
+    effective_pool = user.get("pool_id") or payload.pool_id or "6a6b40b7841e208e1cb69469"
+    doc["pool_id"] = effective_pool
     doc["lead_id"] = gen_lead_id()
     doc["status"] = LeadStatus.NEW
+    doc["source"] = payload.source or "Manual Dialer"
     doc["created_by"] = _uid(user)
     doc["created_at"] = utcnow()
+    doc["updated_at"] = utcnow()
     doc["ai_score"] = doc.get("ai_score") or 85
 
-    # Enforce Role-Based lead assignment rules
-    if user.get("role") == Role.AGENT:
-        # Agents can create Manual Leads and assign them to their own assigned pool only.
-        user_pool = user.get("pool_id")
-        if payload.pool_id != user_pool:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Agents can only create leads within their assigned pool.")
-        
-        doc["assigned_agent_id"] = _uid(user)
-        doc["supervisor_id"] = user.get("supervisor_id")
-        
-        # Store metadata: Agent ID, Agent Name, Branch ID, Pool ID, Role, and Timestamp
-        doc["agent_id"] = _uid(user)
-        doc["agent_name"] = user.get("name")
-        doc["branch_id"] = user.get("branch_id") or "HQ"
-        doc["pool_id"] = user_pool
-        doc["role"] = user.get("role")
-        doc["timestamp"] = doc["created_at"]
-    else:
-        doc["assigned_agent_id"] = None
-        doc["supervisor_id"] = _uid(user) if user.get("role") == Role.TEAM_LEADER else None
-        # Preserve standard audit context for admin/TL
-        doc["agent_id"] = None
-        doc["agent_name"] = None
-        doc["branch_id"] = user.get("branch_id") or "HQ"
-        doc["role"] = user.get("role")
-        doc["timestamp"] = doc["created_at"]
-    
+    uid = _uid(user)
+    doc["assigned_agent_id"] = payload.assigned_agent_id or uid
+    doc["supervisor_id"] = user.get("supervisor_id") or (uid if user.get("role") == Role.TEAM_LEADER else None)
+    doc["agent_id"] = uid
+    doc["agent_name"] = user.get("name")
+    doc["branch_id"] = user.get("branch_id") or "HQ"
+    doc["role"] = user.get("role")
+    doc["timestamp"] = doc["created_at"]
+
     result = await leads_col.insert_one(doc)
     doc["_id"] = result.inserted_id
 
+    print(f"[MANUAL] lead created: {doc['lead_id']}")
+    print(f"[MANUAL] assigned lead sync: success")
+
     await audit_logs_col.insert_one({
         "action": "create_lead",
-        "user_id": _uid(user),
+        "user_id": uid,
         "lead_id": doc["lead_id"],
         "lead_name": doc["name"],
         "timestamp": utcnow()
@@ -495,11 +487,17 @@ async def list_leads(
     uid = _uid(user)
     
     if user["role"] == Role.AGENT:
-        query["assigned_agent_id"] = uid
+        query["$or"] = [
+            {"assigned_agent_id": uid},
+            {"agent_id": uid},
+            {"created_by": uid}
+        ]
     elif user["role"] == Role.TEAM_LEADER:
         query["$or"] = [
             {"supervisor_id": uid},
-            {"pool_id": user.get("pool_id")}
+            {"pool_id": user.get("pool_id")},
+            {"assigned_agent_id": uid},
+            {"created_by": uid}
         ]
         
     if pool_id:

@@ -485,26 +485,10 @@ export default function Dialer() {
           pool_id: user?.pool_id || leads[0]?.pool_id || "6a6b40b7841e208e1cb69469",
           source: "Manual Dialer"
         });
-        fetchLeads();
         matchedLead = res;
+        fetchLeads();
       } catch (err: any) {
-        if (err.message?.includes("Duplicate") || err.message?.includes("already exists")) {
-          matchedLead = {
-            _id: "temp_" + Date.now(),
-            phone: fullPhoneNumber,
-            name: `Manual Lead - ${outboundPhone}`,
-            source: "Manual Dialer",
-            status: "new",
-            created_at: new Date().toISOString()
-          } as any;
-        } else {
-          showToast(err.message || "Failed to create lead", "error");
-          setCallStatus("idle");
-          setIsCreatingLead(false);
-          isDialingRef.current = false;
-          setIsDialing(false);
-          return;
-        }
+        console.warn("[Dialer] Lead lookup/creation notice:", err);
       }
     }
 
@@ -524,6 +508,8 @@ export default function Dialer() {
         setCallDuration(0);
         isDialingRef.current = false;
         setIsDialing(false);
+        fetchLeads();
+        fetchCallHistory();
         showToast("Vapi AI Voice Agent call initiated", "success");
         return;
       } catch (err: any) {

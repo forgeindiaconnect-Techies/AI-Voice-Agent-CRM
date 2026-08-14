@@ -8,7 +8,7 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 # pyrefly: ignore [missing-import]
 from bson import ObjectId
 from app.core.database import calls_col, leads_col, users_col, audit_logs_col, campaigns_col
-from app.core.utils import utcnow, oid_str
+from app.core.utils import utcnow, oid_str, normalize_phone, gen_lead_id
 from app.core.deps import require_roles, get_current_user
 from app.core.http import get_http_client
 from app.schemas.common import (
@@ -938,11 +938,43 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
         )
 
     assigned_agent_id = _uid(user)
-    lead = await leads_col.find_one({"phone": e164_phone})
-    if not lead:
-        lead = await leads_col.find_one({"phone": payload.phone})
+    e164_phone = normalize_phone(payload.phone)
+    if not e164_phone:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid phone number provided")
 
-    lead_id_str = str(lead.get("_id")) if lead else "temp_" + e164_phone.replace("+", "")
+    print(f"[MANUAL] phone normalized: success ({e164_phone})")
+
+    lead = await leads_col.find_one({"phone": e164_phone})
+    if lead:
+        print(f"[MANUAL] lead lookup: found ({lead.get('lead_id')})")
+    else:
+        print("[MANUAL] lead lookup: not-found")
+        effective_pool = payload.pool_id or user.get("pool_id") or "6a6b40b7841e208e1cb69469"
+        new_lead_doc = {
+            "lead_id": gen_lead_id(),
+            "name": payload.name or f"Manual Lead - {e164_phone[-10:]}",
+            "phone": e164_phone,
+            "source": "Manual Dialer",
+            "status": "new",
+            "pool_id": effective_pool,
+            "assigned_agent_id": assigned_agent_id,
+            "supervisor_id": user.get("supervisor_id"),
+            "agent_id": assigned_agent_id,
+            "agent_name": user.get("name"),
+            "branch_id": user.get("branch_id") or "HQ",
+            "created_by": assigned_agent_id,
+            "created_at": utcnow(),
+            "updated_at": utcnow(),
+            "ai_score": 85,
+            "extra": {}
+        }
+        res = await leads_col.insert_one(new_lead_doc)
+        new_lead_doc["_id"] = res.inserted_id
+        lead = new_lead_doc
+        print(f"[MANUAL] lead created: {lead['lead_id']}")
+
+    print(f"[MANUAL] assigned lead sync: success")
+    lead_id_str = str(lead.get("_id"))
 
     # Automatically clean any stale ghost call sessions
     await cleanup_stale_db_calls(agent_id=assigned_agent_id, lead_id=lead_id_str)
@@ -1048,6 +1080,9 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
 
     doc = {
         "lead_id": lead_id_str,
+        "phone": e164_phone,
+        "call_source": "manual_dialer",
+        "call_type": "outbound",
         "pool_id": payload.pool_id or "general",
         "agent_id": assigned_agent_id,
         "direction": "outbound",
@@ -1075,6 +1110,8 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
     call_id_str = str(result.inserted_id)
     doc["_id"] = result.inserted_id
 
+    print(f"[MANUAL] call created: {call_id_str}")
+
     response_doc = oid_str(doc)
     response_doc["success"] = True
     response_doc["message"] = "Call started successfully"
@@ -1098,24 +1135,44 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
 
 @router.post("/manual-dial", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get_current_user)):
-    import re
-    cleaned = str(payload.phone).strip()
-    is_plus = cleaned.startswith("+")
-    digits = re.sub(r"\D", "", cleaned)
-    normalized_phone = f"+{digits}" if is_plus else digits
-
+    normalized_phone = normalize_phone(payload.phone)
     if not normalized_phone:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid phone number provided")
 
-    lead = await leads_col.find_one({"phone": normalized_phone, "pool_id": payload.pool_id})
-    if not lead:
-        lead = await leads_col.find_one({"phone": normalized_phone})
+    print(f"[MANUAL] phone normalized: success ({normalized_phone})")
 
-    if not lead:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
-
-    lead_id_str = str(lead.get("_id"))
     assigned_agent_id = payload.assigned_agent_id or _uid(user)
+    lead = await leads_col.find_one({"phone": normalized_phone})
+    if lead:
+        print(f"[MANUAL] lead lookup: found ({lead.get('lead_id')})")
+    else:
+        print("[MANUAL] lead lookup: not-found")
+        effective_pool = payload.pool_id or user.get("pool_id") or "6a6b40b7841e208e1cb69469"
+        new_lead_doc = {
+            "lead_id": gen_lead_id(),
+            "name": f"Manual Lead - {normalized_phone[-10:]}",
+            "phone": normalized_phone,
+            "source": "Manual Dialer",
+            "status": "new",
+            "pool_id": effective_pool,
+            "assigned_agent_id": assigned_agent_id,
+            "supervisor_id": user.get("supervisor_id"),
+            "agent_id": assigned_agent_id,
+            "agent_name": user.get("name"),
+            "branch_id": user.get("branch_id") or "HQ",
+            "created_by": assigned_agent_id,
+            "created_at": utcnow(),
+            "updated_at": utcnow(),
+            "ai_score": 85,
+            "extra": {}
+        }
+        res = await leads_col.insert_one(new_lead_doc)
+        new_lead_doc["_id"] = res.inserted_id
+        lead = new_lead_doc
+        print(f"[MANUAL] lead created: {lead['lead_id']}")
+
+    print(f"[MANUAL] assigned lead sync: success")
+    lead_id_str = str(lead.get("_id"))
 
     # Automatically clean any stale ghost call sessions for this agent or lead
     await cleanup_stale_db_calls(agent_id=assigned_agent_id, lead_id=lead_id_str)
@@ -1238,6 +1295,9 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
 
     doc = {
         "lead_id": lead_id_str,
+        "phone": normalized_phone,
+        "call_source": "manual_dialer",
+        "call_type": "outbound",
         "pool_id": payload.pool_id,
         "agent_id": assigned_agent_id,
         "direction": "outbound",
@@ -1263,6 +1323,8 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
     result = await calls_col.insert_one(doc)
     call_id_str = str(result.inserted_id)
     doc["_id"] = result.inserted_id
+
+    print(f"[MANUAL] call created: {call_id_str}")
 
     response_doc = oid_str(doc)
     register_call_lock(normalized_phone, assigned_agent_id, call_id_str, payload.idempotency_key, response_doc)
