@@ -290,24 +290,51 @@ async def list_calls(user: dict = Depends(get_current_user), pool_id: str | None
     if status_filter:
         query["status"] = status_filter
         
-    calls = []
-    async for c in calls_col.find(query).sort("started_at", -1).limit(500):
+    calls_raw = await calls_col.find(query).sort("started_at", -1).limit(500).to_list(length=500)
+    
+    missing_lead_oids = []
+    missing_lead_str_ids = []
+    for c in calls_raw:
         if not c.get("phone") and c.get("lead_id"):
-            lead_id_val = str(c.get("lead_id"))
-            lead = None
-            if ObjectId.is_valid(lead_id_val):
-                lead = await leads_col.find_one({"_id": ObjectId(lead_id_val)})
-            if not lead:
-                lead = await leads_col.find_one({"lead_id": lead_id_val}) or await leads_col.find_one({"phone": lead_id_val})
+            lid = str(c.get("lead_id"))
+            if ObjectId.is_valid(lid):
+                missing_lead_oids.append(ObjectId(lid))
+            missing_lead_str_ids.append(lid)
+
+    lead_map = {}
+    if missing_lead_oids or missing_lead_str_ids:
+        or_conds = []
+        if missing_lead_oids:
+            or_conds.append({"_id": {"$in": missing_lead_oids}})
+        if missing_lead_str_ids:
+            or_conds.append({"lead_id": {"$in": missing_lead_str_ids}})
+            or_conds.append({"phone": {"$in": missing_lead_str_ids}})
+        
+        found_leads = await leads_col.find({"$or": or_conds}, {"_id": 1, "lead_id": 1, "phone": 1, "name": 1}).to_list(length=1000)
+        for ld in found_leads:
+            l_oid_str = str(ld["_id"])
+            l_custom_id = ld.get("lead_id")
+            l_phone = ld.get("phone")
+            
+            lead_map[l_oid_str] = ld
+            if l_custom_id: lead_map[l_custom_id] = ld
+            if l_phone: lead_map[l_phone] = ld
+
+    calls = []
+    for c in calls_raw:
+        if not c.get("phone") and c.get("lead_id"):
+            lid = str(c.get("lead_id"))
+            lead = lead_map.get(lid)
             if lead:
                 c["phone"] = lead.get("phone", "")
                 c["lead_name"] = lead.get("name", "")
-
         calls.append(oid_str(c))
     return calls
 
 
 @router.get("/live", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.get("/active", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.get("/live-calls", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def live_calls(pool_id: str | None = None, user: dict = Depends(get_current_user)):
     query = {"status": "live"}
     if pool_id:

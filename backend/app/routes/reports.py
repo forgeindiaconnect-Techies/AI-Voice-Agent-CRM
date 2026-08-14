@@ -256,12 +256,21 @@ async def agent_performance(pool_id: str | None = None, user: dict = Depends(get
 # ── Recent Activities ────────────────────────────────────────────────────────
 @router.get("/recent-activities", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
 async def recent_activities(user: dict = Depends(get_current_user)):
-    """Fetch the latest audit logs for dashboard view."""
+    """Fetch the latest audit logs for dashboard view (batch optimized with TTL cache)."""
     try:
         uid = user.get("id") or str(user["_id"])
+        role = user["role"]
+        cache_key = f"recent_act:{uid}:{role}"
+        now_ts = time_mod.monotonic()
+
+        if cache_key in _summary_cache:
+            cached_data, cached_at = _summary_cache[cache_key]
+            if now_ts - cached_at < 3.0:
+                return cached_data
+
         query = {}
-        if user["role"] == Role.TEAM_LEADER:
-            assigned_agents = await users_col.find({"supervisor_id": uid, "role": Role.AGENT}).to_list(length=1000)
+        if role == Role.TEAM_LEADER:
+            assigned_agents = await users_col.find({"supervisor_id": uid, "role": Role.AGENT}, {"_id": 1}).to_list(length=1000)
             agent_ids = [str(a["_id"]) for a in assigned_agents]
             query["$or"] = [
                 {"user_id": uid},
@@ -269,12 +278,27 @@ async def recent_activities(user: dict = Depends(get_current_user)):
                 {"user_id": {"$in": agent_ids}}
             ]
             
+        logs_raw = await audit_logs_col.find(query).sort("timestamp", -1).limit(20).to_list(length=20)
+        
+        actor_oids = []
+        for log in logs_raw:
+            user_id = log.get("user_id")
+            if user_id and isinstance(user_id, str) and ObjectId.is_valid(user_id):
+                actor_oids.append(ObjectId(user_id))
+                
+        user_map = {}
+        if actor_oids:
+            users_cursor = await users_col.find({"_id": {"$in": actor_oids}}, {"_id": 1, "name": 1}).to_list(length=len(actor_oids))
+            for u in users_cursor:
+                user_map[str(u["_id"])] = u.get("name", "System")
+
         logs = []
-        async for log in audit_logs_col.find(query).sort("timestamp", -1).limit(20):
-            actor_oid = _safe_objectid(log.get("user_id"))
-            actor = await users_col.find_one({"_id": actor_oid}) if actor_oid else None
-            log["actor_name"] = actor["name"] if actor else "System"
+        for log in logs_raw:
+            actor_id_str = str(log.get("user_id") or "")
+            log["actor_name"] = user_map.get(actor_id_str, "System")
             logs.append(oid_str(log))
+
+        _summary_cache[cache_key] = (logs, now_ts)
         return logs
 
     except HTTPException:

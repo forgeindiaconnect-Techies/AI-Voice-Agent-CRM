@@ -784,7 +784,7 @@ export default function LiveCalls() {
   const fetchLiveCalls = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await api.get("/api/live-calls");
+      const data = await api.get("/api/calls/live");
       setCalls(data);
     } catch (err: any) {
       showToast(err.message || "Failed to fetch live calls", "error");
