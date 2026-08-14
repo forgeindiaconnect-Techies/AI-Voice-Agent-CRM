@@ -422,10 +422,11 @@ async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_use
     agent_name = None
     if target_agent_id:
         agent_oid = ObjectId(target_agent_id) if ObjectId.is_valid(target_agent_id) else None
-        agent = await users_col.find_one({"_id": agent_oid}) if agent_oid else await users_col.find_one({"id": target_agent_id})
+        agent = await users_col.find_one({"_id": agent_oid}) if agent_oid else await users_col.find_one({"id": target_agent_id}) or await users_col.find_one({"employee_id": target_agent_id})
         if agent:
             supervisor_id = supervisor_id or agent.get("supervisor_id")
             agent_name = agent.get("name")
+            target_agent_id = str(agent.get("_id") or agent.get("id"))
 
     update_doc = {
         "assigned_agent_id": target_agent_id or None,
@@ -441,6 +442,15 @@ async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_use
 
     result = await leads_col.update_many(db_query, {"$set": update_doc})
 
+    updated_docs = await leads_col.find(db_query, {"_id": 1, "id": 1, "lead_id": 1}).to_list(length=2000)
+    updated_id_set = set()
+    for d in updated_docs:
+        updated_id_set.add(str(d["_id"]))
+        if d.get("id"): updated_id_set.add(str(d["id"]))
+        if d.get("lead_id"): updated_id_set.add(str(d["lead_id"]))
+
+    failed_lead_ids = [lid for lid in lead_ids if lid not in updated_id_set]
+
     await audit_logs_col.insert_one({
         "action": "assign_leads",
         "user_id": _uid(user),
@@ -450,7 +460,13 @@ async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_use
     })
 
     await ws_manager.broadcast("global", {"event": "leads_updated"})
-    return {"status": "success", "assigned_count": result.modified_count}
+    return {
+        "status": "success",
+        "assigned_count": result.modified_count,
+        "success_count": len(updated_docs),
+        "failed_count": len(failed_lead_ids),
+        "failed_lead_ids": failed_lead_ids
+    }
 
 
 @router.post("/bulk-status", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])

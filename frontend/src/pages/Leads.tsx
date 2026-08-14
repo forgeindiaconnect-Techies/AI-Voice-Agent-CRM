@@ -496,9 +496,15 @@ export default function Leads() {
     }
   };
 
+  const getLeadId = useCallback((l: any): string => {
+    if (!l) return "";
+    return String(l.id || l._id || l.lead_id || "");
+  }, []);
+
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [assignAgentId, setAssignAgentId] = useState("");
   const [bulkStatus, setBulkStatus] = useState("");
+  const [isBulkAssigning, setIsBulkAssigning] = useState(false);
 
   // Drawer Disposition State
   const [drawerStatus, setDrawerStatus] = useState("");
@@ -784,28 +790,45 @@ export default function Leads() {
 
   async function handleBulkAssignAgent() {
     if (selectedLeadIds.length === 0 || !assignAgentId) return;
-    const selectedAgentObj = users.find(u => u.id === assignAgentId || u.employee_id === assignAgentId);
+    if (isBulkAssigning) return;
+
+    const selectedAgentObj = users.find(u => u.id === assignAgentId || u.employee_id === assignAgentId || (u as any)._id === assignAgentId);
     const agentName = selectedAgentObj?.name || "Agent";
     const leadCount = selectedLeadIds.length;
 
+    setIsBulkAssigning(true);
+    showToast(`Assigning ${leadCount} lead${leadCount === 1 ? "" : "s"} to ${agentName}...`, "info");
+
     try {
-      await api.patch("/api/leads/bulk-assign", {
+      const res = await api.patch("/api/leads/bulk-assign", {
         lead_ids: selectedLeadIds,
         agent_id: assignAgentId
       });
-      showToast(`${leadCount} lead${leadCount === 1 ? "" : "s"} assigned successfully to ${agentName}.`, "success");
-      setSelectedLeadIds([]);
-      setAssignAgentId("");
-      setShowBulkMenu(false);
-      loadData();
+
+      const failedCount = res?.failed_count || 0;
+      const successCount = res?.success_count ?? res?.assigned_count ?? (leadCount - failedCount);
+
+      if (failedCount === 0) {
+        showToast(`${successCount} lead${successCount === 1 ? "" : "s"} assigned successfully to ${agentName}.`, "success");
+        setSelectedLeadIds([]);
+        setAssignAgentId("");
+        setShowBulkMenu(false);
+      } else {
+        const failedIds = res?.failed_lead_ids || [];
+        showToast(`${successCount} lead(s) assigned to ${agentName}. ${failedCount} lead(s) failed.`, "warning");
+        setSelectedLeadIds(failedIds);
+      }
+      await loadData();
     } catch (err: any) {
       showToast(err.message || "Bulk assignment failed.", "error");
+    } finally {
+      setIsBulkAssigning(false);
     }
   }
 
   async function handleAssignAgentInline(leadId: string, agentId: string) {
     const targetAgentId = agentId === "unassigned" ? "" : agentId;
-    const selectedAgentObj = users.find(u => u.id === targetAgentId || u.employee_id === targetAgentId);
+    const selectedAgentObj = users.find(u => u.id === targetAgentId || u.employee_id === targetAgentId || (u as any)._id === targetAgentId);
     const agentName = selectedAgentObj?.name || "Unassigned";
 
     try {
@@ -814,7 +837,7 @@ export default function Leads() {
         agent_id: targetAgentId
       });
       showToast(`Lead assigned successfully to ${agentName}.`, "success");
-      loadData();
+      await loadData();
     } catch (err: any) {
       showToast(err.message || "Failed to assign agent.", "error");
     }
@@ -840,6 +863,7 @@ export default function Leads() {
 
 
   const toggleSelectLead = (leadId: string) => {
+    if (!leadId) return;
     setSelectedLeadIds(prev =>
       prev.includes(leadId) ? prev.filter(id => id !== leadId) : [...prev, leadId]
     );
@@ -892,17 +916,20 @@ export default function Leads() {
   }, [filteredLeads, currentPage]);
 
   const allPaginatedSelected = useMemo(() => {
-    return paginatedLeads.length > 0 && paginatedLeads.every(l => selectedLeadIds.includes(l.id));
-  }, [paginatedLeads, selectedLeadIds]);
+    return paginatedLeads.length > 0 && paginatedLeads.every(l => {
+      const lid = getLeadId(l);
+      return lid ? selectedLeadIds.includes(lid) : false;
+    });
+  }, [paginatedLeads, selectedLeadIds, getLeadId]);
 
   const isIndeterminate = useMemo(() => {
-    const paginatedIds = paginatedLeads.map(l => l.id);
+    const paginatedIds = paginatedLeads.map(getLeadId).filter(Boolean);
     const selectedCountOnPage = paginatedIds.filter(id => selectedLeadIds.includes(id)).length;
     return selectedCountOnPage > 0 && selectedCountOnPage < paginatedLeads.length;
-  }, [paginatedLeads, selectedLeadIds]);
+  }, [paginatedLeads, selectedLeadIds, getLeadId]);
 
   const toggleSelectAll = () => {
-    const paginatedIds = paginatedLeads.map(l => l.id);
+    const paginatedIds = paginatedLeads.map(getLeadId).filter(Boolean);
     if (allPaginatedSelected) {
       setSelectedLeadIds(prev => prev.filter(id => !paginatedIds.includes(id)));
     } else {
@@ -1622,7 +1649,7 @@ export default function Leads() {
 
               <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
                 <CustomSelect
-                  disabled={selectedLeadIds.length === 0}
+                  disabled={selectedLeadIds.length === 0 || isBulkAssigning}
                   value={assignAgentId}
                   onChange={setAssignAgentId}
                   options={assignAgentOptions}
@@ -1632,12 +1659,16 @@ export default function Leads() {
                 />
 
                 <button
-                  disabled={selectedLeadIds.length === 0 || !assignAgentId}
+                  disabled={selectedLeadIds.length === 0 || !assignAgentId || isBulkAssigning}
                   onClick={handleBulkAssignAgent}
                   className="h-[52px] px-6 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white font-extrabold text-xs rounded-[14px] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-95 disabled:active:scale-100 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shrink-0"
                 >
-                  <UserCheck className="h-4 w-4" />
-                  <span>Bulk Assign</span>
+                  {isBulkAssigning ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-current" />
+                  ) : (
+                    <UserCheck className="h-4 w-4" />
+                  )}
+                  <span>{isBulkAssigning ? "Assigning..." : "Bulk Assign"}</span>
                 </button>
               </div>
             </motion.div>
@@ -1683,8 +1714,9 @@ export default function Leads() {
                     </tr>
                   ))
                 ) : paginatedLeads.map((l, idx) => {
-                  const isSelected = selectedLeadIds.includes(l.id) || (l.lead_id ? selectedLeadIds.includes(l.lead_id) : false);
-                  const assignedAgent = l.assigned_agent_id ? users.find(u => u.id === l.assigned_agent_id || u.employee_id === l.assigned_agent_id) : undefined;
+                  const leadIdKey = getLeadId(l);
+                  const isSelected = selectedLeadIds.includes(leadIdKey) || (l.id ? selectedLeadIds.includes(l.id) : false) || (l._id ? selectedLeadIds.includes(l._id) : false) || (l.lead_id ? selectedLeadIds.includes(l.lead_id) : false);
+                  const assignedAgent = l.assigned_agent_id ? users.find(u => u.id === l.assigned_agent_id || u.employee_id === l.assigned_agent_id || (u as any)._id === l.assigned_agent_id) : undefined;
                   const poolObj = pools.find(p => p.id === l.pool_id || p.name === l.pool_id);
 
                   // Map Pool Badge Colors
@@ -1703,8 +1735,8 @@ export default function Leads() {
 
                   return (
                     <tr
-                      key={l.id}
-                      onClick={() => toggleSelectLead(l.id)}
+                      key={leadIdKey || idx}
+                      onClick={() => toggleSelectLead(leadIdKey)}
                       className={`h-[86px] transition-all duration-250 cursor-pointer border-l-4 hover:translate-y-[-2px] hover:shadow-[0_4px_12px_rgba(37,99,235,0.08)] ${
                         idx % 2 === 0
                           ? "bg-white dark:bg-[#131C2F]"
@@ -1722,7 +1754,7 @@ export default function Leads() {
                           <div className="flex items-center justify-center">
                             <CustomCheckbox
                               checked={isSelected}
-                              onChange={() => toggleSelectLead(l.id)}
+                              onChange={() => toggleSelectLead(leadIdKey)}
                               size={22}
                             />
                           </div>
