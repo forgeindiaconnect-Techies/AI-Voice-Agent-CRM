@@ -150,6 +150,8 @@ export default function Dialer() {
   const [outcome, setOutcome] = useState("answered");
   const [notes, setNotes] = useState("");
   const [isSavingOutcome, setIsSavingOutcome] = useState(false);
+  const [isMuteLoading, setIsMuteLoading] = useState(false);
+  const [isHoldLoading, setIsHoldLoading] = useState(false);
   const [isHoldProcessing, setIsHoldProcessing] = useState(false);
 
   // INCOMING CALL STATE
@@ -716,48 +718,57 @@ export default function Dialer() {
     }
   }, [callStatus, currentCallId, callDuration]);
 
-  const handleToggleMute = useCallback(() => {
+  const handleMuteToggle = useCallback(async () => {
+    if (callStatus !== "connected" && callStatus !== "hold") {
+      showToast("Mute is only available during an active call", "warning");
+      return;
+    }
+    if (isMuteLoading) return;
+
     const nextMuted = !isMuted;
+    const targetAction = nextMuted ? "mute" : "unmute";
+
+    setIsMuteLoading(true);
     setIsMuted(nextMuted);
+
     if (callRef.current) {
       try {
         callRef.current.mute(nextMuted);
       } catch (err) {
-        console.warn("Local mute error:", err);
+        console.warn("Local mic mute error:", err);
       }
     }
-    showToast(nextMuted ? "Microphone Muted" : "Microphone Active", "info");
 
-    if (currentCallId) {
-      api.post(`/api/calls/${currentCallId}/manual-action`, {
-        action: nextMuted ? "mute" : "resume"
-      }).catch((err) => console.warn("Backend mute sync notice:", err));
+    try {
+      if (currentCallId) {
+        await api.post(`/api/calls/${currentCallId}/manual-action`, {
+          action: targetAction
+        });
+      }
+      showToast(nextMuted ? "Microphone Muted" : "Microphone Active", "info");
+    } catch (err: any) {
+      console.warn("Backend mute sync notice:", err);
+    } finally {
+      setIsMuteLoading(false);
     }
-  }, [isMuted, currentCallId]);
+  }, [isMuted, callStatus, currentCallId, isMuteLoading]);
 
-  const handleToggleHold = useCallback(async () => {
+  const handleHoldToggle = useCallback(async () => {
     if (callStatus !== "connected" && callStatus !== "hold") {
       showToast("Hold is only available during an active call", "warning");
       return;
     }
-    if (isHoldProcessing) return;
+    if (isHoldLoading || isHoldProcessing) return;
 
     const isCurrentlyHold = callStatus === "hold";
     const targetAction = isCurrentlyHold ? "resume" : "hold";
     const prevStatus = callStatus;
 
+    setIsHoldLoading(true);
     setIsHoldProcessing(true);
     showToast(isCurrentlyHold ? "Resuming call session..." : "Placing call on hold...", "info");
 
     try {
-      if (callRef.current) {
-        try {
-          callRef.current.mute(!isCurrentlyHold);
-        } catch (err) {
-          console.warn("Local telephony mute error:", err);
-        }
-      }
-
       if (currentCallId) {
         await api.post(`/api/calls/${currentCallId}/manual-action`, {
           action: targetAction
@@ -766,20 +777,19 @@ export default function Dialer() {
 
       const finalStatus = isCurrentlyHold ? "connected" : "hold";
       setCallStatus(finalStatus);
-      showToast(isCurrentlyHold ? "Call Resumed — Live audio restored" : "Call Placed on Hold — Audio muted", "success");
+      showToast(isCurrentlyHold ? "Call Resumed — Live audio restored" : "Call Placed on Hold", "success");
     } catch (err: any) {
       console.error("[Dialer] Hold/Resume error:", err);
       setCallStatus(prevStatus);
-      if (callRef.current) {
-        try {
-          callRef.current.mute(prevStatus === "hold");
-        } catch {}
-      }
       showToast(err.message || `Failed to ${targetAction} call session`, "error");
     } finally {
+      setIsHoldLoading(false);
       setIsHoldProcessing(false);
     }
-  }, [callStatus, currentCallId, isHoldProcessing]);
+  }, [callStatus, currentCallId, isHoldLoading, isHoldProcessing]);
+
+  const handleToggleMute = handleMuteToggle;
+  const handleToggleHold = handleHoldToggle;
 
   const handleToggleSpeaker = useCallback(() => {
     const nextSpeaker = !isSpeaker;
@@ -1302,28 +1312,39 @@ export default function Dialer() {
                     <div className="space-y-4 w-full">
                       <div className="grid grid-cols-4 gap-2.5">
                         <button
-                          onClick={handleToggleMute}
+                          onClick={handleMuteToggle}
+                          disabled={isMuteLoading}
                           className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
-                            isMuted
+                            isMuteLoading
+                              ? "bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-slate-500 border-slate-300 dark:border-white/10 cursor-not-allowed"
+                              : isMuted
                               ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white border-amber-400 shadow-md shadow-amber-500/25"
                               : "bg-blue-50/90 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#1D4ED8] dark:text-[#60A5FA] hover:bg-[#1D4ED8] hover:text-white dark:hover:bg-[#2563EB] hover:border-transparent"
                           }`}
                         >
-                          {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                          <span className="text-[10px] font-black uppercase tracking-wider">{isMuted ? "Muted" : "Mute"}</span>
+                          {isMuteLoading ? (
+                            <Loader2 className="h-5 w-5 animate-spin text-current" />
+                          ) : isMuted ? (
+                            <MicOff className="h-5 w-5" />
+                          ) : (
+                            <Mic className="h-5 w-5" />
+                          )}
+                          <span className="text-[10px] font-black uppercase tracking-wider">
+                            {isMuteLoading ? (isMuted ? "Unmuting..." : "Muting...") : isMuted ? "Muted" : "Mute"}
+                          </span>
                         </button>
                         <button
-                          onClick={handleToggleHold}
-                          disabled={isHoldProcessing}
+                          onClick={handleHoldToggle}
+                          disabled={isHoldLoading || isHoldProcessing}
                           className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 ${
-                            isHoldProcessing
+                            isHoldLoading || isHoldProcessing
                               ? "bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-slate-500 border-slate-300 dark:border-white/10 cursor-not-allowed"
                               : callStatus === "hold"
                               ? "bg-gradient-to-r from-[#F59E0B] to-[#D97706] text-white border-amber-400 shadow-md shadow-amber-500/25"
                               : "bg-blue-50/90 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-[#1D4ED8] dark:text-[#60A5FA] hover:bg-[#1D4ED8] hover:text-white dark:hover:bg-[#2563EB] hover:border-transparent"
                           }`}
                         >
-                          {isHoldProcessing ? (
+                          {isHoldLoading || isHoldProcessing ? (
                             <Loader2 className="h-5 w-5 animate-spin text-current" />
                           ) : callStatus === "hold" ? (
                             <Play className="h-5 w-5 fill-current" />
@@ -1331,7 +1352,7 @@ export default function Dialer() {
                             <CustomPauseIcon size={22} />
                           )}
                           <span className="text-[10px] font-black uppercase tracking-wider">
-                            {isHoldProcessing
+                            {isHoldLoading || isHoldProcessing
                               ? callStatus === "hold"
                                 ? "Resuming..."
                                 : "Holding..."

@@ -1360,14 +1360,17 @@ async def manual_call_action(call_id: str, payload: ManualCallActionPayload, use
         return {"status": "success", "action": action, "message": "Action updated for active session"}
 
     action = payload.action.lower()
-    if action not in ["mute", "hold", "resume"]:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid action. Must be mute, hold, or resume")
+    if action not in ["mute", "unmute", "hold", "resume"]:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid action. Must be mute, unmute, hold, or resume")
 
     update_fields = {}
     sip_msg = ""
     if action == "mute":
         update_fields["muted"] = True
         sip_msg = f"[{utcnow().isoformat()}] [SIP] Call muted by agent"
+    elif action == "unmute":
+        update_fields["muted"] = False
+        sip_msg = f"[{utcnow().isoformat()}] [SIP] Call unmuted by agent"
     elif action == "hold":
         update_fields["call_state"] = "hold"
         update_fields["status"] = "live"
@@ -1375,7 +1378,6 @@ async def manual_call_action(call_id: str, payload: ManualCallActionPayload, use
     elif action == "resume":
         update_fields["call_state"] = "active"
         update_fields["status"] = "live"
-        update_fields["muted"] = False
         sip_msg = f"[{utcnow().isoformat()}] [SIP] Call resumed (SIP INVITE with a=sendrecv)"
 
     await calls_col.update_one(

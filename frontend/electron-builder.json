@@ -28,6 +28,8 @@
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "Forge CRM"
-  }
+    "shortcutName": "Forge CRM",
+    "differentialPackage": false
+  },
+  "publish": null
 }

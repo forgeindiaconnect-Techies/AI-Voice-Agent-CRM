@@ -13,6 +13,10 @@ export default defineConfig(({ command }) => ({
             outDir: 'dist-electron',
             rollupOptions: {
               external: ['electron'],
+              onwarn(warning, warn) {
+                if (warning.code === 'UNKNOWN_OPTION' && warning.message?.includes('platform')) return;
+                warn(warning);
+              },
             },
           },
         },
@@ -27,6 +31,10 @@ export default defineConfig(({ command }) => ({
             outDir: 'dist-electron',
             rollupOptions: {
               external: ['electron'],
+              onwarn(warning, warn) {
+                if (warning.code === 'UNKNOWN_OPTION' && warning.message?.includes('platform')) return;
+                warn(warning);
+              },
             },
           },
         },
