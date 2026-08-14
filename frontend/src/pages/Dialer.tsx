@@ -152,6 +152,39 @@ export default function Dialer() {
   const [isSavingOutcome, setIsSavingOutcome] = useState(false);
   const [isHoldProcessing, setIsHoldProcessing] = useState(false);
 
+  // INCOMING CALL STATE
+  const [incomingCall, setIncomingCall] = useState<{ id: string; phone: string; name: string } | null>(null);
+
+  const handleSimulateInboundCall = () => {
+    const incId = `inc_${Date.now()}`;
+    const testPhone = "9876543210";
+    setIncomingCall({
+      id: incId,
+      phone: testPhone,
+      name: "Surya Prakash (Inbound)"
+    });
+    setCallStatus("ringing");
+    showToast("Incoming Call Received...", "info");
+  };
+
+  const handleAnswerIncomingCall = () => {
+    if (!incomingCall) return;
+    const phoneClean = sanitizeMobileNumber(incomingCall.phone);
+    setOutboundPhone(phoneClean);
+    setCurrentCallId(incomingCall.id);
+    setCallStatus("connected");
+    setCallDuration(0);
+    setActiveTab("outbound");
+    setIncomingCall(null);
+    showToast(`Incoming Call Answered — Connected with ${incomingCall.name || phoneClean}`, "success");
+  };
+
+  const handleDeclineIncomingCall = () => {
+    setIncomingCall(null);
+    setCallStatus("idle");
+    showToast("Incoming Call Declined", "info");
+  };
+
   // SUPERVISOR STATE
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
   const isSupervisor = user?.role === "admin" || user?.role === "team_leader";
@@ -261,6 +294,15 @@ export default function Dialer() {
             if (data.event === "call_ended") {
               setCallStatus("ended");
               fetchCallHistory();
+            }
+            if (data.event === "incoming_call" || data.event === "inbound_call") {
+              setIncomingCall({
+                id: data.call_id || `inc_${Date.now()}`,
+                phone: data.phone || "9876543210",
+                name: data.name || "Customer Lead"
+              });
+              setCallStatus("ringing");
+              showToast(`Incoming Call from ${data.phone || 'Customer'}`, "info");
             }
             if (data.event === "manual_call_action") {
               if (data.action === "hold") {
@@ -1581,8 +1623,12 @@ export default function Dialer() {
                 <p className="text-slate-500 dark:text-[#94A3B8] font-medium text-sm">You are currently available to receive incoming manual and AI transferred calls.</p>
                 <div className="mt-8 p-4 bg-slate-50 dark:bg-[#172033] rounded-2xl border border-slate-100 dark:border-white/10">
                   <p className="text-xs font-bold text-slate-400 dark:text-[#64748B] uppercase tracking-widest mb-2">Simulate Incoming Call</p>
-                  <button className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-extrabold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95 shadow-md">
-                    Test Inbound Call
+                  <button
+                    onClick={handleSimulateInboundCall}
+                    className="w-full bg-[#2563EB] hover:bg-blue-700 text-white font-extrabold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95 shadow-md flex items-center justify-center gap-2"
+                  >
+                    <PhoneCall className="h-4 w-4" />
+                    <span>Test Inbound Call</span>
                   </button>
                 </div>
               </div>
@@ -1800,6 +1846,47 @@ export default function Dialer() {
             onCall={(lead) => handleQuickCall(lead.phone)}
             showToast={showToast}
           />
+        )}
+
+        {/* ---------------- INCOMING CALL RINGING MODAL ---------------- */}
+        {incomingCall && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-[#111827] border border-blue-200 dark:border-white/10 rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl space-y-5 animate-scale-in">
+              <div className="h-20 w-20 bg-blue-500/10 border border-blue-500/30 rounded-full flex items-center justify-center mx-auto relative">
+                <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-25"></div>
+                <PhoneCall className="h-9 w-9 text-[#2563EB] dark:text-[#60A5FA]" />
+              </div>
+
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#2563EB] dark:text-[#60A5FA] bg-blue-50 dark:bg-blue-500/10 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-500/20 inline-block mb-2">
+                  Incoming Call Ringing
+                </span>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                  {incomingCall.name}
+                </h3>
+                <p className="text-sm font-mono font-bold text-slate-500 dark:text-slate-400 mt-1">
+                  +91 {incomingCall.phone}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  onClick={handleDeclineIncomingCall}
+                  className="py-3 px-4 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <PhoneOff className="h-4 w-4" />
+                  Decline
+                </button>
+                <button
+                  onClick={handleAnswerIncomingCall}
+                  className="py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Phone className="h-4 w-4 fill-current" />
+                  Answer Call
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         </AnimatePresence>
