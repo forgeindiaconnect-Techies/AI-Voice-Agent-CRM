@@ -10,6 +10,7 @@ from bson import ObjectId
 from app.core.database import calls_col, leads_col, users_col, audit_logs_col, campaigns_col
 from app.core.utils import utcnow, oid_str
 from app.core.deps import require_roles, get_current_user
+from app.core.http import get_http_client
 from app.schemas.common import (
     CallStart,
     CallEnd,
@@ -976,39 +977,39 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
     vapi_call_id = None
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            res = await client.post(vapi_endpoint, json=vapi_payload, headers=headers)
-            log.info(f"Vapi response status: {res.status_code}")
+        client = get_http_client()
+        res = await client.post(vapi_endpoint, json=vapi_payload, headers=headers, timeout=10.0)
+        log.info(f"Vapi response status: {res.status_code}")
 
-            if res.status_code in (200, 201):
-                res_data = res.json()
-                vapi_call_id = res_data.get("id")
-                log.info(f"Vapi call ID: {vapi_call_id}")
-            else:
-                release_call_lock(phone=e164_phone, agent_id=assigned_agent_id)
-                err_text = res.text
-                try:
-                    err_json = res.json()
-                    err_msg = err_json.get("message") or err_json.get("error") or err_text
-                    if isinstance(err_msg, list):
-                        err_msg = "; ".join([str(x) for x in err_msg])
-                except Exception:
-                    err_msg = err_text
+        if res.status_code in (200, 201):
+            res_data = res.json()
+            vapi_call_id = res_data.get("id")
+            log.info(f"Vapi call ID: {vapi_call_id}")
+        else:
+            release_call_lock(phone=e164_phone, agent_id=assigned_agent_id)
+            err_text = res.text
+            try:
+                err_json = res.json()
+                err_msg = err_json.get("message") or err_json.get("error") or err_text
+                if isinstance(err_msg, list):
+                    err_msg = "; ".join([str(x) for x in err_msg])
+            except Exception:
+                err_msg = err_text
 
-                log.error(
-                    f"[Vapi API Failure] Lead ID: {lead_id_str} | Phone: {mask_phone(e164_phone)} | "
-                    f"Vapi Status: {res.status_code} | Error: {err_msg}"
-                )
+            log.error(
+                f"[Vapi API Failure] Lead ID: {lead_id_str} | Phone: {mask_phone(e164_phone)} | "
+                f"Vapi Status: {res.status_code} | Error: {err_msg}"
+            )
 
-                return JSONResponse(
-                    status_code=res.status_code if res.status_code in (400, 401, 403, 404, 500) else status.HTTP_400_BAD_REQUEST,
-                    content={
-                        "success": False,
-                        "error": f"Vapi call creation failed ({res.status_code})",
-                        "status": res.status_code,
-                        "details": str(err_msg)
-                    }
-                )
+            return JSONResponse(
+                status_code=res.status_code if res.status_code in (400, 401, 403, 404, 500) else status.HTTP_400_BAD_REQUEST,
+                content={
+                    "success": False,
+                    "error": f"Vapi call creation failed ({res.status_code})",
+                    "status": res.status_code,
+                    "details": str(err_msg)
+                }
+            )
     except httpx.TimeoutException:
         release_call_lock(phone=e164_phone, agent_id=assigned_agent_id)
         log.error(f"[Vapi Timeout] Lead ID: {lead_id_str} | Phone: {mask_phone(e164_phone)} timed out after 15s")
@@ -1174,14 +1175,14 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
                     "Authorization": f"Bearer {vapi_api_key}",
                     "Content-Type": "application/json"
                 }
-                async with httpx.AsyncClient() as client:
-                    res = await client.post("https://api.vapi.ai/call", json=vapi_payload, headers=headers, timeout=10.0)
-                    if res.status_code in (200, 201):
-                        res_data = res.json()
-                        vapi_call_id = res_data.get("id")
-                        print(f"[Vapi] Call initiated successfully. Vapi Call ID: {vapi_call_id}")
-                    else:
-                        print(f"[Vapi] API Error: {res.status_code} - {res.text}")
+                client = get_http_client()
+                res = await client.post("https://api.vapi.ai/call", json=vapi_payload, headers=headers, timeout=10.0)
+                if res.status_code in (200, 201):
+                    res_data = res.json()
+                    vapi_call_id = res_data.get("id")
+                    print(f"[Vapi] Call initiated successfully. Vapi Call ID: {vapi_call_id}")
+                else:
+                    print(f"[Vapi] API Error: {res.status_code} - {res.text}")
             except Exception as vapi_err:
                 print(f"[Vapi] Exception calling Vapi API: {vapi_err}")
 

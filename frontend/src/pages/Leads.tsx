@@ -217,6 +217,9 @@ export default function Leads() {
 
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [totalLeadsCount, setTotalLeadsCount] = useState(0);
+  const [totalPagesCount, setTotalPagesCount] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
   const [poolFilter, setPoolFilter] = useState("");
   const [campaignFilter, setCampaignFilter] = useState("");
@@ -226,9 +229,17 @@ export default function Leads() {
   const [showAdvancedDrawer, setShowAdvancedDrawer] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Debounce search input to prevent API spam on every keystroke
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
   const statusCounts = useMemo(() => {
     return {
-      all: leads.length,
+      all: totalLeadsCount || leads.length,
       new: leads.filter(l => l.status === "new" || l.status === "New Lead").length,
       qualified: leads.filter(l => l.status === "qualified" || l.status === "Qualified").length,
       in_progress: leads.filter(l => l.status === "in_progress" || l.status === "In Progress").length,
@@ -236,7 +247,7 @@ export default function Leads() {
       not_interested: leads.filter(l => l.status === "not_interested" || l.status === "Not Interested").length,
       closed: leads.filter(l => l.status === "closed" || l.status === "Closed / Won").length
     };
-  }, [leads]);
+  }, [leads, totalLeadsCount]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -252,7 +263,7 @@ export default function Leads() {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 25;
 
   // Drawer & Modals
   const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
@@ -516,42 +527,44 @@ export default function Leads() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const queryParams = [];
-      if (poolFilter) queryParams.push(`pool_id=${poolFilter}`);
-      if (statusFilter) queryParams.push(`status_filter=${statusFilter}`);
-      const queryString = queryParams.length ? `?${queryParams.join("&")}` : "";
+      const queryParams = [`page=${currentPage}`, `limit=25`];
+      if (poolFilter) queryParams.push(`pool_id=${encodeURIComponent(poolFilter)}`);
+      if (statusFilter) queryParams.push(`status_filter=${encodeURIComponent(statusFilter)}`);
+      if (campaignFilter) queryParams.push(`campaign_id=${encodeURIComponent(campaignFilter)}`);
+      if (agentFilter) queryParams.push(`agent_id=${encodeURIComponent(agentFilter)}`);
+      if (debouncedSearchQuery.trim()) queryParams.push(`search=${encodeURIComponent(debouncedSearchQuery.trim())}`);
+      
+      const queryString = `?${queryParams.join("&")}`;
 
-      const leadsData = await api.get(`/api/leads${queryString}`);
-      const validLeads = Array.isArray(leadsData) ? leadsData : [];
-      setLeads(validLeads);
+      const [leadsRes, poolsData, campaignsData, usersData] = await Promise.all([
+        api.get(`/api/leads${queryString}`),
+        api.get("/api/pools").catch(() => []),
+        api.get("/api/campaigns").catch(() => []),
+        api.get("/api/users").catch(() => [])
+      ]);
 
-      try {
-        const poolsData = await api.get("/api/pools");
-        setPools(Array.isArray(poolsData) ? poolsData : []);
-      } catch {
-        setPools([]);
+      if (Array.isArray(leadsRes)) {
+        setLeads(leadsRes);
+        setTotalLeadsCount(leadsRes.length);
+        setTotalPagesCount(1);
+      } else if (leadsRes && typeof leadsRes === "object") {
+        setLeads(leadsRes.items || []);
+        setTotalLeadsCount(leadsRes.total || 0);
+        setTotalPagesCount(leadsRes.totalPages || 1);
+      } else {
+        setLeads([]);
       }
 
-      try {
-        const campaignsData = await api.get("/api/campaigns");
-        setCampaigns(Array.isArray(campaignsData) ? campaignsData : []);
-      } catch {
-        setCampaigns([]);
-      }
-
-      try {
-        const usersData = await api.get("/api/users");
-        setUsers(Array.isArray(usersData) ? usersData : []);
-      } catch {
-        setUsers([]);
-      }
+      setPools(Array.isArray(poolsData) ? poolsData : []);
+      setCampaigns(Array.isArray(campaignsData) ? campaignsData : []);
+      setUsers(Array.isArray(usersData) ? usersData : []);
     } catch (err: any) {
       console.error("[Leads] Failed to load data:", err);
       setLeads([]);
     } finally {
       setLoading(false);
     }
-  }, [poolFilter, statusFilter]);
+  }, [poolFilter, statusFilter, campaignFilter, agentFilter, debouncedSearchQuery, currentPage]);
 
   useEffect(() => {
     loadData();

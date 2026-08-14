@@ -41,8 +41,8 @@ async def create_user(payload: UserCreate, admin_user: dict = Depends(get_curren
         logger.warning(f"[CREATE USER] Validation failed: Password too short for {email}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 6 characters long.")
 
-    # 2. Duplicate Check: Email (case-insensitive)
-    existing_email = await users_col.find_one({"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}})
+    # 2. Duplicate Check: Email (indexed exact match)
+    existing_email = await users_col.find_one({"email": email})
     if existing_email:
         logger.warning(f"[CREATE USER] Duplicate email attempt: '{email}'")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Email '{email}' is already registered.")

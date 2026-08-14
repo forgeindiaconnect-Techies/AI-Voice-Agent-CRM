@@ -1,4 +1,6 @@
 import io
+import time as time_mod
+import asyncio
 import logging
 from datetime import datetime, time, timedelta, timezone
 
@@ -6,7 +8,6 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-import pandas as pd
 
 from app.core.database import (
     calls_col, leads_col, users_col, campaigns_col,
@@ -20,6 +21,10 @@ from app.schemas.common import Role
 logger = logging.getLogger("uvicorn.error")
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+# ── Lightweight In-Memory TTL Cache for Dashboard Summary ─────────────────────
+_summary_cache = {}
+_SUMMARY_CACHE_TTL = 5.0  # 5 seconds TTL
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -36,10 +41,18 @@ def _safe_objectid(value: str | None) -> ObjectId | None:
 # ── Summary ──────────────────────────────────────────────────────────────────
 @router.get("/summary")
 async def summary(user: dict = Depends(get_current_user), pool_id: str | None = None):
-    """Aggregate all CRM metrics for the Admin and Supervisor dashboards."""
+    """Aggregate all CRM metrics for the Admin and Supervisor dashboards concurrently."""
     try:
         uid = user.get("id") or str(user["_id"])
         role = user["role"]
+        cache_key = f"{uid}:{role}:{pool_id or ''}"
+        now_ts = time_mod.monotonic()
+
+        # Return cached result if valid
+        if cache_key in _summary_cache:
+            cached_data, cached_at = _summary_cache[cache_key]
+            if now_ts - cached_at < _SUMMARY_CACHE_TTL:
+                return cached_data
 
         # Default queries setup
         call_query = {"pool_id": pool_id} if pool_id else {}
@@ -49,7 +62,7 @@ async def summary(user: dict = Depends(get_current_user), pool_id: str | None = 
 
         # Scoping by role: Supervisor (TEAM_LEADER) can access only their assigned data
         if role == Role.TEAM_LEADER:
-            assigned_agents = await users_col.find({"supervisor_id": uid, "role": Role.AGENT}).to_list(length=1000)
+            assigned_agents = await users_col.find({"supervisor_id": uid, "role": Role.AGENT}, {"_id": 1}).to_list(length=1000)
             agent_ids = [str(a["_id"]) for a in assigned_agents]
             
             call_query["agent_id"] = {"$in": agent_ids}
@@ -57,7 +70,6 @@ async def summary(user: dict = Depends(get_current_user), pool_id: str | None = 
             campaign_query["supervisor_id"] = uid
             user_query["supervisor_id"] = uid
             
-            # Fallback to supervisor's pool if no pool filter is explicitly selected
             if not pool_id and user.get("pool_id"):
                 pool_id = user.get("pool_id")
                 call_query["pool_id"] = pool_id
@@ -73,72 +85,72 @@ async def summary(user: dict = Depends(get_current_user), pool_id: str | None = 
                 campaign_query["_id"] = None
             user_query["_id"] = ObjectId(uid)
 
-        # Total Counts
-        total_pools = await pools_col.count_documents({"is_deleted": {"$ne": True}})
-        total_campaigns = await campaigns_col.count_documents(campaign_query)
-        total_leads = await leads_col.count_documents(lead_query)
-
-        # User Roles counts
-        total_supervisors = 1 if role == Role.TEAM_LEADER else await users_col.count_documents({**user_query, "role": Role.TEAM_LEADER})
-        total_agents = await users_col.count_documents({**user_query, "role": Role.AGENT})
-        active_agents = await users_col.count_documents({**user_query, "role": Role.AGENT, "status": {"$in": ["online", "busy", "break", "active"]}})
-
-        # Call Outcomes
-        total_calls = await calls_col.count_documents(call_query)
-        answered = await calls_col.count_documents({**call_query, "outcome": "answered"})
-        missed = await calls_col.count_documents({**call_query, "outcome": "missed"})
-        transferred = await calls_col.count_documents({**call_query, "outcome": "transferred"})
-
-        # Lead Conversions
-        qualified = await leads_col.count_documents({**lead_query, "status": "qualified"})
-        not_interested = await leads_col.count_documents({**lead_query, "status": "not_interested"})
-
-        # Today's metrics (UTC midnight to now)
         now = utcnow()
         today_start = datetime.combine(now.date(), time.min, tzinfo=timezone.utc)
         today_end = datetime.combine(now.date(), time.max, tzinfo=timezone.utc)
         
         today_query = {"started_at": {"$gte": today_start}, **call_query}
-        today_calls = await calls_col.count_documents(today_query)
-
-        # Today's Followups
         today_followup_query = {
             "status": "follow_up",
             "follow_up_at": {"$gte": today_start, "$lte": today_end},
             **lead_query
         }
-        today_followups = await leads_col.count_documents(today_followup_query)
-
-        # Today's Conversions
-        today_conversions = qualified
-
-        # Today's Imports
         today_import_query = {"created_at": {"$gte": today_start}}
         if role == Role.TEAM_LEADER:
             today_import_query["created_by"] = uid
         elif pool_id:
             today_import_query["pool_id"] = pool_id
-        
+
+        # Run independent queries concurrently in parallel using asyncio.gather
+        (
+            total_pools,
+            total_campaigns,
+            total_leads,
+            total_supervisors,
+            total_agents,
+            active_agents,
+            total_calls,
+            answered,
+            missed,
+            transferred,
+            qualified,
+            not_interested,
+            today_calls,
+            today_followups,
+            active_calls,
+            ai_calls,
+            queue_count,
+            db_ok
+        ) = await asyncio.gather(
+            pools_col.count_documents({"is_deleted": {"$ne": True}}),
+            campaigns_col.count_documents(campaign_query),
+            leads_col.count_documents(lead_query),
+            asyncio.sleep(0, result=1) if role == Role.TEAM_LEADER else users_col.count_documents({**user_query, "role": Role.TEAM_LEADER}),
+            users_col.count_documents({**user_query, "role": Role.AGENT}),
+            users_col.count_documents({**user_query, "role": Role.AGENT, "status": {"$in": ["online", "busy", "break", "active"]}}),
+            calls_col.count_documents(call_query),
+            calls_col.count_documents({**call_query, "outcome": "answered"}),
+            calls_col.count_documents({**call_query, "outcome": "missed"}),
+            calls_col.count_documents({**call_query, "outcome": "transferred"}),
+            leads_col.count_documents({**lead_query, "status": "qualified"}),
+            leads_col.count_documents({**lead_query, "status": "not_interested"}),
+            calls_col.count_documents(today_query),
+            leads_col.count_documents(today_followup_query),
+            calls_col.count_documents({**call_query, "status": "live"}),
+            calls_col.count_documents({**call_query, "status": "live", "is_ai": True}),
+            leads_col.count_documents({**lead_query, "status": "new"}),
+            check_db_connection()
+        )
+
         today_imports = 0
-        async for imp in imports_col.find(today_import_query):
+        async for imp in imports_col.find(today_import_query, {"inserted": 1}):
             today_imports += imp.get("inserted", 0)
 
-        # Active Calls & AI Status
-        active_calls = await calls_col.count_documents({**call_query, "status": "live"})
-        ai_calls = await calls_col.count_documents({**call_query, "status": "live", "is_ai": True})
-
-        # Rates
         success_rate = round((answered / total_calls) * 100, 2) if total_calls else 0.0
         conversion_rate = round((qualified / total_leads) * 100, 2) if total_leads else 0.0
         team_performance = success_rate if role == Role.TEAM_LEADER else 0.0
 
-        # Queue Status: leads in pool with status "new"
-        queue_count = await leads_col.count_documents({**lead_query, "status": "new"})
-
-        # System Health
-        db_ok = await check_db_connection()
-
-        return {
+        res_payload = {
             "total_pools": total_pools,
             "total_supervisors": total_supervisors,
             "total_agents": total_agents,
@@ -157,7 +169,7 @@ async def summary(user: dict = Depends(get_current_user), pool_id: str | None = 
             "success_rate": success_rate,
             "conversion_rate": conversion_rate,
             "today_followups": today_followups,
-            "today_conversions": today_conversions,
+            "today_conversions": qualified,
             "team_performance": team_performance,
             "queue_status": {
                 "waiting_leads": queue_count,
@@ -172,6 +184,9 @@ async def summary(user: dict = Depends(get_current_user), pool_id: str | None = 
                 "api": "healthy"
             }
         }
+
+        _summary_cache[cache_key] = (res_payload, now_ts)
+        return res_payload
 
     except HTTPException:
         raise

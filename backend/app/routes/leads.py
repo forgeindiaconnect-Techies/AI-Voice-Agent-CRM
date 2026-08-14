@@ -1,9 +1,9 @@
 import io
+import math
 import re
-import pandas as pd
 from typing import Optional
 # pyrefly: ignore [missing-import]
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, status
 # pyrefly: ignore [missing-import]
 from bson import ObjectId
 # pyrefly: ignore [missing-import]
@@ -155,6 +155,7 @@ async def upload_preview(file: UploadFile = File(...)):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "The uploaded file is empty. Please select a valid CSV file with data.")
 
     try:
+        import pandas as pd
         if filename_lower.endswith(".csv"):
             df = pd.read_csv(io.BytesIO(content), dtype=str)
         else:
@@ -474,8 +475,17 @@ async def bulk_status_leads(payload: LeadBulkStatus, user: dict = Depends(get_cu
     return {"updated_count": result.modified_count}
 
 @router.get("")
-async def list_leads(user: dict = Depends(get_current_user), pool_id: str | None = None,
-                      status_filter: str | None = None):
+async def list_leads(
+    user: dict = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    limit: int = Query(25, ge=1, le=100),
+    search: str | None = None,
+    pool_id: str | None = None,
+    status_filter: str | None = None,
+    campaign_id: str | None = None,
+    agent_id: str | None = None,
+    paginate: bool = Query(True)
+):
     query = {}
     uid = _uid(user)
     
@@ -491,11 +501,52 @@ async def list_leads(user: dict = Depends(get_current_user), pool_id: str | None
         query["pool_id"] = pool_id
     if status_filter:
         query["status"] = status_filter
-        
+    if campaign_id:
+        query["campaign_id"] = campaign_id
+    if agent_id:
+        query["assigned_agent_id"] = agent_id
+
+    if search and search.strip():
+        search_term = search.strip()
+        regex_query = {"$regex": re.escape(search_term), "$options": "i"}
+        search_conditions = [
+            {"name": regex_query},
+            {"phone": regex_query},
+            {"email": regex_query},
+            {"lead_id": regex_query}
+        ]
+        if "$or" in query:
+            query = {"$and": [query, {"$or": search_conditions}]}
+        else:
+            query["$or"] = search_conditions
+
+    total = await leads_col.count_documents(query)
+    skip = (page - 1) * limit
+    total_pages = math.ceil(total / limit) if total > 0 else 1
+
     leads = []
-    async for l in leads_col.find(query).sort("created_at", -1).limit(500):
+    projection = {
+        "name": 1, "phone": 1, "email": 1, "status": 1,
+        "lead_id": 1, "pool_id": 1, "campaign_id": 1, "assigned_agent_id": 1,
+        "location": 1, "language": 1, "created_at": 1, "last_note": 1,
+        "sub_disposition": 1, "ai_score": 1
+    }
+
+    if not paginate:
+        async for l in leads_col.find(query, projection).sort("created_at", -1).limit(200):
+            leads.append(oid_str(l))
+        return leads
+
+    async for l in leads_col.find(query, projection).sort("created_at", -1).skip(skip).limit(limit):
         leads.append(oid_str(l))
-    return leads
+
+    return {
+        "items": leads,
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "totalPages": total_pages
+    }
 
 
 @router.get("/imports", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])

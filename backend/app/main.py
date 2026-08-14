@@ -8,8 +8,10 @@ from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 # pyrefly: ignore [missing-import]
 from fastapi.responses import JSONResponse, Response
+from fastapi.middleware.gzip import GZipMiddleware
 from app.core.config import settings
 from app.core.database import init_indexes, check_db_connection
+from app.core.http import get_http_client, close_http_client
 from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws, ai_agents
 
 # ── Logging ──────────────────────────────────────────────────────────────────
@@ -22,6 +24,9 @@ app = FastAPI(
                 "leave management and reporting backed by local MongoDB.",
     version="0.1.0",
 )
+
+# Enable GZip compression for payloads >= 1000 bytes
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 # IMPORTANT: allow_origins=["*"] + allow_credentials=True is spec-invalid.
@@ -51,23 +56,21 @@ app.add_middleware(
 )
 
 
-# ── Request / Response Logging Middleware ────────────────────────────────────
+# ── Request / Response Performance Timing Middleware ─────────────────────────
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.perf_counter()
     method = request.method
     path = request.url.path
-    client = request.client.host if request.client else "unknown"
 
     try:
         response = await call_next(request)
     except Exception:
-        # Log and re-raise so the global handler catches it
-        logger.error(f"[{method}] {path} — unhandled exception during request processing")
+        logger.error(f"[PERF] [{method}] {path} — Unhandled exception during request processing")
         raise
 
     elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
-    logger.info(f"[{method}] {path} → {response.status_code} ({elapsed_ms}ms) from {client}")
+    logger.info(f"[PERF] {method} {path} → {response.status_code} → {elapsed_ms}ms")
     return response
 
 
@@ -102,15 +105,21 @@ app.include_router(ai_agents.router)
 # ── Startup ──────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def on_startup():
+    get_http_client()
     db_ok = await check_db_connection()
     if db_ok:
         await init_indexes()
-        logger.info("Local MongoDB connected and indexes initialized.")
+        logger.info("[PERF] MongoDB connected and indexes initialized.")
     else:
         logger.warning(
-            "Local MongoDB is not accessible during startup. "
-            "Make sure local MongoDB is running on mongodb://127.0.0.1:27017"
+            "MongoDB is not accessible during startup. "
+            "Make sure MongoDB is running."
         )
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await close_http_client()
 
     # Validate Vapi AI environment variables on startup
     import os
