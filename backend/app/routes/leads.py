@@ -281,7 +281,12 @@ async def import_process(payload: LeadImportProcessPayload, user: dict = Depends
         phone_val = str(row.get(phone_col) or "").strip()
         email_val = str(row.get(email_col) or "").strip() if email_col else ""
         location_val = str(row.get(location_col) or "").strip() if location_col else ""
-        language_val = str(row.get(language_val) or "").strip() if language_col else "English"
+        language_val = (
+            str(row.get(language_col) or "").strip()
+            if language_col
+            else "English"
+        )
+        language_val = language_val or "English"
 
         if not name_val and not phone_val:
             continue
