@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Ensure single instance of the application
