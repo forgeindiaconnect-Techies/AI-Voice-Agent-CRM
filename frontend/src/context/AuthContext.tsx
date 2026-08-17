@@ -4,7 +4,7 @@ import { api } from "../api/client";
 type User = {
   id: string;
   name: string;
-  role: "admin" | "team_leader" | "agent";
+  role: "admin" | "team_leader" | "supervisor" | "agent";
   employee_id: string;
   email?: string;
   pool_id?: string | null;
