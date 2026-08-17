@@ -297,45 +297,45 @@ function HourlyCallVolumeChart() {
 // 2. Realtime AI Dialer Health Widget
 function RealtimeAIDialerHealth() {
   return (
-    <div className="bg-gradient-to-br from-[#081D38] via-[#0A264A] to-[#041224] dark:from-[#131C2F] dark:via-[#18243A] dark:to-[#0B1220] text-white rounded-[22px] p-6 shadow-md dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-[#0F4FA8]/40 dark:border-white/[0.06] space-y-4 relative overflow-hidden">
-      <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
+    <div className="bg-white/95 dark:bg-gradient-to-br dark:from-[#131C2F] dark:via-[#18243A] dark:to-[#0B1220] text-slate-900 dark:text-white rounded-[22px] p-6 shadow-sm dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)] border border-slate-200/80 dark:border-white/[0.06] space-y-4 relative overflow-hidden">
+      <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700/60 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-[#0F4FA8]/30 rounded-xl border border-[#0F4FA8]/50 text-[#FFC107] dark:text-[#FACC15]">
+          <div className="p-2 bg-amber-500/10 dark:bg-[#0F4FA8]/30 rounded-xl border border-amber-500/20 dark:border-[#0F4FA8]/50 text-amber-600 dark:text-[#FACC15]">
             <Gauge className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-[20px] font-bold text-white tracking-tight">Realtime AI Dialer Health</h3>
-            <p className="text-[12px] text-blue-200/80 dark:text-[#94A3B8] font-medium mt-0.5">Neural Bot Latency & Channel Concurrency</p>
+            <h3 className="text-[20px] font-bold text-slate-900 dark:text-white tracking-tight">Realtime AI Dialer Health</h3>
+            <p className="text-[12px] text-slate-500 dark:text-[#94A3B8] font-medium mt-0.5">Neural Bot Latency & Channel Concurrency</p>
           </div>
         </div>
-        <span className="text-[10px] font-extrabold bg-[#FFC107]/20 text-[#FFC107] dark:text-[#FACC15] border border-[#FFC107]/40 dark:border-[#FACC15]/40 px-3 py-1 rounded-full uppercase tracking-wider">
+        <span className="text-[10px] font-extrabold bg-amber-50 dark:bg-[#FFC107]/20 text-amber-700 dark:text-[#FACC15] border border-amber-200/80 dark:border-[#FACC15]/40 px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs">
           SYSTEM HEALTH: EXCELLENT
         </span>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-white/10 dark:border-white/5 space-y-1">
-          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Connected Agents</div>
-          <div className="text-2xl font-black text-white font-mono">18 Online</div>
-          <div className="text-[10px] text-emerald-400 font-semibold">100% Capacity</div>
+        <div className="bg-slate-50/80 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-slate-200/80 dark:border-white/5 space-y-1">
+          <div className="text-[10px] text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Connected Agents</div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">18 Online</div>
+          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">100% Capacity</div>
         </div>
 
-        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-white/10 dark:border-white/5 space-y-1">
-          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Active Calls</div>
-          <div className="text-2xl font-black text-[#FFC107] dark:text-[#FACC15] font-mono">14 Live</div>
-          <div className="text-[10px] text-blue-200 dark:text-[#60A5FA] font-semibold">5 Retries Processing</div>
+        <div className="bg-slate-50/80 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-slate-200/80 dark:border-white/5 space-y-1">
+          <div className="text-[10px] text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Active Calls</div>
+          <div className="text-2xl font-black text-amber-600 dark:text-[#FACC15] font-mono">14 Live</div>
+          <div className="text-[10px] text-blue-600 dark:text-[#60A5FA] font-semibold">5 Retries Processing</div>
         </div>
 
-        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-white/10 dark:border-white/5 space-y-1">
-          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Queue Size</div>
-          <div className="text-2xl font-black text-white font-mono">3 Leads</div>
-          <div className="text-[10px] text-emerald-400 font-semibold">Fast Clear Rate</div>
+        <div className="bg-slate-50/80 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-slate-200/80 dark:border-white/5 space-y-1">
+          <div className="text-[10px] text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Queue Size</div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">3 Leads</div>
+          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Fast Clear Rate</div>
         </div>
 
-        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-white/10 dark:border-white/5 space-y-1">
-          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Avg Response Time</div>
-          <div className="text-2xl font-black text-emerald-400 font-mono">1.8 sec</div>
-          <div className="text-[10px] text-slate-300 dark:text-[#94A3B8] font-semibold">18ms STT Latency</div>
+        <div className="bg-slate-50/80 dark:bg-white/5 backdrop-blur-md p-3.5 rounded-xl border border-slate-200/80 dark:border-white/5 space-y-1">
+          <div className="text-[10px] text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider">Avg Response Time</div>
+          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">1.8 sec</div>
+          <div className="text-[10px] text-slate-500 dark:text-[#94A3B8] font-semibold">18ms STT Latency</div>
         </div>
       </div>
     </div>
