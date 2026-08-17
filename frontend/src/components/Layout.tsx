@@ -237,7 +237,7 @@ export default function Layout() {
         </div>
         <div className="text-xs font-extrabold text-right flex items-center gap-1.5">
           <span className="text-[#3B82F6]">
-            {user?.role === "team_leader" ? "Supervisor" : user?.role === "admin" ? "Admin" : "Agent"}
+            {user?.role === "team_leader" || user?.role === "supervisor" ? "Team Leader" : user?.role === "admin" ? "Admin" : "Agent"}
           </span>
           <span className="text-[#F4B400]">
             {user?.name?.split(" ")[0] || "User"}
@@ -508,7 +508,7 @@ export default function Layout() {
                 <div className="flex-1 min-w-0">
                   <div className="font-extrabold text-xs truncate flex items-center gap-1.5">
                     <span className="text-[#1D4ED8] dark:text-[#3B82F6]">
-                      {user?.role === "team_leader" ? "Supervisor" : user?.role === "admin" ? "Admin" : "Agent"}
+                      {user?.role === "team_leader" || user?.role === "supervisor" ? "Team Leader" : user?.role === "admin" ? "Admin" : "Agent"}
                     </span>
                     <span className="text-[#F4B400]">
                       {user?.name || "Admin User"}
@@ -886,7 +886,7 @@ export default function Layout() {
               </div>
               <div className="flex items-center gap-1.5 text-xs font-black">
                 <span className="text-[#1D4ED8] dark:text-[#3B82F6]">
-                  {user?.role === "team_leader" ? "Supervisor" : user?.role === "admin" ? "Admin" : "Agent"}
+                  {user?.role === "team_leader" || user?.role === "supervisor" ? "Team Leader" : user?.role === "admin" ? "Admin" : "Agent"}
                 </span>
                 <span className="text-[#F4B400]">
                   {user?.name || "User"}

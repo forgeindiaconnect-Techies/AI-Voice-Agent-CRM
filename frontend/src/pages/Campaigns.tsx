@@ -976,22 +976,22 @@ export default function Campaigns() {
               animate={{ opacity: 1, y: 0 }}
               whileHover={{ y: -4 }}
               transition={{ duration: 0.2 }}
-              className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white/95 backdrop-blur-md border border-slate-200/80 p-5 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all border-t-4 border-t-emerald-500"
+              className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white/95 dark:bg-[#131C2F] backdrop-blur-md border border-slate-200/80 dark:border-white/10 p-5 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all border-t-4 border-t-emerald-500"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-3xl font-extrabold text-slate-900 font-mono tracking-tight">{activeCount}</span>
-                  <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mt-1 flex items-center gap-1.5">
+                  <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono tracking-tight">{activeCount}</span>
+                  <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1 flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                     Active Dialers
                   </span>
                 </div>
-                <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-100 text-emerald-600 group-hover:scale-105 transition-transform">
-                  <Play className="h-5 w-5 fill-emerald-600" />
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-500/15 rounded-2xl border border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-[#34D399] group-hover:scale-105 transition-transform">
+                  <Play className="h-5 w-5 fill-emerald-600 dark:fill-[#34D399]" />
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs">
-                <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-white/10 text-xs">
+                <span className="text-emerald-700 dark:text-[#34D399] font-bold text-[11px] flex items-center gap-1">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   <span>+12.4% vs last week</span>
                 </span>
@@ -1005,12 +1005,12 @@ export default function Campaigns() {
               animate={{ opacity: 1, y: 0 }}
               whileHover={{ y: -4 }}
               transition={{ duration: 0.2, delay: 0.05 }}
-              className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white/95 backdrop-blur-md border border-slate-200/80 p-5 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all border-t-4 border-t-amber-500"
+              className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white/95 dark:bg-[#131C2F] backdrop-blur-md border border-slate-200/80 dark:border-white/10 p-5 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all border-t-4 border-t-amber-500"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-3xl font-extrabold text-slate-900 font-mono tracking-tight">{pausedCount}</span>
-                  <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                  <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono tracking-tight">{pausedCount}</span>
+                  <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
                     Paused Campaigns
                   </span>
                 </div>
@@ -1018,8 +1018,8 @@ export default function Campaigns() {
                   <CustomPauseIcon size={32} />
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs">
-                <span className="text-slate-500 font-medium text-[11px]">Pending supervisor resume</span>
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-white/10 text-xs">
+                <span className="text-slate-500 dark:text-slate-400 font-medium text-[11px]">Pending supervisor resume</span>
                 <Sparkline color="#F59E0B" />
               </div>
             </motion.div>
@@ -1030,21 +1030,21 @@ export default function Campaigns() {
               animate={{ opacity: 1, y: 0 }}
               whileHover={{ y: -4 }}
               transition={{ duration: 0.2, delay: 0.1 }}
-              className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white/95 backdrop-blur-md border border-slate-200/80 p-5 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all border-t-4 border-t-rose-500"
+              className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white/95 dark:bg-[#131C2F] backdrop-blur-md border border-slate-200/80 dark:border-white/10 p-5 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all border-t-4 border-t-rose-500"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-3xl font-extrabold text-slate-900 font-mono tracking-tight">{stoppedCount}</span>
-                  <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                  <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono tracking-tight">{stoppedCount}</span>
+                  <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
                     Stopped Campaigns
                   </span>
                 </div>
-                <div className="p-3 bg-rose-50 rounded-2xl border border-rose-100 text-rose-600 group-hover:scale-105 transition-transform">
+                <div className="p-3 bg-rose-50 dark:bg-rose-500/15 rounded-2xl border border-rose-100 dark:border-rose-500/20 text-rose-600 dark:text-[#F87171] group-hover:scale-105 transition-transform">
                   <X className="h-5 w-5 stroke-[2.5]" />
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs">
-                <span className="text-rose-600 font-bold text-[11px]">Completed / Finished</span>
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-white/10 text-xs">
+                <span className="text-rose-600 dark:text-[#F87171] font-bold text-[11px]">Completed / Finished</span>
                 <Sparkline color="#F43F5E" />
               </div>
             </motion.div>
@@ -1055,21 +1055,21 @@ export default function Campaigns() {
               animate={{ opacity: 1, y: 0 }}
               whileHover={{ y: -4 }}
               transition={{ duration: 0.2, delay: 0.15 }}
-              className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white/95 backdrop-blur-md border border-slate-200/80 p-5 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all border-t-4 border-t-[#0F4FA8]"
+              className="col-span-12 sm:col-span-6 lg:col-span-3 bg-white/95 dark:bg-[#131C2F] backdrop-blur-md border border-slate-200/80 dark:border-white/10 p-5 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all border-t-4 border-t-[#0F4FA8]"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-3xl font-extrabold text-slate-900 font-mono tracking-tight">85.4%</span>
-                  <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                  <span className="text-3xl font-extrabold text-slate-900 dark:text-white font-mono tracking-tight">85.4%</span>
+                  <span className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
                     Avg Success Rate
                   </span>
                 </div>
-                <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100 text-[#0F4FA8] group-hover:scale-105 transition-transform">
-                  <TrendingUp className="h-5 w-5 text-[#0F4FA8]" />
+                <div className="p-3 bg-blue-50 dark:bg-blue-500/15 rounded-2xl border border-blue-100 dark:border-blue-500/20 text-[#0F4FA8] dark:text-[#60A5FA] group-hover:scale-105 transition-transform">
+                  <TrendingUp className="h-5 w-5 text-[#0F4FA8] dark:text-[#60A5FA]" />
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs">
-                <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-white/10 text-xs">
+                <span className="text-emerald-700 dark:text-[#34D399] font-bold text-[11px] flex items-center gap-1">
                   <ArrowUpRight className="h-3.5 w-3.5" />
                   <span>+4.2% overall efficiency</span>
                 </span>

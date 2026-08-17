@@ -1192,7 +1192,7 @@ export default function Leads() {
       
       {/* 1. HERO SECTION WITH BLUE -> GOLD GRADIENT TOP BORDER & GLASSMORPHISM */}
       <div className="p-0.5 rounded-[24px] bg-gradient-to-r from-[#0F4FA8] via-[#1E6AD7] to-[#FFC107] shadow-lg shadow-blue-900/5">
-        <div className="bg-white/95 backdrop-blur-md rounded-[23px] p-6 space-y-4">
+        <div className="bg-white/95 dark:bg-[#131C2F] backdrop-blur-md rounded-[23px] p-6 space-y-4 border border-slate-200/80 dark:border-white/10">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             
             {/* Title & AI Badge */}
@@ -1220,23 +1220,23 @@ export default function Leads() {
 
               {/* 6 KPI Chips Replacing Single Badge */}
               <div className="flex items-center gap-2 pt-2 flex-wrap text-xs font-bold">
-                <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-200">
+                <span className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-full border border-slate-200 dark:border-white/10">
                   {leads.length} Total
                 </span>
-                <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1">
+                <span className="bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-[#34D399] px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   {leads.filter(l => l.status === "new").length} New Today
                 </span>
-                <span className="bg-blue-50 text-[#0F4FA8] px-3 py-1 rounded-full border border-blue-200">
+                <span className="bg-blue-50 dark:bg-blue-500/15 text-[#0F4FA8] dark:text-[#60A5FA] px-3 py-1 rounded-full border border-blue-200 dark:border-blue-500/30">
                   {leads.filter(l => l.status === "qualified").length} Qualified
                 </span>
-                <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full border border-purple-200">
+                <span className="bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-[#C084FC] px-3 py-1 rounded-full border border-purple-200 dark:border-purple-500/30">
                   {leads.filter(l => l.assigned_agent_id).length} Assigned
                 </span>
-                <span className="bg-amber-50 text-amber-700 px-3 py-1 rounded-full border border-amber-200">
+                <span className="bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-[#FBBF24] px-3 py-1 rounded-full border border-amber-200 dark:border-amber-500/30">
                   38.4% Conv
                 </span>
-                <span className="bg-rose-50 text-rose-700 px-3 py-1 rounded-full border border-rose-200">
+                <span className="bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-[#F87171] px-3 py-1 rounded-full border border-rose-200 dark:border-rose-500/30">
                   {leads.filter(l => l.status === "follow_up" || l.status === "in_progress").length} Follow-ups
                 </span>
               </div>
@@ -1244,13 +1244,13 @@ export default function Leads() {
 
             {/* Right Action Bar (Equal Height & Equal Width Style Buttons) */}
             <div className="flex items-center gap-3 w-full lg:w-auto shrink-0 justify-between lg:justify-end flex-wrap">
-              <span className="text-[11px] font-mono font-bold text-slate-400 hidden sm:inline mr-1">
+              <span className="text-[11px] font-mono font-bold text-slate-400 dark:text-slate-500 hidden sm:inline mr-1">
                 Updated 1m ago
               </span>
 
               <button
                 onClick={loadData}
-                className="h-10 w-10 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer"
+                className="h-10 w-10 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 rounded-2xl transition flex items-center justify-center shadow-2xs active:scale-95 cursor-pointer border border-slate-200/60 dark:border-white/10"
                 title="Refresh Data"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -1268,13 +1268,13 @@ export default function Leads() {
                   <button
                     onClick={handleTriggerFilePicker}
                     disabled={isSelectingFile}
-                    className="h-10 px-4 bg-slate-100 hover:bg-[#0F4FA8] hover:text-white text-slate-700 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer disabled:opacity-50 group"
+                    className="h-10 px-4 bg-slate-100 hover:bg-[#0F4FA8] hover:text-white dark:bg-white/10 dark:hover:bg-[#2563EB] text-slate-700 dark:text-slate-200 rounded-2xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer disabled:opacity-50 group border border-slate-200/60 dark:border-white/10"
                     title="Import CSV Leads"
                   >
                     {isSelectingFile ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-[#0F4FA8] group-hover:text-white" />
+                      <Loader2 className="h-4 w-4 animate-spin text-[#0F4FA8] dark:text-[#60A5FA] group-hover:text-white" />
                     ) : (
-                      <UploadCloud className="h-4 w-4 text-[#0F4FA8] group-hover:text-white transition-colors" />
+                      <UploadCloud className="h-4 w-4 text-[#0F4FA8] dark:text-[#60A5FA] group-hover:text-white transition-colors" />
                     )}
                     <span>{isSelectingFile ? "Selecting file..." : "Import CSV"}</span>
                   </button>
@@ -1302,9 +1302,9 @@ export default function Leads() {
 
               <button
                 onClick={() => showToast("Exporting leads database CSV...", "info")}
-                className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer"
+                className="h-10 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2 shadow-2xs active:scale-95 cursor-pointer border border-slate-200/60 dark:border-white/10"
               >
-                <Download className="h-4 w-4 text-emerald-600" />
+                <Download className="h-4 w-4 text-emerald-600 dark:text-[#34D399]" />
                 <span>Export CSV</span>
               </button>
             </div>
@@ -1320,19 +1320,19 @@ export default function Leads() {
         <motion.div
           whileHover={{ y: -4 }}
           onClick={() => { setQuickChipFilter("all"); setStatusFilter(""); }}
-          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 border border-slate-200/80 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-[#0F4FA8]"
+          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 dark:bg-[#131C2F] border border-slate-200/80 dark:border-white/10 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-[#0F4FA8]"
         >
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">{leads.length}</span>
-              <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Total Leads</span>
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight">{leads.length}</span>
+              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-0.5">Total Leads</span>
             </div>
-            <div className="p-2 bg-blue-50 rounded-xl border border-blue-100 text-[#0F4FA8]">
+            <div className="p-2 bg-blue-50 dark:bg-blue-500/15 rounded-xl border border-blue-100 dark:border-blue-500/20 text-[#0F4FA8] dark:text-[#60A5FA]">
               <Users className="h-4 w-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-[11px]">
-            <span className="text-emerald-600 font-bold flex items-center gap-0.5">
+          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-white/10 text-[11px]">
+            <span className="text-emerald-600 dark:text-[#34D399] font-bold flex items-center gap-0.5">
               <ArrowUpRight className="h-3 w-3" /> +12.4%
             </span>
             <Sparkline color="#0F4FA8" />
@@ -1343,21 +1343,21 @@ export default function Leads() {
         <motion.div
           whileHover={{ y: -4 }}
           onClick={() => { setQuickChipFilter("new"); setStatusFilter("new"); }}
-          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 border border-slate-200/80 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-emerald-500"
+          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 dark:bg-[#131C2F] border border-slate-200/80 dark:border-white/10 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-emerald-500"
         >
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {leads.filter(l => l.status === "new").length}
               </span>
-              <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">New Today</span>
+              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-0.5">New Today</span>
             </div>
-            <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-600">
+            <div className="p-2 bg-emerald-50 dark:bg-emerald-500/15 rounded-xl border border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-[#34D399]">
               <UserPlus className="h-4 w-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-[11px]">
-            <span className="text-emerald-600 font-bold flex items-center gap-0.5">
+          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-white/10 text-[11px]">
+            <span className="text-emerald-600 dark:text-[#34D399] font-bold flex items-center gap-0.5">
               <ArrowUpRight className="h-3 w-3" /> +5 today
             </span>
             <Sparkline color="#10B981" />
@@ -1368,21 +1368,21 @@ export default function Leads() {
         <motion.div
           whileHover={{ y: -4 }}
           onClick={() => { setQuickChipFilter("qualified"); setStatusFilter("qualified"); }}
-          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 border border-slate-200/80 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-emerald-500"
+          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 dark:bg-[#131C2F] border border-slate-200/80 dark:border-white/10 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-emerald-500"
         >
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {leads.filter(l => l.status === "qualified").length}
               </span>
-              <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Qualified</span>
+              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-0.5">Qualified</span>
             </div>
-            <div className="p-2 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-600">
+            <div className="p-2 bg-emerald-50 dark:bg-emerald-500/15 rounded-xl border border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-[#34D399]">
               <CheckCircle2 className="h-4 w-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-[11px]">
-            <span className="text-emerald-600 font-bold">High Intent</span>
+          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-white/10 text-[11px]">
+            <span className="text-emerald-600 dark:text-[#34D399] font-bold">High Intent</span>
             <Sparkline color="#10B981" />
           </div>
         </motion.div>
@@ -1391,21 +1391,21 @@ export default function Leads() {
         <motion.div
           whileHover={{ y: -4 }}
           onClick={() => { resetFilters(); }}
-          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 border border-slate-200/80 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-purple-600"
+          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 dark:bg-[#131C2F] border border-slate-200/80 dark:border-white/10 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-purple-600"
         >
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {leads.filter(l => l.assigned_agent_id).length}
               </span>
-              <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Assigned</span>
+              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-0.5">Assigned</span>
             </div>
-            <div className="p-2 bg-purple-50 rounded-xl border border-purple-100 text-purple-600">
+            <div className="p-2 bg-purple-50 dark:bg-purple-500/15 rounded-xl border border-purple-100 dark:border-purple-500/20 text-purple-600 dark:text-[#C084FC]">
               <UserCheck className="h-4 w-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-[11px]">
-            <span className="text-purple-600 font-bold">To Agents</span>
+          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-white/10 text-[11px]">
+            <span className="text-purple-600 dark:text-[#C084FC] font-bold">To Agents</span>
             <Sparkline color="#9333EA" />
           </div>
         </motion.div>
@@ -1414,19 +1414,19 @@ export default function Leads() {
         <motion.div
           whileHover={{ y: -4 }}
           onClick={() => { setQuickChipFilter("closed"); setStatusFilter("closed"); }}
-          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 border border-slate-200/80 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-amber-500"
+          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 dark:bg-[#131C2F] border border-slate-200/80 dark:border-white/10 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-amber-500"
         >
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">38.4%</span>
-              <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Conversion</span>
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight">38.4%</span>
+              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-0.5">Conversion</span>
             </div>
-            <div className="p-2 bg-amber-50 rounded-xl border border-amber-100 text-amber-600">
+            <div className="p-2 bg-amber-50 dark:bg-amber-500/15 rounded-xl border border-amber-100 dark:border-amber-500/20 text-amber-600 dark:text-[#FBBF24]">
               <TrendingUp className="h-4 w-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-[11px]">
-            <span className="text-emerald-600 font-bold flex items-center gap-0.5">
+          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-white/10 text-[11px]">
+            <span className="text-emerald-600 dark:text-[#34D399] font-bold flex items-center gap-0.5">
               <ArrowUpRight className="h-3 w-3" /> +4.2%
             </span>
             <Sparkline color="#F59E0B" />
@@ -1437,21 +1437,21 @@ export default function Leads() {
         <motion.div
           whileHover={{ y: -4 }}
           onClick={() => { setQuickChipFilter("follow_up"); setStatusFilter("follow_up"); }}
-          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 border border-slate-200/80 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-rose-500"
+          className="col-span-12 sm:col-span-6 lg:col-span-2 bg-white/95 dark:bg-[#131C2F] border border-slate-200/80 dark:border-white/10 p-4 rounded-[20px] shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer border-t-4 border-t-rose-500"
         >
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight">
                 {leads.filter(l => l.status === "in_progress" || l.status === "follow_up").length}
               </span>
-              <span className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Follow-ups</span>
+              <span className="block text-[11px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider mt-0.5">Follow-ups</span>
             </div>
-            <div className="p-2 bg-rose-50 rounded-xl border border-rose-100 text-rose-600">
+            <div className="p-2 bg-rose-50 dark:bg-rose-500/15 rounded-xl border border-rose-100 dark:border-rose-500/20 text-rose-600 dark:text-[#F87171]">
               <Clock className="h-4 w-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 text-[11px]">
-            <span className="text-rose-600 font-bold">Action Needed</span>
+          <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-white/10 text-[11px]">
+            <span className="text-rose-600 dark:text-[#F87171] font-bold">Action Needed</span>
             <Sparkline color="#EF4444" />
           </div>
         </motion.div>

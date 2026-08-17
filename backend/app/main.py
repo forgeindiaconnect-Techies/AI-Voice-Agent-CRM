@@ -143,9 +143,12 @@ async def on_shutdown():
     from app.core.utils import utcnow, gen_employee_id
     
     try:
+        # Migrate legacy 'supervisor' roles to 'team_leader' in DB
+        await users_col.update_many({"role": "supervisor"}, {"$set": {"role": "team_leader"}})
+
         default_users = [
             {"name": "System Admin", "email": "admin@forgeindia.com", "raw_p": "Admin@123", "password": hash_password("Admin@123"), "role": "admin", "employee_id": gen_employee_id("admin"), "is_active": True, "created_at": utcnow()},
-            {"name": "Team Leader", "email": "tl@forgeindia.com", "raw_p": "Leader@123", "password": hash_password("Leader@123"), "role": "supervisor", "employee_id": gen_employee_id("supervisor"), "is_active": True, "created_at": utcnow()},
+            {"name": "Team Leader", "email": "tl@forgeindia.com", "raw_p": "Leader@123", "password": hash_password("Leader@123"), "role": "team_leader", "employee_id": gen_employee_id("team_leader"), "is_active": True, "created_at": utcnow()},
             {"name": "Sales Agent", "email": "agent@forgeindia.com", "raw_p": "Agent@123", "password": hash_password("Agent@123"), "role": "agent", "employee_id": gen_employee_id("agent"), "agent_phone": "+919444667411", "is_active": True, "created_at": utcnow()}
         ]
         
@@ -156,9 +159,14 @@ async def on_shutdown():
                 await users_col.insert_one(u_data)
                 logger.info(f"Seeded user account: {u_data['email']}")
             else:
+                update_fields = {}
                 if not verify_password(raw_p, existing.get("password", "")):
-                    await users_col.update_one({"_id": existing["_id"]}, {"$set": {"password": u_data["password"]}})
-                    logger.info(f"Refreshed password hash for: {u_data['email']}")
+                    update_fields["password"] = u_data["password"]
+                if existing.get("role") == "supervisor":
+                    update_fields["role"] = "team_leader"
+                if update_fields:
+                    await users_col.update_one({"_id": existing["_id"]}, {"$set": update_fields})
+                    logger.info(f"Refreshed account details for: {u_data['email']}")
             
         pool_count = await pools_col.count_documents({})
         if pool_count == 0:

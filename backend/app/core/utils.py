@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 
 def gen_employee_id(role: str) -> str:
-    prefix = {"admin": "ADM", "team_leader": "TL", "agent": "AGT"}.get(role, "EMP")
+    prefix = {"admin": "ADM", "team_leader": "TL", "supervisor": "TL", "agent": "AGT"}.get(role, "EMP")
     suffix = "".join(random.choices(string.digits, k=5))
     return f"{prefix}{suffix}"
 
