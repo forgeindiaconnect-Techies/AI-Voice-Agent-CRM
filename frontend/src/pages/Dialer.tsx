@@ -1434,15 +1434,12 @@ export default function Dialer() {
                     </div>
                   )}
 
-                  {/* Mobile Number Input Box with +91 Prefix */}
+                  {/* Mobile Number Input Box */}
                   <div className="mb-2.5">
                     <label className="block text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                       TARGET MOBILE NUMBER
                     </label>
-                    <div className="relative h-[50px] flex items-center bg-slate-50/90 dark:bg-[#172033] border border-slate-200 dark:border-white/10 rounded-[14px] p-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                      <span className="h-[36px] px-3.5 bg-[#2563EB] text-white font-extrabold text-xs rounded-[10px] flex items-center justify-center shrink-0 shadow-2xs">
-                        +91
-                      </span>
+                    <div className="relative h-[50px] flex items-center bg-slate-50/90 dark:bg-[#172033] border border-slate-200 dark:border-white/10 rounded-[14px] px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
                       <input
                         type="text"
                         inputMode="numeric"
@@ -1454,7 +1451,7 @@ export default function Dialer() {
                         }}
                         readOnly={callStatus !== "ready"}
                         placeholder="Enter 10-digit number"
-                        className="w-full bg-transparent text-right font-mono font-extrabold text-lg text-slate-900 dark:text-white outline-none px-3 tracking-widest placeholder:text-slate-400 placeholder:text-sm placeholder:font-sans placeholder:font-medium"
+                        className="w-full bg-transparent text-center font-mono font-extrabold text-lg text-slate-900 dark:text-white outline-none tracking-widest placeholder:text-slate-400 placeholder:text-sm placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
                       />
                       {callStatus === "ready" && outboundPhone.length > 0 && (
                         <button
