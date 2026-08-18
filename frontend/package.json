@@ -7,11 +7,12 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
+    "clean": "node scripts/clean-build.js",
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node scripts/clean-build.js && tsc && vite build",
     "preview": "vite preview",
     "electron:dev": "vite",
-    "electron:build": "tsc && vite build && electron-builder",
+    "electron:build": "node scripts/clean-build.js && tsc && vite build && electron-builder",
     "electron:preview": "tsc && vite build && electron ."
   },
   "dependencies": {

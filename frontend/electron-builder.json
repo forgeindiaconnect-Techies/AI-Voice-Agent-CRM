@@ -7,17 +7,15 @@
     "buildResources": "public"
   },
   "files": [
+    "package.json",
     "dist/**/*",
     "dist-electron/**/*"
   ],
   "win": {
+    "executableName": "ForgeCRM",
     "target": [
       {
         "target": "nsis",
-        "arch": ["x64"]
-      },
-      {
-        "target": "portable",
         "arch": ["x64"]
       }
     ],

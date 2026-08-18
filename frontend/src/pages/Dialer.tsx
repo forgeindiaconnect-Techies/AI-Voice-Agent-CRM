@@ -1082,7 +1082,7 @@ export default function Dialer() {
 
   // Render 3x4 Numeric Keypad
   const renderKeypad = () => (
-    <div className="grid grid-cols-3 gap-2 w-full max-w-[280px] mx-auto my-3">
+    <div className="grid grid-cols-3 gap-2.5 w-full max-w-[280px] mx-auto my-2.5">
       {[
         { d: "1", l: "" }, { d: "2", l: "ABC" }, { d: "3", l: "DEF" },
         { d: "4", l: "GHI" }, { d: "5", l: "JKL" }, { d: "6", l: "MNO" },
@@ -1091,15 +1091,16 @@ export default function Dialer() {
       ].map((key) => (
         <button
           key={key.d}
+          type="button"
           onClick={() => handleKeypadPress(key.d)}
           disabled={callStatus !== "ready" && callStatus !== "connected"}
-          className="h-14 w-14 sm:h-[60px] sm:w-[60px] mx-auto flex flex-col items-center justify-center rounded-2xl bg-white dark:bg-[#1A2438] border border-slate-200 dark:border-white/10 hover:border-blue-500 dark:hover:border-blue-400 hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer group disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed select-none"
+          className="h-[70px] w-[70px] sm:h-[74px] sm:w-[74px] mx-auto flex flex-col items-center justify-center rounded-[18px] bg-white dark:bg-[#1A2438] border border-slate-200/90 dark:border-white/10 hover:border-[#F4B400] hover:shadow-[0_4px_16px_rgba(244,180,0,0.2)] hover:scale-[1.03] active:scale-95 active:bg-amber-50 dark:active:bg-amber-500/20 transition-all duration-150 cursor-pointer group disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed select-none shadow-2xs"
         >
-          <span className="text-xl font-black text-slate-800 dark:text-white group-active:text-blue-600 leading-none">
+          <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white leading-none">
             {key.d}
           </span>
           {key.l && (
-            <span className="text-[9px] font-bold text-amber-500 dark:text-amber-400 tracking-wider leading-none mt-1 uppercase">
+            <span className="text-[10px] font-black text-[#F4B400] tracking-widest leading-none mt-1 uppercase">
               {key.l}
             </span>
           )}
@@ -1435,11 +1436,11 @@ export default function Dialer() {
 
                   {/* Mobile Number Input Box with +91 Prefix */}
                   <div className="mb-3">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">
+                    <label className="block text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                       Target Mobile Number
                     </label>
-                    <div className="relative flex items-center bg-slate-50 dark:bg-[#172033] border border-slate-200 dark:border-white/10 rounded-xl p-1 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
-                      <span className="px-2.5 py-1.5 bg-blue-600 text-white font-extrabold text-xs rounded-lg shrink-0">
+                    <div className="relative h-[52px] flex items-center bg-slate-50/90 dark:bg-[#172033] border border-slate-200 dark:border-white/10 rounded-2xl p-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                      <span className="h-[38px] px-3.5 bg-[#2563EB] text-white font-extrabold text-sm rounded-xl flex items-center justify-center shrink-0 shadow-2xs">
                         +91
                       </span>
                       <input
@@ -1452,52 +1453,60 @@ export default function Dialer() {
                           setOutboundPhone(sanitizeMobileNumber(e.target.value));
                         }}
                         readOnly={callStatus !== "ready"}
-                        placeholder="Enter 10-digit number"
-                        className="w-full bg-transparent text-center font-mono font-bold text-base text-slate-900 dark:text-white outline-none px-2 tracking-wider"
+                        placeholder="8888888888"
+                        className="w-full bg-transparent text-right font-mono font-extrabold text-xl text-slate-900 dark:text-white outline-none px-3 tracking-widest"
                       />
                       {callStatus === "ready" && outboundPhone.length > 0 && (
                         <button
-                          onClick={() => setOutboundPhone(prev => prev.slice(0, -1))}
-                          className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer mr-1"
-                          title="Backspace"
+                          type="button"
+                          onClick={() => setOutboundPhone("")}
+                          className="h-7 w-7 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60 flex items-center justify-center cursor-pointer transition shrink-0 ml-1"
+                          title="Clear number"
                         >
-                          <XCircle className="h-4 w-4" />
+                          <XCircle className="h-4.5 w-4.5" />
                         </button>
                       )}
                     </div>
 
-                    {/* Dynamic inline warning */}
-                    {validationMessage && (
-                      <p className="text-[10px] font-bold text-rose-500 mt-1 text-center">
-                        {validationMessage}
-                      </p>
-                    )}
+                    {/* Helper / Validation Message */}
+                    <div className="mt-1 text-center">
+                      {outboundPhone.length > 0 && !isValidMobile ? (
+                        <p className="text-[11px] font-bold text-rose-500 flex items-center justify-center gap-1">
+                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          <span>Must be 10 digits starting with 6-9</span>
+                        </p>
+                      ) : (
+                        <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+                          Enter 10-digit mobile number
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Call Mode Switcher (Human Agent vs Vapi AI) */}
                   {callStatus === "ready" && (
-                    <div className="mb-3 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center gap-1 border border-slate-200 dark:border-slate-700">
+                    <div className="mb-3 h-[52px] p-1 bg-slate-100/90 dark:bg-slate-800 rounded-2xl flex items-center gap-1 border border-slate-200/80 dark:border-slate-700">
                       <button
                         type="button"
                         onClick={() => setCallMode("human")}
-                        className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        className={`flex-1 h-[42px] text-xs font-extrabold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
                           callMode === "human"
-                            ? "bg-amber-500 text-slate-950 shadow-xs"
-                            : "text-slate-500 dark:text-slate-400"
+                            ? "bg-[#F4B400] text-[#123E8A] shadow-sm font-black border border-amber-300/40"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5"
                         }`}
                       >
-                        <User className="h-3.5 w-3.5" /> Agent Call
+                        <User className="h-4 w-4" /> Agent Call
                       </button>
                       <button
                         type="button"
                         onClick={() => setCallMode("ai")}
-                        className={`flex-1 py-1.5 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                        className={`flex-1 h-[42px] text-xs font-extrabold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
                           callMode === "ai"
-                            ? "bg-purple-600 text-white shadow-xs"
-                            : "text-slate-500 dark:text-slate-400"
+                            ? "bg-purple-600 text-white shadow-sm font-black"
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5"
                         }`}
                       >
-                        <Bot className="h-3.5 w-3.5" /> Vapi AI Call
+                        <Bot className="h-4 w-4" /> Vapi AI Call
                       </button>
                     </div>
                   )}
@@ -1628,17 +1637,18 @@ export default function Dialer() {
                 <div className="w-full mt-3 pt-3 border-t border-slate-100 dark:border-white/10">
                   {callStatus === "ready" && (
                     <button
+                      type="button"
                       onClick={handleDial}
                       disabled={!isValidMobile || isCreatingLead || isDialing}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl py-3.5 font-extrabold text-sm shadow-md shadow-emerald-500/20 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                      className="w-full h-[56px] bg-[#10B981] hover:bg-[#059669] text-white rounded-[14px] font-extrabold text-base shadow-md shadow-emerald-500/20 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98]"
                     >
                       {isDialing || isCreatingLead ? (
                         <>
-                          <Loader2 className="h-4.5 w-4.5 animate-spin" /> Dialing...
+                          <Loader2 className="h-5 w-5 animate-spin" /> Starting Call...
                         </>
                       ) : (
                         <>
-                          <Phone className="h-4.5 w-4.5 fill-current" /> Call Customer
+                          <Phone className="h-5 w-5 fill-current" /> Call Customer
                         </>
                       )}
                     </button>
