@@ -1218,33 +1218,6 @@ export default function Dialer() {
               {/* ── LEFT COLUMN: MAIN WORKSPACE (70-75% width) ── */}
               <div className="flex-1 flex flex-col gap-3 overflow-hidden h-full min-w-0">
 
-                {/* Today's Call Statistics KPI Header Bar */}
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 shrink-0">
-                  <div className="bg-white dark:bg-[#111827] p-3 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Calls</p>
-                    <p className="text-lg font-black text-slate-900 dark:text-white">{todayStats.total}</p>
-                  </div>
-                  <div className="bg-white dark:bg-[#111827] p-3 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-                    <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Connected</p>
-                    <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{todayStats.connected}</p>
-                  </div>
-                  <div className="bg-white dark:bg-[#111827] p-3 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-                    <p className="text-[10px] font-black text-rose-500 uppercase tracking-wider">No Answer</p>
-                    <p className="text-lg font-black text-rose-500">{todayStats.noAnswer}</p>
-                  </div>
-                  <div className="bg-white dark:bg-[#111827] p-3 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-wider">Busy</p>
-                    <p className="text-lg font-black text-amber-500">{todayStats.busy}</p>
-                  </div>
-                  <div className="bg-white dark:bg-[#111827] p-3 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-                    <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Follow-ups</p>
-                    <p className="text-lg font-black text-blue-600 dark:text-blue-400">{todayStats.followUps}</p>
-                  </div>
-                  <div className="bg-white dark:bg-[#111827] p-3 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-                    <p className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider">Converted</p>
-                    <p className="text-lg font-black text-purple-600 dark:text-purple-400">{todayStats.converted}</p>
-                  </div>
-                </div>
 
                 {/* Assigned Leads Workspace Box */}
                 <div className="bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-4 flex-1 flex flex-col overflow-hidden shadow-2xs">
