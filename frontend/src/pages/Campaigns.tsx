@@ -793,28 +793,28 @@ export default function Campaigns() {
       <div
         className="
           relative overflow-hidden
-          h-[110px]
-          rounded-[24px]
-          px-9 py-0
+          h-[76px]
+          rounded-[18px]
+          px-6 py-0
           flex items-center
           border
 
           /* ── DARK MODE ── */
           dark:bg-gradient-to-r dark:from-[#0F172A] dark:via-[#1E293B] dark:to-[#0F172A]
           dark:border-white/[.08]
-          dark:shadow-[0_16px_48px_rgba(29,78,216,0.20),0_0_30px_rgba(244,180,0,0.08)]
+          dark:shadow-[0_8px_24px_rgba(29,78,216,0.15)]
 
           /* ── LIGHT MODE ── */
           bg-gradient-to-r from-[#EFF6FF] via-white to-[#FFF8E1]
           border-[#E5E7EB]
-          shadow-[0_12px_40px_rgba(15,23,42,.08)]
+          shadow-[0_4px_20px_rgba(15,23,42,.05)]
 
           transition-all duration-300 ease-in-out
           animate-fadeInUp
         "
       >
-        {/* 4px Blue→Gold Top Accent Line */}
-        <div className="absolute top-0 left-0 right-0 h-[4px] rounded-t-[24px] bg-gradient-to-r from-[#1D4ED8] via-[#2563EB] to-[#F4B400] z-20" />
+        {/* 3px Blue→Gold Top Accent Line */}
+        <div className="absolute top-0 left-0 right-0 h-[3px] rounded-t-[18px] bg-gradient-to-r from-[#1D4ED8] via-[#2563EB] to-[#F4B400] z-20" />
 
         {/* Faint AI Circuit Grid Pattern (3% opacity) */}
         <svg
@@ -832,70 +832,70 @@ export default function Campaigns() {
         </svg>
 
         {/* Left Blue Ambient Glow */}
-        <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-56 h-56 bg-[#1D4ED8]/20 dark:bg-[#1D4ED8]/30 blur-3xl rounded-full pointer-events-none" />
+        <div className="absolute -left-16 top-1/2 -translate-y-1/2 w-40 h-40 bg-[#1D4ED8]/20 dark:bg-[#1D4ED8]/30 blur-2xl rounded-full pointer-events-none" />
         {/* Right Gold Ambient Glow */}
-        <div className="absolute -right-16 top-1/2 -translate-y-1/2 w-56 h-56 bg-[#F4B400]/10 dark:bg-[#F4B400]/18 blur-3xl rounded-full pointer-events-none" />
+        <div className="absolute -right-16 top-1/2 -translate-y-1/2 w-40 h-40 bg-[#F4B400]/10 dark:bg-[#F4B400]/18 blur-2xl rounded-full pointer-events-none" />
 
         {/* ── CONTENT ROW ── */}
-        <div className="relative z-10 w-full flex items-center justify-between gap-6">
+        <div className="relative z-10 w-full flex items-center justify-between gap-4">
 
           {/* LEFT: Icon + Title block */}
-          <div className="flex items-center gap-5 min-w-0">
+          <div className="flex items-center gap-3.5 min-w-0">
 
-            {/* 56×56px Glass Circular Icon Container */}
+            {/* Glass Circular Icon Container */}
             <div className="
-              h-14 w-14 rounded-full shrink-0
+              h-10 w-10 rounded-full shrink-0
               bg-white/20 dark:bg-white/10
               backdrop-blur-xl
               border border-white/30 dark:border-white/15
-              shadow-[0_0_24px_rgba(29,78,216,0.45)] dark:shadow-[0_0_28px_rgba(29,78,216,0.55)]
+              shadow-[0_0_16px_rgba(29,78,216,0.35)] dark:shadow-[0_0_20px_rgba(29,78,216,0.45)]
               flex items-center justify-center
               group cursor-pointer
-              hover:scale-105 hover:shadow-[0_0_32px_rgba(29,78,216,0.6)]
+              hover:scale-105 hover:shadow-[0_0_24px_rgba(29,78,216,0.5)]
               transition-all duration-250 ease-out
             ">
-              <Megaphone className="h-7 w-7 text-[#F4B400] group-hover:rotate-6 transition-transform duration-250" />
+              <Megaphone className="h-5 w-5 text-[#F4B400] group-hover:rotate-6 transition-transform duration-250" />
             </div>
 
             {/* Title + Subtitle + Badge */}
             <div className="min-w-0">
               {/* Title row: Campaigns + Badge */}
-              <div className="flex items-center gap-3 flex-nowrap">
+              <div className="flex items-center gap-2.5 flex-nowrap">
                 {/* Two-Tone "Campaigns" Title */}
-                <h1 className="text-[28px] sm:text-[34px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-none whitespace-nowrap flex items-baseline gap-0">
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-[-0.02em] leading-none whitespace-nowrap flex items-baseline gap-0">
                   <span className="text-[#2563EB] dark:text-[#3B82F6]">Camp</span>
                   <span className="text-[#F4B400]">aigns</span>
                 </h1>
 
                 {/* Enterprise CRM Pill Badge */}
                 <span className="
-                  inline-flex items-center gap-1.5 shrink-0
-                  px-2.5 py-[3px] rounded-full
-                  text-[9px] font-extrabold uppercase tracking-widest
+                  inline-flex items-center gap-1 shrink-0
+                  px-2 py-[2px] rounded-full
+                  text-[8.5px] font-extrabold uppercase tracking-wider
                   bg-blue-500/10 dark:bg-blue-400/15
                   border border-blue-400/40 dark:border-blue-400/30
                   text-[#2563EB] dark:text-[#60A5FA]
                   backdrop-blur-sm
                 ">
-                  <span className="h-[6px] w-[6px] rounded-full bg-[#F4B400] animate-pulse" />
+                  <span className="h-[5px] w-[5px] rounded-full bg-[#F4B400] animate-pulse" />
                   Enterprise CRM
                 </span>
               </div>
 
               {/* Subtitle */}
-              <p className="text-[13px] sm:text-sm font-medium text-[#64748B] dark:text-[#9CA3AF] mt-1 whitespace-nowrap">
+              <p className="text-xs font-medium text-[#64748B] dark:text-[#9CA3AF] mt-0.5 whitespace-nowrap">
                 Manage AI Voice Campaigns &amp; Automation
               </p>
             </div>
           </div>
 
           {/* RIGHT: Segmented Control + Create Button */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
 
-            {/* 56px Glass Segmented Control */}
+            {/* Glass Segmented Control */}
             <div className="
-              h-14 flex items-center gap-1 p-1.5
-              rounded-[16px]
+              h-10 flex items-center gap-1 p-1
+              rounded-[12px]
               bg-black/10 dark:bg-[#0F172A]/70
               border border-white/20 dark:border-white/10
               backdrop-blur-xl
@@ -905,13 +905,13 @@ export default function Campaigns() {
               <button
                 onClick={() => { setActiveTab("outbound"); loadData(); }}
                 className={`
-                  h-[44px] px-5 rounded-[12px]
+                  h-[32px] px-3.5 rounded-[8px]
                   text-xs font-bold whitespace-nowrap
                   transition-all duration-250 ease-in-out
                   cursor-pointer flex items-center justify-center gap-2
                   active:scale-95
                   ${activeTab === "outbound"
-                    ? "bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-[0_4px_18px_rgba(29,78,216,0.45)]"
+                    ? "bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-[0_2px_10px_rgba(29,78,216,0.35)]"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/15 dark:hover:bg-white/8"
                   }
                 `}
@@ -923,13 +923,13 @@ export default function Campaigns() {
               <button
                 onClick={() => { setActiveTab("inbound"); loadData(); }}
                 className={`
-                  h-[44px] px-5 rounded-[12px]
+                  h-[32px] px-3.5 rounded-[8px]
                   text-xs font-bold whitespace-nowrap
                   transition-all duration-250 ease-in-out
                   cursor-pointer flex items-center justify-center gap-2
                   active:scale-95
                   ${activeTab === "inbound"
-                    ? "bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-[0_4px_18px_rgba(29,78,216,0.45)]"
+                    ? "bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-[0_2px_10px_rgba(29,78,216,0.35)]"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/15 dark:hover:bg-white/8"
                   }
                 `}
@@ -943,19 +943,19 @@ export default function Campaigns() {
               <button
                 onClick={() => setShowLaunchModal(true)}
                 className="
-                  h-14 px-6 rounded-[16px]
+                  h-10 px-4 rounded-[12px]
                   bg-gradient-to-r from-[#1D4ED8] via-[#2563EB] to-[#3B82F6]
                   hover:from-[#1E40AF] hover:via-[#1D4ED8] hover:to-[#2563EB]
                   text-white font-extrabold text-xs whitespace-nowrap
-                  shadow-[0_8px_22px_rgba(29,78,216,0.38)]
-                  hover:shadow-[0_10px_28px_rgba(29,78,216,0.52)]
+                  shadow-[0_4px_14px_rgba(29,78,216,0.3)]
+                  hover:shadow-[0_6px_18px_rgba(29,78,216,0.45)]
                   hover:-translate-y-0.5
                   active:scale-95
                   transition-all duration-250 ease-out
-                  flex items-center gap-2 cursor-pointer
+                  flex items-center gap-1.5 cursor-pointer
                 "
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-3.5 w-3.5" />
                 <span>Create Campaign</span>
               </button>
             )}
