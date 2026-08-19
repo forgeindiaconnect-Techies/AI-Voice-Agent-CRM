@@ -52,7 +52,6 @@ import {
   TrendingUp,
   Sliders,
   PhoneMissed,
-  X,
   FileText
 } from "lucide-react";
 
