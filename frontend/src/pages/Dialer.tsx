@@ -1588,67 +1588,19 @@ export default function Dialer() {
             </div>
           </div>
 
-          {/* Navigation Tabs + Agent Status Switcher */}
-          <div className="flex items-center gap-3">
-            <div className="h-[46px] flex items-center bg-slate-100 dark:bg-[#182233] p-1 rounded-xl border border-slate-200 dark:border-white/10">
-              <button
-                onClick={() => setActiveTab("outbound")}
-                className={`h-[38px] px-4 rounded-lg text-xs font-extrabold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === "outbound"
-                    ? "bg-gradient-to-r from-amber-400 to-amber-500 text-blue-950 shadow-sm border border-amber-300"
-                    : "text-slate-700 dark:text-slate-300 hover:text-blue-600"
-                }`}
-              >
-                <PhoneCall className="h-3.5 w-3.5" /> Workspace
-              </button>
-              <button
-                onClick={() => setActiveTab("inbound")}
-                className={`h-[38px] px-4 rounded-lg text-xs font-extrabold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === "inbound"
-                    ? "bg-gradient-to-r from-amber-400 to-amber-500 text-blue-950 shadow-sm border border-amber-300"
-                    : "text-slate-700 dark:text-slate-300 hover:text-blue-600"
-                }`}
-              >
-                <Ear className="h-3.5 w-3.5" /> Inbound
-              </button>
-              {isSupervisor && (
-                <button
-                  onClick={() => setActiveTab("supervisor")}
-                  className={`h-[38px] px-4 rounded-lg text-xs font-extrabold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                    activeTab === "supervisor"
-                      ? "bg-gradient-to-r from-amber-400 to-amber-500 text-blue-950 shadow-sm border border-amber-300"
-                      : "text-slate-700 dark:text-slate-300 hover:text-blue-600"
-                  }`}
-                >
-                  <Sliders className="h-3.5 w-3.5" /> Supervisor
-                </button>
-              )}
-              <button
-                onClick={() => setActiveTab("history")}
-                className={`h-[38px] px-4 rounded-lg text-xs font-extrabold transition-all duration-200 cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === "history"
-                    ? "bg-gradient-to-r from-amber-400 to-amber-500 text-blue-950 shadow-sm border border-amber-300"
-                    : "text-slate-700 dark:text-slate-300 hover:text-blue-600"
-                }`}
-              >
-                <History className="h-3.5 w-3.5" /> Logs
-              </button>
-            </div>
-
-            {/* Agent Status Selector Dropdown */}
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#182233] p-1.5 px-3 rounded-xl border border-slate-200 dark:border-white/10">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status:</span>
-              <select
-                value={agentStatus}
-                onChange={(e) => setAgentStatus(e.target.value as AgentStatus)}
-                className="bg-transparent text-xs font-extrabold text-slate-900 dark:text-white outline-none cursor-pointer"
-              >
-                <option value="ready" className="text-slate-900 bg-white">🟢 Ready</option>
-                <option value="on_call" className="text-slate-900 bg-white">🟡 On Call</option>
-                <option value="wrap_up" className="text-slate-900 bg-white">🟠 Wrap-up</option>
-                <option value="break" className="text-slate-900 bg-white">🔴 On Break</option>
-              </select>
-            </div>
+          {/* Agent Status Selector Dropdown */}
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#182233] p-2 px-3.5 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status:</span>
+            <select
+              value={agentStatus}
+              onChange={(e) => setAgentStatus(e.target.value as AgentStatus)}
+              className="bg-transparent text-xs font-extrabold text-slate-900 dark:text-white outline-none cursor-pointer"
+            >
+              <option value="ready" className="text-slate-900 bg-white">🟢 Ready</option>
+              <option value="on_call" className="text-slate-900 bg-white">🟡 On Call</option>
+              <option value="wrap_up" className="text-slate-900 bg-white">🟠 Wrap-up</option>
+              <option value="break" className="text-slate-900 bg-white">🔴 On Break</option>
+            </select>
           </div>
         </div>
       </div>
