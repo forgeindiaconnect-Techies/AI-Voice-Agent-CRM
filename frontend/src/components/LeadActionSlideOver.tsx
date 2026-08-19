@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import CustomDateTimePicker from "./CustomDateTimePicker";
 
-export type ActiveSlideOverTab = "profile" | "history" | "disposition" | "logs" | null;
+export type ActiveSlideOverTab = "profile" | "history" | "disposition" | "logs" | "dialer" | null;
 
 export interface LeadActionSlideOverProps {
   activeTab: ActiveSlideOverTab;
@@ -20,6 +20,7 @@ export interface LeadActionSlideOverProps {
   isSavingDisposition: boolean;
   showToast: (msg: string, type: "success" | "error" | "info" | "warning") => void;
   user?: any;
+  dialerComponent?: any;
 }
 
 const DISPOSITION_OPTIONS = [
@@ -44,7 +45,8 @@ export default function LeadActionSlideOver({
   onSaveDisposition,
   isSavingDisposition,
   showToast,
-  user
+  user,
+  dialerComponent
 }: LeadActionSlideOverProps) {
   const [dispStatus, setDispStatus] = useState<string>("interested");
   const [dispNotes, setDispNotes] = useState<string>("");
@@ -112,6 +114,7 @@ export default function LeadActionSlideOver({
       case "history": return "Call History";
       case "disposition": return "Lead Disposition";
       case "logs": return "Technical Call Logs";
+      case "dialer": return "Softphone Dialer";
       default: return "Lead Action Panel";
     }
   };
@@ -134,6 +137,7 @@ export default function LeadActionSlideOver({
                 {activeTab === "history" && <PhoneCall className="h-4 w-4" />}
                 {activeTab === "disposition" && <FileText className="h-4 w-4" />}
                 {activeTab === "logs" && <ListOrdered className="h-4 w-4" />}
+                {activeTab === "dialer" && <Phone className="h-4 w-4" />}
               </div>
               <div>
                 <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
@@ -191,6 +195,15 @@ export default function LeadActionSlideOver({
             >
               <ListOrdered className="h-3.5 w-3.5" />
               <span>Logs</span>
+            </button>
+            <button
+              onClick={() => onSelectTab("dialer")}
+              className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer ${
+                activeTab === "dialer" ? "bg-white dark:bg-blue-600 text-blue-700 dark:text-white shadow-xs" : "hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Phone className="h-3.5 w-3.5" />
+              <span>Dialer</span>
             </button>
           </div>
         </div>
@@ -537,6 +550,13 @@ export default function LeadActionSlideOver({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 5: SOFTPHONE DIALER */}
+          {activeTab === "dialer" && (
+            <div className="space-y-4">
+              {dialerComponent}
             </div>
           )}
 

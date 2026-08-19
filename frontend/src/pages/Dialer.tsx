@@ -1074,6 +1074,7 @@ export default function Dialer() {
     setOutboundPhone(sanitized);
     setCallMode("ai");
     setQuickCallingLeadId(targetLeadId || "active");
+    setActiveSlideOver("dialer");
     isDialingRef.current = true;
     setIsDialing(true);
     setCallStatus("dialing");
@@ -1231,6 +1232,335 @@ export default function Dialer() {
     </div>
   );
 
+  // Helper to render softphone dialer inside slide-over drawer
+  const renderDialerPanel = () => (
+    <div className="w-full bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-white/10 p-4 flex flex-col justify-between shadow-xs">
+      {/* Dialer Header */}
+      <div className="w-full">
+        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-white/10 mb-3">
+          <div className="flex items-center gap-2">
+            <PhoneCall className="h-4.5 w-4.5 text-amber-500" />
+            <h2 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+              MANUAL DIALER
+            </h2>
+          </div>
+
+          <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
+            agentStatus === "ready" ? "bg-emerald-50 text-emerald-600 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-400" :
+            agentStatus === "on_call" ? "bg-amber-50 text-amber-600 border-amber-300 dark:bg-amber-500/15 dark:text-amber-400 animate-pulse" :
+            agentStatus === "wrap_up" ? "bg-purple-50 text-purple-600 border-purple-300 dark:bg-purple-500/15 dark:text-purple-400" :
+            "bg-rose-50 text-rose-600 border-rose-300 dark:bg-rose-500/15 dark:text-rose-400"
+          }`}>
+            {agentStatus === "ready" ? "READY" : agentStatus.replace("_", " ")}
+          </span>
+        </div>
+
+        {/* Selected Customer Info */}
+        {selectedLead && (
+          <div className="mb-2.5 p-2.5 bg-blue-50/70 dark:bg-blue-500/10 rounded-xl border border-blue-200 dark:border-blue-500/20">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Selected Customer</p>
+                <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">{selectedLead.name}</p>
+                <p className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300">{maskPhoneNumber(selectedLead.phone)}</p>
+              </div>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                {selectedLead.source || "Manual"}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Number Input Box */}
+        <div className="mb-2.5">
+          <label className="block text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+            TARGET MOBILE NUMBER
+          </label>
+          <div className="relative h-[46px] flex items-center bg-slate-50/90 dark:bg-[#172033] border border-slate-200 dark:border-white/10 rounded-xl px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={10}
+              value={outboundPhone}
+              onChange={(e) => {
+                if (callStatus !== "ready") return;
+                setOutboundPhone(sanitizeMobileNumber(e.target.value));
+              }}
+              readOnly={callStatus !== "ready"}
+              placeholder="Enter 10-digit number"
+              className="w-full bg-transparent text-center font-mono font-extrabold text-base text-slate-900 dark:text-white outline-none tracking-widest placeholder:text-slate-400 placeholder:text-xs placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
+            />
+            {callStatus === "ready" && outboundPhone.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setOutboundPhone("")}
+                className="h-6 w-6 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60 flex items-center justify-center cursor-pointer transition shrink-0 ml-1"
+                title="Clear number"
+              >
+                <XCircle className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="mt-1 text-center">
+            {outboundPhone.length > 0 && !isValidMobile ? (
+              <p className="text-[10px] font-bold text-rose-500 flex items-center justify-center gap-1">
+                <AlertCircle className="h-3 w-3 shrink-0" />
+                <span>Must be 10 digits starting with 6-9</span>
+              </p>
+            ) : (
+              <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                Enter 10-digit mobile number
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Call Mode Switcher */}
+        {callStatus === "ready" && (
+          <div className="mb-2.5 h-[44px] p-1 bg-slate-100/90 dark:bg-slate-800 rounded-xl flex items-center gap-1 border border-slate-200/80 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => setCallMode("human")}
+              className={`flex-1 h-[34px] text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                callMode === "human"
+                  ? "bg-[#F4B400] text-[#123E8A] shadow-2xs font-black"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <User className="h-3.5 w-3.5" /> Agent Call
+            </button>
+            <button
+              type="button"
+              onClick={() => setCallMode("ai")}
+              className={`flex-1 h-[34px] text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                callMode === "ai"
+                  ? "bg-purple-600 text-white shadow-2xs font-black"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Bot className="h-3.5 w-3.5" /> Vapi AI Call
+            </button>
+          </div>
+        )}
+
+        {/* Keypad */}
+        {callStatus === "ready" && renderKeypad()}
+
+        {/* Calling / Ringing */}
+        {(callStatus === "dialing" || callStatus === "ringing") && (
+          <div className="my-5 text-center">
+            <div className="relative h-16 w-16 mx-auto mb-2">
+              <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+              <div className="relative h-16 w-16 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                {callStatus === "dialing" ? (
+                  <Loader2 className="h-8 w-8 text-white animate-spin" />
+                ) : (
+                  <Phone className="h-8 w-8 text-white animate-bounce" />
+                )}
+              </div>
+            </div>
+            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              {callStatus === "dialing" ? "Initiating Call..." : "Ringing Customer..."}
+            </p>
+            <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">{maskPhoneNumber(outboundPhone)}</p>
+          </div>
+        )}
+
+        {/* Connected / Hold */}
+        {(callStatus === "connected" || callStatus === "hold") && (
+          <div className="my-3 text-center">
+            <div className={`h-14 w-14 rounded-full mx-auto flex items-center justify-center mb-1.5 border-2 ${
+              callStatus === "hold"
+                ? "bg-amber-500/10 border-amber-500 text-amber-500"
+                : "bg-emerald-500/10 border-emerald-500 text-emerald-500"
+            }`}>
+              {callStatus === "hold" ? <Pause className="h-7 w-7 animate-pulse" /> : <User className="h-7 w-7" />}
+            </div>
+            <p className="text-xs font-extrabold text-slate-900 dark:text-white">
+              {callStatus === "hold" ? "Call On Hold" : "Connected Live"}
+            </p>
+            <p className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+              {formatTime(callDuration)}
+            </p>
+
+            {showInCallKeypad && renderKeypad()}
+          </div>
+        )}
+
+        {/* Wrap-up Disposition */}
+        {callStatus === "wrapup" && (
+          <div className="my-2 p-3 bg-slate-50 dark:bg-[#172033] rounded-xl border border-slate-200 dark:border-white/10 space-y-2.5">
+            <div className="flex items-center gap-1.5 pb-1.5 border-b border-slate-200 dark:border-white/10">
+              <MessageSquare className="h-3.5 w-3.5 text-amber-500" />
+              <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                After-Call Work (Wrap-up)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+                Call Disposition *
+              </label>
+              <CustomSelect
+                value={disposition}
+                onChange={setDisposition}
+                options={DISPOSITION_OPTIONS}
+                placeholder="Select Disposition"
+                triggerClassName="h-8 rounded-lg text-xs dark:bg-slate-800 dark:text-white dark:border-white/10"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+                  Follow-up Date
+                </label>
+                <input
+                  type="date"
+                  value={followUpDate}
+                  onChange={e => setFollowUpDate(e.target.value)}
+                  className="w-full h-8 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold text-slate-900 dark:text-white outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+                  Follow-up Time
+                </label>
+                <input
+                  type="time"
+                  value={followUpTime}
+                  onChange={e => setFollowUpTime(e.target.value)}
+                  className="w-full h-8 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold text-slate-900 dark:text-white outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+                Customer Notes
+              </label>
+              <textarea
+                placeholder="Log customer response..."
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={2}
+                className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-medium text-slate-900 dark:text-white resize-none outline-none"
+              />
+            </div>
+
+            <button
+              onClick={handleSaveAndNext}
+              disabled={isSavingOutcome}
+              className="w-full h-9 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-black text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              {isSavingOutcome ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              <span>Save &amp; Next Lead →</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons Bar */}
+      <div className="w-full mt-2 pt-2 border-t border-slate-100 dark:border-white/10">
+        {callStatus === "ready" && (
+          <button
+            type="button"
+            onClick={handleDial}
+            disabled={!isValidMobile || isCreatingLead || isDialing}
+            className="w-full h-[46px] bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+          >
+            {isDialing || isCreatingLead ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Starting Call...
+              </>
+            ) : (
+              <>
+                <Phone className="h-4 w-4 fill-current" /> Call Customer
+              </>
+            )}
+          </button>
+        )}
+
+        {(callStatus === "dialing" || callStatus === "ringing") && (
+          <button
+            onClick={handleHangup}
+            className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+          >
+            <PhoneOff className="h-4 w-4 fill-current" /> Cancel Dialing
+          </button>
+        )}
+
+        {(callStatus === "connected" || callStatus === "hold") && (
+          <div className="space-y-2">
+            <div className="grid grid-cols-4 gap-1.5">
+              <button
+                onClick={handleMuteToggle}
+                disabled={isMuteLoading}
+                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                  isMuted
+                    ? "bg-amber-500 text-white border-amber-600"
+                    : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                }`}
+                title="Mute/Unmute Mic"
+              >
+                {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                <span className="text-[8px] font-black uppercase">{isMuted ? "Muted" : "Mute"}</span>
+              </button>
+
+              <button
+                onClick={handleHoldToggle}
+                disabled={isHoldLoading || isHoldProcessing}
+                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                  callStatus === "hold"
+                    ? "bg-amber-500 text-white border-amber-600"
+                    : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                }`}
+                title="Hold/Resume Call"
+              >
+                {callStatus === "hold" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                <span className="text-[8px] font-black uppercase">{callStatus === "hold" ? "Resume" : "Hold"}</span>
+              </button>
+
+              <button
+                onClick={() => setShowInCallKeypad(!showInCallKeypad)}
+                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                  showInCallKeypad
+                    ? "bg-blue-600 text-white border-blue-700"
+                    : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                }`}
+                title="Keypad DTMF"
+              >
+                <Hash className="h-3.5 w-3.5" />
+                <span className="text-[8px] font-black uppercase">Keypad</span>
+              </button>
+
+              <button
+                onClick={() => setIsTransferModalOpen(true)}
+                className="p-2 rounded-xl border bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95"
+                title="Transfer Call"
+              >
+                <PhoneForwarded className="h-3.5 w-3.5" />
+                <span className="text-[8px] font-black uppercase">Transfer</span>
+              </button>
+            </div>
+
+            <button
+              onClick={handleHangup}
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-black text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <PhoneOff className="h-4 w-4 fill-current" /> End Call
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 max-w-[1700px] mx-auto h-[calc(100vh-85px)] flex flex-col font-sans pb-4">
 
@@ -1323,6 +1653,7 @@ export default function Dialer() {
         </div>
       </div>
 
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden min-h-0">
         <AnimatePresence mode="wait">
@@ -1334,15 +1665,14 @@ export default function Dialer() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="h-full flex flex-col lg:flex-row gap-4"
+              className="h-full flex flex-col gap-3"
             >
 
-              {/* ── LEFT COLUMN: MAIN WORKSPACE (70-75% width) ── */}
-              <div className="flex-1 flex flex-col gap-3 overflow-hidden h-full min-w-0">
-
+              {/* ── FULL-WIDTH ASSIGNED LEADS WORKSPACE ── */}
+              <div className="w-full flex-1 flex flex-col gap-3 overflow-hidden h-full min-w-0">
 
                 {/* Assigned Leads Workspace Box */}
-                <div className="bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-4 flex-1 flex flex-col overflow-hidden shadow-2xs relative">
+                <div className="bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-4 flex-1 flex flex-col overflow-hidden shadow-2xs relative w-full">
 
                   {/* Header & Controls */}
                   <div className="flex justify-between items-center mb-3 shrink-0">
@@ -1356,17 +1686,28 @@ export default function Dialer() {
                       </span>
                     </div>
 
-                    <button
-                      onClick={fetchLeads}
-                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg text-slate-500 dark:text-slate-400 transition cursor-pointer"
-                      title="Refresh Leads List"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${isLoadingLeads ? 'animate-spin' : ''}`} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setActiveSlideOver("dialer")}
+                        className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
+                        title="Open Softphone Dialer Drawer"
+                      >
+                        <Phone className="h-3.5 w-3.5 fill-current" />
+                        <span>Softphone Dialer</span>
+                      </button>
+
+                      <button
+                        onClick={fetchLeads}
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition cursor-pointer border border-slate-200/80 dark:border-white/10"
+                        title="Refresh Leads List"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isLoadingLeads ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Search and Filters Bar */}
-                  <div className="flex gap-2 mb-2 shrink-0">
+                  {/* Full-width Search and Filters Toolbar */}
+                  <div className="flex gap-2 mb-2 shrink-0 w-full">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input
@@ -1396,7 +1737,7 @@ export default function Dialer() {
                       )}
                     </button>
 
-                    <div className="w-44">
+                    <div className="w-48">
                       <CustomSelect
                         value={statusFilter}
                         onChange={setStatusFilter}
@@ -1421,32 +1762,32 @@ export default function Dialer() {
                       )}
                       {filterPhone.trim() && (
                         <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          Phone: {filterPhone}
+                          Phone: <strong className="font-mono">{filterPhone}</strong>
                           <button onClick={() => setFilterPhone("")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      )}
+                      {statusFilter !== "All" && (
+                        <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+                          Status: <strong>{statusFilter.replace(/_/g, " ")}</strong>
+                          <button onClick={() => setStatusFilter("All")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
                             <X className="h-3 w-3" />
                           </button>
                         </span>
                       )}
                       {filterSource !== "All" && (
                         <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          Source: {filterSource}
+                          Source: <strong>{filterSource}</strong>
                           <button onClick={() => setFilterSource("All")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
                             <X className="h-3 w-3" />
                           </button>
                         </span>
                       )}
-                      {filterStartDate && (
+                      {(filterStartDate || filterEndDate) && (
                         <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          From: {filterStartDate}
-                          <button onClick={() => setFilterStartDate("")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )}
-                      {filterEndDate && (
-                        <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          To: {filterEndDate}
-                          <button onClick={() => setFilterEndDate("")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
+                          Date: <strong className="font-mono">{filterStartDate || "..."} to {filterEndDate || "..."}</strong>
+                          <button onClick={() => { setFilterStartDate(""); setFilterEndDate(""); }} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
                             <X className="h-3 w-3" />
                           </button>
                         </span>
@@ -1471,7 +1812,7 @@ export default function Dialer() {
                   {/* Relative Container for List + Floating Rail + Slide-over */}
                   <div className="relative flex-1 overflow-hidden flex flex-col min-h-0">
                     {/* Leads Grid/List */}
-                    <div className="flex-1 overflow-y-auto pr-12 space-y-2.5 softphone-scrollbar">
+                    <div className="flex-1 overflow-y-auto pr-14 space-y-2.5 softphone-scrollbar">
                       {isLoadingLeads && leads.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-400">
                           <Loader2 className="h-7 w-7 animate-spin text-blue-600 mb-2" />
@@ -1492,7 +1833,7 @@ export default function Dialer() {
                             <div
                               key={lead._id || `lead-${idx}`}
                               onClick={() => handleSelectLead(lead)}
-                              className={`p-3.5 rounded-xl border transition-all duration-150 cursor-pointer ${
+                              className={`p-4 rounded-2xl border transition-all duration-150 cursor-pointer shadow-2xs hover:shadow-md ${
                                 isBeingCalled
                                   ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
                                   : isSelected
@@ -1510,7 +1851,7 @@ export default function Dialer() {
                                     {maskPhoneNumber(lead.phone)}
                                   </p>
                                 </div>
-                                <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase border ${
+                                <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border ${
                                   lead.status === 'new' ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 text-blue-600' :
                                   lead.status === 'follow_up_required' ? 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 text-amber-600' :
                                   lead.status === 'closed' ? 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 text-emerald-600' :
@@ -1532,7 +1873,7 @@ export default function Dialer() {
                                     handleQuickCall(lead);
                                   }}
                                   disabled={callStatus !== "ready" || isDialing}
-                                  className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-40 cursor-pointer active:scale-95 shadow-2xs"
+                                  className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-40 cursor-pointer active:scale-95 shadow-xs"
                                 >
                                   {quickCallingLeadId === lead._id ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1549,7 +1890,7 @@ export default function Dialer() {
                     </div>
 
                     {/* ── FLOATING LEAD ACTION RAIL ── */}
-                    <div className="absolute right-1 top-2 bottom-2 z-20 flex flex-col items-center gap-3 py-3 px-1.5 bg-white/95 dark:bg-[#172033]/95 backdrop-blur-md border border-slate-200/80 dark:border-white/10 rounded-full shadow-md">
+                    <div className="absolute right-1 top-2 bottom-2 z-20 flex flex-col items-center gap-2.5 py-3 px-1.5 bg-white/95 dark:bg-[#172033]/95 backdrop-blur-md border border-slate-200/80 dark:border-white/10 rounded-full shadow-md">
                       {/* 👤 User Profile Icon */}
                       <div className="relative group">
                         <button
@@ -1629,6 +1970,23 @@ export default function Dialer() {
                           Call Logs
                         </div>
                       </div>
+
+                      {/* ⌨️ Softphone Dialer Icon */}
+                      <div className="relative group">
+                        <button
+                          onClick={() => setActiveSlideOver(activeSlideOver === "dialer" ? null : "dialer")}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
+                            activeSlideOver === "dialer"
+                              ? "bg-[#F4B400] text-[#123E8A] shadow-amber-500/40 ring-2 ring-amber-400/50 scale-105"
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:text-amber-600 dark:hover:text-amber-400"
+                          }`}
+                        >
+                          <Phone className="h-4.5 w-4.5" />
+                        </button>
+                        <div className="absolute right-12 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-bold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md z-30">
+                          Softphone Dialer
+                        </div>
+                      </div>
                     </div>
 
                     {/* RIGHT SLIDE-OVER PANEL */}
@@ -1643,379 +2001,8 @@ export default function Dialer() {
                       isSavingDisposition={isSavingSlideOverDisp}
                       showToast={showToast}
                       user={user}
+                      dialerComponent={renderDialerPanel()}
                     />
-                  </div>
-                </div>
-
-              </div>
-
-              {/* ── RIGHT COLUMN: FIXED MANUAL DIALER PANEL (320-360px) ── */}
-              <div className="w-full lg:w-[340px] xl:w-[360px] bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-4 flex flex-col justify-between overflow-y-auto shrink-0 shadow-sm softphone-scrollbar">
-
-                {/* Dialer Header */}
-                <div className="w-full">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-white/10 mb-3">
-                    <div className="flex items-center gap-2">
-                      <PhoneCall className="h-5 w-5 text-amber-500" />
-                      <h2 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                        MANUAL DIALER
-                      </h2>
-                    </div>
-
-                    {/* Agent Status Badge Indicator */}
-                    <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider border ${
-                      agentStatus === "ready" ? "bg-emerald-50 text-emerald-600 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-400" :
-                      agentStatus === "on_call" ? "bg-amber-50 text-amber-600 border-amber-300 dark:bg-amber-500/15 dark:text-amber-400 animate-pulse" :
-                      agentStatus === "wrap_up" ? "bg-purple-50 text-purple-600 border-purple-300 dark:bg-purple-500/15 dark:text-purple-400" :
-                      "bg-rose-50 text-rose-600 border-rose-300 dark:bg-rose-500/15 dark:text-rose-400"
-                    }`}>
-                      {agentStatus === "ready" ? "READY" : agentStatus.replace("_", " ")}
-                    </span>
-                  </div>
-
-                  {/* Selected Caller/Lead Info Card */}
-                  {selectedLead && (
-                    <div className="mb-2.5 p-2.5 bg-blue-50/70 dark:bg-blue-500/10 rounded-[12px] border border-blue-200 dark:border-blue-500/20">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Selected Customer</p>
-                          <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">{selectedLead.name}</p>
-                          <p className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300">{selectedLead.phone}</p>
-                        </div>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                          {selectedLead.source}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Mobile Number Input Box */}
-                  <div className="mb-2.5">
-                    <label className="block text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      TARGET MOBILE NUMBER
-                    </label>
-                    <div className="relative h-[50px] flex items-center bg-slate-50/90 dark:bg-[#172033] border border-slate-200 dark:border-white/10 rounded-[14px] px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={10}
-                        value={outboundPhone}
-                        onChange={(e) => {
-                          if (callStatus !== "ready") return;
-                          setOutboundPhone(sanitizeMobileNumber(e.target.value));
-                        }}
-                        readOnly={callStatus !== "ready"}
-                        placeholder="Enter 10-digit number"
-                        className="w-full bg-transparent text-center font-mono font-extrabold text-lg text-slate-900 dark:text-white outline-none tracking-widest placeholder:text-slate-400 placeholder:text-sm placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
-                      />
-                      {callStatus === "ready" && outboundPhone.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setOutboundPhone("")}
-                          className="h-7 w-7 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60 flex items-center justify-center cursor-pointer transition shrink-0 ml-1"
-                          title="Clear number"
-                        >
-                          <XCircle className="h-4.5 w-4.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Helper / Validation Message */}
-                    <div className="mt-1 text-center">
-                      {outboundPhone.length > 0 && !isValidMobile ? (
-                        <p className="text-[11px] font-bold text-rose-500 flex items-center justify-center gap-1">
-                          <AlertCircle className="h-3 w-3 shrink-0" />
-                          <span>Must be 10 digits starting with 6-9</span>
-                        </p>
-                      ) : (
-                        <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500">
-                          Enter 10-digit mobile number
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Call Mode Switcher (Human Agent vs Vapi AI) */}
-                  {callStatus === "ready" && (
-                    <div className="mb-2.5 h-[48px] p-1 bg-slate-100/90 dark:bg-slate-800 rounded-[14px] flex items-center gap-1 border border-slate-200/80 dark:border-slate-700">
-                      <button
-                        type="button"
-                        onClick={() => setCallMode("human")}
-                        className={`flex-1 h-[38px] text-xs font-extrabold rounded-[10px] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                          callMode === "human"
-                            ? "bg-[#F4B400] text-[#123E8A] shadow-2xs font-black"
-                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5"
-                        }`}
-                      >
-                        <User className="h-4 w-4" /> Agent Call
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCallMode("ai")}
-                        className={`flex-1 h-[38px] text-xs font-extrabold rounded-[10px] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
-                          callMode === "ai"
-                            ? "bg-purple-600 text-white shadow-2xs font-black"
-                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/5"
-                        }`}
-                      >
-                        <Bot className="h-4 w-4" /> Vapi AI Call
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Dialpad Keypad */}
-                  {callStatus === "ready" && renderKeypad()}
-
-                  {/* Calling / Ringing State View */}
-                  {(callStatus === "dialing" || callStatus === "ringing") && (
-                    <div className="my-6 text-center">
-                      <div className="relative h-20 w-20 mx-auto mb-3">
-                        <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
-                        <div className="relative h-20 w-20 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                          {callStatus === "dialing" ? (
-                            <Loader2 className="h-9 w-9 text-white animate-spin" />
-                          ) : (
-                            <Phone className="h-9 w-9 text-white animate-bounce" />
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                        {callStatus === "dialing" ? "Initiating Call..." : "Ringing Customer..."}
-                      </p>
-                      <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">+91 {outboundPhone}</p>
-                    </div>
-                  )}
-
-                  {/* Connected / On Hold Live Call State */}
-                  {(callStatus === "connected" || callStatus === "hold") && (
-                    <div className="my-4 text-center">
-                      <div className={`h-16 w-16 rounded-full mx-auto flex items-center justify-center mb-2 border-2 ${
-                        callStatus === "hold"
-                          ? "bg-amber-500/10 border-amber-500 text-amber-500"
-                          : "bg-emerald-500/10 border-emerald-500 text-emerald-500"
-                      }`}>
-                        {callStatus === "hold" ? <Pause className="h-8 w-8 animate-pulse" /> : <User className="h-8 w-8" />}
-                      </div>
-                      <p className="text-xs font-extrabold text-slate-900 dark:text-white">
-                        {callStatus === "hold" ? "Call On Hold" : "Connected Live"}
-                      </p>
-                      <p className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1">
-                        {formatTime(callDuration)}
-                      </p>
-
-                      {/* In-Call Keypad Overlay Toggle */}
-                      {showInCallKeypad && renderKeypad()}
-                    </div>
-                  )}
-
-                  {/* WRAP-UP AFTER-CALL WORK PANEL */}
-                  {callStatus === "wrapup" && (
-                    <div className="my-3 p-3 bg-slate-50 dark:bg-[#172033] rounded-xl border border-slate-200 dark:border-white/10 space-y-3">
-                      <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-white/10">
-                        <MessageSquare className="h-4 w-4 text-amber-500" />
-                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                          After-Call Work (Wrap-up)
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
-                          Call Disposition *
-                        </label>
-                        <CustomSelect
-                          value={disposition}
-                          onChange={setDisposition}
-                          options={DISPOSITION_OPTIONS}
-                          placeholder="Select Disposition"
-                          triggerClassName="h-9 rounded-lg text-xs dark:bg-slate-800 dark:text-white dark:border-white/10"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
-                            Follow-up Date
-                          </label>
-                          <input
-                            type="date"
-                            value={followUpDate}
-                            onChange={e => setFollowUpDate(e.target.value)}
-                            className="w-full h-8 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold text-slate-900 dark:text-white outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
-                            Follow-up Time
-                          </label>
-                          <input
-                            type="time"
-                            value={followUpTime}
-                            onChange={e => setFollowUpTime(e.target.value)}
-                            className="w-full h-8 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold text-slate-900 dark:text-white outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
-                          Customer Notes
-                        </label>
-                        <textarea
-                          placeholder="Log customer response or key points..."
-                          value={notes}
-                          onChange={e => setNotes(e.target.value)}
-                          rows={2}
-                          className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-medium text-slate-900 dark:text-white resize-none outline-none"
-                        />
-                      </div>
-
-                      <button
-                        onClick={handleSaveAndNext}
-                        disabled={isSavingOutcome}
-                        className="w-full h-10 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-95 disabled:opacity-50"
-                      >
-                        {isSavingOutcome ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Save className="h-4 w-4" />
-                        )}
-                        <span>Save &amp; Next Lead →</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Primary Action Buttons Bar */}
-                <div className="w-full mt-2.5 pt-2.5 border-t border-slate-100 dark:border-white/10">
-                  {callStatus === "ready" && (
-                    <button
-                      type="button"
-                      onClick={handleDial}
-                      disabled={!isValidMobile || isCreatingLead || isDialing}
-                      className="w-full h-[52px] bg-[#10B981] hover:bg-[#059669] text-white rounded-[14px] font-extrabold text-base shadow-sm shadow-emerald-500/20 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2.5 cursor-pointer active:scale-[0.98]"
-                    >
-                      {isDialing || isCreatingLead ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin" /> Starting Call...
-                        </>
-                      ) : (
-                        <>
-                          <Phone className="h-5 w-5 fill-current" /> Call Customer
-                        </>
-                      )}
-                    </button>
-                  )}
-
-                  {(callStatus === "dialing" || callStatus === "ringing") && (
-                    <button
-                      onClick={handleHangup}
-                      className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3.5 font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-                    >
-                      <PhoneOff className="h-4.5 w-4.5 fill-current" /> Cancel Dialing
-                    </button>
-                  )}
-
-                  {(callStatus === "connected" || callStatus === "hold") && (
-                    <div className="space-y-2.5">
-                      <div className="grid grid-cols-4 gap-2">
-                        <button
-                          onClick={handleMuteToggle}
-                          disabled={isMuteLoading}
-                          className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
-                            isMuted
-                              ? "bg-amber-500 text-white border-amber-600"
-                              : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
-                          }`}
-                          title="Mute/Unmute Mic"
-                        >
-                          {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                          <span className="text-[9px] font-black uppercase">{isMuted ? "Muted" : "Mute"}</span>
-                        </button>
-
-                        <button
-                          onClick={handleHoldToggle}
-                          disabled={isHoldLoading || isHoldProcessing}
-                          className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
-                            callStatus === "hold"
-                              ? "bg-amber-500 text-white border-amber-600"
-                              : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
-                          }`}
-                          title="Hold/Resume Call"
-                        >
-                          {callStatus === "hold" ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-                          <span className="text-[9px] font-black uppercase">{callStatus === "hold" ? "Resume" : "Hold"}</span>
-                        </button>
-
-                        <button
-                          onClick={() => setShowInCallKeypad(!showInCallKeypad)}
-                          className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95"
-                          title="DTMF Keypad"
-                        >
-                          <Hash className="h-4 w-4" />
-                          <span className="text-[9px] font-black uppercase">Keypad</span>
-                        </button>
-
-                        <button
-                          onClick={() => setShowTransferModal(true)}
-                          className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95"
-                          title="Transfer Call"
-                        >
-                          <Share2 className="h-4 w-4" />
-                          <span className="text-[9px] font-black uppercase">Transfer</span>
-                        </button>
-                      </div>
-
-                      <button
-                        onClick={handleHangup}
-                        className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-extrabold text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-                      >
-                        <PhoneOff className="h-4 w-4 fill-current" /> End Call
-                      </button>
-                    </div>
-                  )}
-
-                  {(callStatus === "busy" || callStatus === "no-answer" || callStatus === "failed") && (
-                    <button
-                      onClick={() => {
-                        setCallStatus("ready");
-                        setAgentStatus("ready");
-                      }}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl py-3 font-extrabold text-sm transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-                    >
-                      <RefreshCw className="h-4 w-4" /> Redial / Ready
-                    </button>
-                  )}
-                </div>
-
-                {/* Recent Call Logs Subsection in Right Sidebar */}
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                      <History className="h-3 w-3 text-blue-500" /> Recent Call Logs
-                    </p>
-                    <button onClick={fetchCallHistory} className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-                      Refresh
-                    </button>
-                  </div>
-
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto softphone-scrollbar pr-1">
-                    {callHistory.slice(0, 5).map((log, i) => (
-                      <div
-                        key={log.id || log._id || i}
-                        className="p-2 bg-slate-50 dark:bg-[#172033] rounded-lg border border-slate-100 dark:border-white/5 flex items-center justify-between text-[11px]"
-                      >
-                        <div>
-                          <p className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                            {maskPhoneNumber(log.phone || log.phone_number)}
-                          </p>
-                          <p className="text-[9px] text-slate-400">{formatCallTime(log.started_at || log.created_at)}</p>
-                        </div>
-                        <div className="text-right">
-                          {renderOutcomeBadge(log.outcome || log.status)}
-                          <p className="text-[9px] font-mono text-slate-500 mt-0.5">{formatDuration(log.duration_seconds || log.duration)}</p>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
 
