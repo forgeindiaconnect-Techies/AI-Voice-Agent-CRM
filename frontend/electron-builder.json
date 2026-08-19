@@ -14,7 +14,6 @@
   "win": {
     "executableName": "ForgeCRM",
     "target": [
-      "portable",
       "nsis"
     ],
     "icon": "public/login.png"
