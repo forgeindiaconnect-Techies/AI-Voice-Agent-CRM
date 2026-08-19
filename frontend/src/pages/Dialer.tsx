@@ -23,6 +23,8 @@ import {
   History,
   CheckCircle2,
   XCircle,
+  Smartphone,
+  X,
   Hash,
   MessageSquare,
   ListOrdered,
@@ -202,6 +204,11 @@ export default function Dialer() {
   // FLOATING RAIL & SLIDE-OVER STATE
   const [activeSlideOver, setActiveSlideOver] = useState<ActiveSlideOverTab>(null);
   const [isSavingSlideOverDisp, setIsSavingSlideOverDisp] = useState(false);
+
+  // CALL METHOD & SIM SELECTION MODAL STATE
+  const [showCallMethodModal, setShowCallMethodModal] = useState(false);
+  const [selectedCallMethod, setSelectedCallMethod] = useState<"human" | "ai">("human");
+  const [selectedSim, setSelectedSim] = useState<"sim1" | "sim2">("sim1");
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -640,10 +647,13 @@ export default function Dialer() {
   };
 
   // Call Initiation
-  const handleDial = async () => {
+  const handleDial = async (overrideMode?: "human" | "ai", simSlot: "sim1" | "sim2" = "sim1") => {
     if (!isValidMobile) return;
     if (isDialingRef.current || isDialing) return;
     if (callStatus === "dialing" || callStatus === "ringing" || callStatus === "connected" || callStatus === "hold") return;
+
+    const targetMode = overrideMode || callMode;
+    setCallMode(targetMode);
 
     if (callStatus !== "ready") {
       setCallStatus("ready");
@@ -695,13 +705,14 @@ export default function Dialer() {
     setIsCreatingLead(false);
 
     // AI Call Mode
-    if (callMode === "ai") {
+    if (targetMode === "ai") {
       try {
         const res = await api.post("/api/calls/vapi-dial", {
           phone: fullPhoneNumber,
           name: matchedLead?.name || `Manual Lead - ${outboundPhone}`,
           pool_id: matchedLead?.pool_id || user?.pool_id || "general",
-          idempotency_key: idempotencyKey
+          idempotency_key: idempotencyKey,
+          sim_slot: simSlot
         });
         setCurrentCallId(res.id || res._id || res.call_id || null);
         setCallStatus("connected");
@@ -711,7 +722,7 @@ export default function Dialer() {
         setIsDialing(false);
         fetchLeads();
         fetchCallHistory();
-        showToast("Vapi AI Voice Agent call initiated", "success");
+        showToast(`Vapi AI Voice Agent call initiated on ${simSlot === "sim2" ? "SIM 2" : "SIM 1"}`, "success");
         return;
       } catch (err: any) {
         const msg = typeof err.message === "string" ? err.message : JSON.stringify(err.message || "");
@@ -736,7 +747,8 @@ export default function Dialer() {
         notes: "",
         initiate_pstn: false,
         idempotency_key: idempotencyKey,
-        call_mode: callMode
+        call_mode: targetMode,
+        sim_slot: simSlot
       });
       setCurrentCallId(res.id || res._id || res.call_id || null);
     } catch (err: any) {
@@ -1332,34 +1344,6 @@ export default function Dialer() {
           </div>
         </div>
 
-        {/* Call Mode Switcher */}
-        {callStatus === "ready" && (
-          <div className="mb-2.5 h-[44px] p-1 bg-slate-100/90 dark:bg-slate-800 rounded-xl flex items-center gap-1 border border-slate-200/80 dark:border-slate-700">
-            <button
-              type="button"
-              onClick={() => setCallMode("human")}
-              className={`flex-1 h-[34px] text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
-                callMode === "human"
-                  ? "bg-[#F4B400] text-[#123E8A] shadow-2xs font-black"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <User className="h-3.5 w-3.5" /> Agent Call
-            </button>
-            <button
-              type="button"
-              onClick={() => setCallMode("ai")}
-              className={`flex-1 h-[34px] text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
-                callMode === "ai"
-                  ? "bg-purple-600 text-white shadow-2xs font-black"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <Bot className="h-3.5 w-3.5" /> Vapi AI Call
-            </button>
-          </div>
-        )}
-
         {/* Keypad */}
         {callStatus === "ready" && renderKeypad()}
 
@@ -1486,7 +1470,7 @@ export default function Dialer() {
         {callStatus === "ready" && (
           <button
             type="button"
-            onClick={handleDial}
+            onClick={() => setShowCallMethodModal(true)}
             disabled={!isValidMobile || isCreatingLead || isDialing}
             className="w-full h-[46px] bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
           >
@@ -1718,34 +1702,6 @@ export default function Dialer() {
                         </div>
                       </div>
 
-                      {/* Call Mode Switcher */}
-                      {callStatus === "ready" && (
-                        <div className="mb-3 h-[46px] p-1 bg-white dark:bg-[#111827] rounded-xl flex items-center gap-1 border border-slate-200/80 dark:border-white/10 shadow-2xs">
-                          <button
-                            type="button"
-                            onClick={() => setCallMode("human")}
-                            className={`flex-1 h-[36px] text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
-                              callMode === "human"
-                                ? "bg-[#F4B400] text-[#123E8A] shadow-2xs font-black"
-                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                            }`}
-                          >
-                            <User className="h-4 w-4" /> Agent Call
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCallMode("ai")}
-                            className={`flex-1 h-[36px] text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
-                              callMode === "ai"
-                                ? "bg-purple-600 text-white shadow-2xs font-black"
-                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                            }`}
-                          >
-                            <Bot className="h-4 w-4" /> Vapi AI Call
-                          </button>
-                        </div>
-                      )}
-
                       {/* Keypad Grid */}
                       {callStatus === "ready" && renderKeypad()}
 
@@ -1871,7 +1827,7 @@ export default function Dialer() {
                         {callStatus === "ready" && (
                           <button
                             type="button"
-                            onClick={handleDial}
+                            onClick={() => setShowCallMethodModal(true)}
                             disabled={!isValidMobile || isCreatingLead || isDialing}
                             className="w-full h-[48px] bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                           >
@@ -2234,6 +2190,138 @@ export default function Dialer() {
         </div>
       )}
 
+
+      {/* Choose Call Method & Select SIM Selection Modal Popup */}
+      {showCallMethodModal && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-white/10 p-5 max-w-sm w-full shadow-2xl overflow-hidden relative">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-500/20">
+                  <PhoneCall className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Choose Call Method
+                  </h3>
+                  <p className="text-[11px] font-mono font-semibold text-blue-600 dark:text-blue-400">
+                    Target: +91 {outboundPhone}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCallMethodModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Step 1: Choose Call Method */}
+            <div className="mb-4">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">
+                Choose Call Method
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {/* 👤 Agent Call Option */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCallMethod("human")}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                    selectedCallMethod === "human"
+                      ? "bg-[#F4B400]/15 border-[#F4B400] ring-2 ring-[#F4B400]/40 text-[#123E8A] dark:text-amber-400 font-black shadow-2xs"
+                      : "bg-slate-50 dark:bg-[#182233] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                  }`}
+                >
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                    selectedCallMethod === "human" ? "bg-[#F4B400] text-[#123E8A]" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  }`}>
+                    <User className="h-4 w-4" />
+                  </div>
+                  <span className="text-xs font-extrabold">👤 Agent Call</span>
+                </button>
+
+                {/* 🤖 AI Call Option */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedCallMethod("ai")}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                    selectedCallMethod === "ai"
+                      ? "bg-purple-500/15 border-purple-500 ring-2 ring-purple-500/40 text-purple-700 dark:text-purple-300 font-black shadow-2xs"
+                      : "bg-slate-50 dark:bg-[#182233] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                  }`}
+                >
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                    selectedCallMethod === "ai" ? "bg-purple-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  }`}>
+                    <Bot className="h-4 w-4" />
+                  </div>
+                  <span className="text-xs font-extrabold">🤖 AI Call</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Step 2: Select SIM */}
+            <div className="mb-5">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">
+                Select SIM
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSim("sim1")}
+                  className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 transition cursor-pointer text-xs font-extrabold ${
+                    selectedSim === "sim1"
+                      ? "bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/30"
+                      : "bg-slate-50 dark:bg-[#182233] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                  }`}
+                >
+                  <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span>SIM 1</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedSim("sim2")}
+                  className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 transition cursor-pointer text-xs font-extrabold ${
+                    selectedSim === "sim2"
+                      ? "bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/30"
+                      : "bg-slate-50 dark:bg-[#182233] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                  }`}
+                >
+                  <Smartphone className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>SIM 2</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowCallMethodModal(false)}
+                className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-extrabold text-xs cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCallMethodModal(false);
+                  handleDial(selectedCallMethod, selectedSim);
+                }}
+                className="flex-2 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+              >
+                <Phone className="h-3.5 w-3.5 fill-current" />
+                <span>Start {selectedCallMethod === "ai" ? "AI Call" : "Agent Call"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Advanced Lead Filter Modal */}
       <LeadFilterModal
