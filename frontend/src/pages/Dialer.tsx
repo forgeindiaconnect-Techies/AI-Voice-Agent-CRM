@@ -1833,7 +1833,7 @@ export default function Dialer() {
                             <div
                               key={lead._id || `lead-${idx}`}
                               onClick={() => handleSelectLead(lead)}
-                              className={`p-4 rounded-2xl border transition-all duration-150 cursor-pointer shadow-2xs hover:shadow-md ${
+                              className={`p-3.5 px-4 rounded-xl border transition-all duration-150 cursor-pointer flex items-center justify-between shadow-2xs hover:shadow-sm ${
                                 isBeingCalled
                                   ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
                                   : isSelected
@@ -1841,7 +1841,12 @@ export default function Dialer() {
                                   : "bg-slate-50/60 dark:bg-[#172033]/60 border-slate-200/80 dark:border-white/10 hover:bg-white dark:hover:bg-[#1A2438] hover:border-slate-300"
                               }`}
                             >
-                              <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8.5 h-8.5 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
+                                  isSelected ? "bg-blue-600 text-white shadow-xs" : "bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                                }`}>
+                                  {lead.name ? lead.name.charAt(0).toUpperCase() : "C"}
+                                </div>
                                 <div>
                                   <h3 className="font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
                                     {lead.name || "Unknown Customer"}
@@ -1851,37 +1856,6 @@ export default function Dialer() {
                                     {maskPhoneNumber(lead.phone)}
                                   </p>
                                 </div>
-                                <span className={`text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase border ${
-                                  lead.status === 'new' ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-200 text-blue-600' :
-                                  lead.status === 'follow_up_required' ? 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 text-amber-600' :
-                                  lead.status === 'closed' ? 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 text-emerald-600' :
-                                  'bg-slate-100 dark:bg-slate-800 border-slate-200 text-slate-600'
-                                }`}>
-                                  {lead.status.replace(/_/g, ' ')}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                                <span>Source: <strong className="text-slate-700 dark:text-slate-300">{lead.source || "Manual"}</strong></span>
-                                <span>Added: {formatDate(lead.created_at)}</span>
-                              </div>
-
-                              <div className="mt-2.5 pt-2 border-t border-slate-200/50 dark:border-white/5">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleQuickCall(lead);
-                                  }}
-                                  disabled={callStatus !== "ready" || isDialing}
-                                  className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-40 cursor-pointer active:scale-95 shadow-xs"
-                                >
-                                  {quickCallingLeadId === lead._id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    <Phone className="h-3.5 w-3.5" />
-                                  )}
-                                  <span>Quick Dial</span>
-                                </button>
                               </div>
                             </div>
                           );
