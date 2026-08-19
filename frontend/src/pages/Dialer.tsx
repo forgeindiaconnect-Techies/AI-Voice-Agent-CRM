@@ -1478,10 +1478,10 @@ export default function Dialer() {
                           <p className="font-bold text-xs">Loading Assigned Leads...</p>
                         </div>
                       ) : filteredLeads.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-[#172033] rounded-xl border border-dashed border-slate-200 dark:border-white/10 p-6">
-                          <AlertCircle className="h-8 w-8 text-slate-300 dark:text-slate-600 mb-2" />
-                          <p className="font-bold text-xs text-slate-700 dark:text-white">No Assigned Leads Found</p>
-                          <p className="text-[11px]">Adjust your search query or status filters.</p>
+                        <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-[#172033] rounded-xl border border-dashed border-slate-200 dark:border-white/10 p-8 text-center">
+                          <AlertCircle className="h-9 w-9 text-slate-300 dark:text-slate-600 mb-2" />
+                          <p className="font-extrabold text-xs text-slate-700 dark:text-white">No Leads Available</p>
+                          <p className="text-[11px] mt-1 text-slate-500 max-w-xs">There are currently no assigned leads in your queue. Add a lead or import a campaign file to start calling.</p>
                         </div>
                       ) : (
                         filteredLeads.map((lead, idx) => {
