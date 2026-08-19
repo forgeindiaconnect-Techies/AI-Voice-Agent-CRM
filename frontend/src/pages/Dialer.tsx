@@ -1593,58 +1593,31 @@ export default function Dialer() {
               exit={{ opacity: 0, y: -8 }}
               className="h-full flex flex-col gap-3"
             >
-
-              {/* ── FULL-WIDTH ASSIGNED LEADS WORKSPACE ── */}
+              {/* ── FULL-WIDTH SOFTPHONE DIALER WORKSPACE ── */}
               <div className="w-full flex-1 flex flex-col gap-3 overflow-hidden h-full min-w-0">
 
-                {/* Assigned Leads Workspace Box */}
-                <div className="bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-4 flex-1 flex flex-col overflow-hidden shadow-2xs relative w-full">
+                {/* Primary Softphone Dialer Workstation Box */}
+                <div className="bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-5 flex-1 flex flex-col items-center overflow-y-auto no-scrollbar shadow-2xs relative w-full">
 
-                  {/* Header & Controls */}
-                  <div className="flex justify-between items-center mb-3 shrink-0 flex-wrap gap-2">
+                  {/* Top Header & Agent Status Bar */}
+                  <div className="w-full flex justify-between items-center mb-4 shrink-0 pb-3 border-b border-slate-100 dark:border-white/10">
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                        <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                          Assigned Leads Workspace
-                        </h2>
+                      <div className="h-10 w-10 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-amber-500/20 shadow-2xs">
+                        <PhoneCall className="h-5 w-5" />
                       </div>
-
-                      {/* Clean Segmented Tab Switcher */}
-                      <div className="h-9 p-1 bg-slate-100 dark:bg-[#182233] rounded-xl flex items-center gap-1 border border-slate-200 dark:border-white/10 shadow-2xs">
-                        <button
-                          onClick={() => setLeadDirection("outbound")}
-                          className={`h-7 px-3 text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                            leadDirection === "outbound"
-                              ? "bg-blue-600 text-white shadow-xs font-black"
-                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                          }`}
-                        >
-                          <PhoneCall className="h-3.5 w-3.5" />
-                          <span>Outbound Leads</span>
-                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
-                            leadDirection === "outbound" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                          }`}>
-                            {outboundLeadsCount}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                            Softphone Dialer Workstation
+                          </h2>
+                          <span className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            Live Station
                           </span>
-                        </button>
-
-                        <button
-                          onClick={() => setLeadDirection("inbound")}
-                          className={`h-7 px-3 text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                            leadDirection === "inbound"
-                              ? "bg-blue-600 text-white shadow-xs font-black"
-                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                          }`}
-                        >
-                          <Ear className="h-3.5 w-3.5" />
-                          <span>Inbound Leads</span>
-                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
-                            leadDirection === "inbound" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                          }`}>
-                            {inboundLeadsCount}
-                          </span>
-                        </button>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                          Manual Outbound Dialing · Agent &amp; AI Call Modes · Real-time Call Console
+                        </p>
                       </div>
                     </div>
 
@@ -1665,194 +1638,335 @@ export default function Dialer() {
                       </div>
 
                       <button
-                        onClick={() => setActiveSlideOver("dialer")}
-                        className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
-                        title="Open Softphone Dialer Drawer"
-                      >
-                        <Phone className="h-3.5 w-3.5 fill-current" />
-                        <span>Softphone Dialer</span>
-                      </button>
-
-                      <button
                         onClick={fetchLeads}
                         className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition cursor-pointer border border-slate-200/80 dark:border-white/10"
-                        title="Refresh Leads List"
+                        title="Refresh Workstation"
                       >
                         <RefreshCw className={`h-4 w-4 ${isLoadingLeads ? 'animate-spin' : ''}`} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Full-width Search and Filters Toolbar */}
-                  <div className="flex gap-2 mb-2 shrink-0 w-full">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search leads by name, phone or User ID..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full h-10 pl-9 pr-3 bg-slate-50 dark:bg-[#172033] border border-slate-200 dark:border-white/10 rounded-xl text-xs font-semibold text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
+                  {/* Relative Container for Centered Dialer + Right Floating Action Rail */}
+                  <div className="relative flex-1 w-full flex items-center justify-center min-h-0 py-2">
 
-                    {/* Compact Filters Button */}
-                    <button
-                      onClick={() => setIsFilterPanelOpen(true)}
-                      className={`h-10 px-3.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                        activeFilterCount > 0
-                          ? "bg-blue-50 dark:bg-blue-500/15 border-blue-300 dark:border-blue-500/40 text-blue-700 dark:text-blue-300 shadow-2xs"
-                          : "bg-slate-50 dark:bg-[#172033] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10"
-                      }`}
-                    >
-                      <Sliders className="h-3.5 w-3.5" />
-                      <span>Filters</span>
-                      {activeFilterCount > 0 && (
-                        <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded-full">
-                          {activeFilterCount}
-                        </span>
-                      )}
-                    </button>
-
-                    <div className="w-48">
-                      <CustomSelect
-                        value={statusFilter}
-                        onChange={setStatusFilter}
-                        options={STATUS_FILTER_OPTIONS}
-                        placeholder="Select Status"
-                        triggerClassName="h-10 rounded-xl text-xs dark:bg-[#172033] dark:text-white dark:border-white/10"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Active Filter Removable Chips Bar */}
-                  {activeFilterCount > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 mb-2.5 shrink-0">
-                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">Active Filters:</span>
-                      {filterUserId.trim() && (
-                        <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          User ID: <strong className="font-mono">{filterUserId}</strong>
-                          <button onClick={() => setFilterUserId("")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )}
-                      {filterPhone.trim() && (
-                        <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          Phone: <strong className="font-mono">{filterPhone}</strong>
-                          <button onClick={() => setFilterPhone("")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )}
-                      {statusFilter !== "All" && (
-                        <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          Status: <strong>{statusFilter.replace(/_/g, " ")}</strong>
-                          <button onClick={() => setStatusFilter("All")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )}
-                      {filterSource !== "All" && (
-                        <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          Source: <strong>{filterSource}</strong>
-                          <button onClick={() => setFilterSource("All")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )}
-                      {(filterStartDate || filterEndDate) && (
-                        <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          Date: <strong className="font-mono">{filterStartDate || "..."} to {filterEndDate || "..."}</strong>
-                          <button onClick={() => { setFilterStartDate(""); setFilterEndDate(""); }} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )}
-                      {filterAgent.trim() && (
-                        <span className="inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-blue-700 dark:text-blue-300 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                          Agent: {filterAgent}
-                          <button onClick={() => setFilterAgent("")} className="hover:text-blue-900 dark:hover:text-white transition cursor-pointer">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      )}
-                      <button
-                        onClick={resetAllFilters}
-                        className="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 hover:underline ml-1 cursor-pointer"
-                      >
-                        Clear All
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Relative Container for List + Floating Rail + Slide-over */}
-                  <div className="relative flex-1 overflow-hidden flex flex-col min-h-0">
-                    {/* Leads Grid/List */}
-                    <div className="flex-1 overflow-y-auto pr-14 space-y-2.5 softphone-scrollbar">
-                      {isLoadingLeads && leads.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                          <Loader2 className="h-7 w-7 animate-spin text-blue-600 mb-2" />
-                          <p className="font-bold text-xs">Loading Assigned Leads...</p>
-                        </div>
-                      ) : displayedLeads.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-[#172033] rounded-xl border border-dashed border-slate-200 dark:border-white/10 p-8 text-center">
-                          <AlertCircle className="h-9 w-9 text-slate-300 dark:text-slate-600 mb-2" />
-                          <p className="font-extrabold text-xs text-slate-700 dark:text-white">
-                            No {leadDirection === "inbound" ? "Inbound" : "Outbound"} Leads Available
-                          </p>
-                          <p className="text-[11px] mt-1 text-slate-500 max-w-xs">
-                            There are currently no {leadDirection === "inbound" ? "inbound" : "outbound"} assigned leads matching your filter criteria.
-                          </p>
-                        </div>
-                      ) : (
-                        displayedLeads.map((lead, idx) => {
-                          const isSelected = selectedLead?._id === lead._id;
-                          const isBeingCalled = outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone;
-
-                          return (
-                            <div
-                              key={lead._id || `lead-${idx}`}
-                              onClick={() => handleSelectLead(lead)}
-                              className={`p-3.5 px-4 rounded-xl border transition-all duration-150 cursor-pointer flex items-center justify-between shadow-2xs hover:shadow-sm ${
-                                isBeingCalled
-                                  ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
-                                  : isSelected
-                                  ? "bg-blue-50/80 dark:bg-blue-500/10 border-blue-400 dark:border-blue-500/40"
-                                  : "bg-slate-50/60 dark:bg-[#172033]/60 border-slate-200/80 dark:border-white/10 hover:bg-white dark:hover:bg-[#1A2438] hover:border-slate-300"
-                              }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className={`w-8.5 h-8.5 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${
-                                  isSelected ? "bg-blue-600 text-white shadow-xs" : "bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
-                                }`}>
-                                  {lead.name ? lead.name.charAt(0).toUpperCase() : "C"}
-                                </div>
-                                <div>
-                                  <h3 className="font-extrabold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
-                                    {lead.name || "Unknown Customer"}
-                                    {lead.priority === "high" && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />}
-                                  </h3>
-                                  <p className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 mt-0.5">
-                                    {maskPhoneNumber(lead.phone)}
-                                  </p>
-                                </div>
-                              </div>
+                    {/* Centered Softphone Dialer Core Card */}
+                    <div className="w-full max-w-[420px] bg-slate-50/60 dark:bg-[#172033]/60 rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 shadow-xs flex flex-col justify-between my-auto">
+                      
+                      {/* Selected Customer Info Badge */}
+                      {selectedLead && (
+                        <div className="mb-3 p-3 bg-blue-50/80 dark:bg-blue-500/10 rounded-xl border border-blue-200 dark:border-blue-500/20">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Target Customer</p>
+                              <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">{selectedLead.name}</p>
+                              <p className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300">{maskPhoneNumber(selectedLead.phone)}</p>
                             </div>
-                          );
-                        })
+                            <button
+                              onClick={() => setSelectedLead(null)}
+                              className="text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white transition cursor-pointer"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
                       )}
+
+                      {/* Target Mobile Input */}
+                      <div className="mb-3">
+                        <label className="block text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                          TARGET MOBILE NUMBER
+                        </label>
+                        <div className="relative h-[48px] flex items-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-xl px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-2xs">
+                          <span className="text-xs font-bold text-slate-400 mr-2 border-r pr-2 border-slate-200 dark:border-white/10">+91</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={10}
+                            value={outboundPhone}
+                            onChange={(e) => {
+                              if (callStatus !== "ready") return;
+                              setOutboundPhone(sanitizeMobileNumber(e.target.value));
+                            }}
+                            readOnly={callStatus !== "ready"}
+                            placeholder="Enter 10-digit number"
+                            className="w-full bg-transparent font-mono font-extrabold text-base text-slate-900 dark:text-white outline-none tracking-widest placeholder:text-slate-400 placeholder:text-xs placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
+                          />
+                          {callStatus === "ready" && outboundPhone.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setOutboundPhone("")}
+                              className="h-6 w-6 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60 flex items-center justify-center cursor-pointer transition shrink-0 ml-1"
+                              title="Clear number"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="mt-1 text-center">
+                          {outboundPhone.length > 0 && !isValidMobile ? (
+                            <p className="text-[10px] font-bold text-rose-500 flex items-center justify-center gap-1">
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              <span>Must be 10 digits starting with 6-9</span>
+                            </p>
+                          ) : (
+                            <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                              Enter 10-digit mobile number
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Call Mode Switcher */}
+                      {callStatus === "ready" && (
+                        <div className="mb-3 h-[46px] p-1 bg-white dark:bg-[#111827] rounded-xl flex items-center gap-1 border border-slate-200/80 dark:border-white/10 shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => setCallMode("human")}
+                            className={`flex-1 h-[36px] text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                              callMode === "human"
+                                ? "bg-[#F4B400] text-[#123E8A] shadow-2xs font-black"
+                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            }`}
+                          >
+                            <User className="h-4 w-4" /> Agent Call
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCallMode("ai")}
+                            className={`flex-1 h-[36px] text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                              callMode === "ai"
+                                ? "bg-purple-600 text-white shadow-2xs font-black"
+                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            }`}
+                          >
+                            <Bot className="h-4 w-4" /> Vapi AI Call
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Keypad Grid */}
+                      {callStatus === "ready" && renderKeypad()}
+
+                      {/* Calling / Ringing */}
+                      {(callStatus === "dialing" || callStatus === "ringing") && (
+                        <div className="my-5 text-center">
+                          <div className="relative h-16 w-16 mx-auto mb-2">
+                            <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
+                            <div className="relative h-16 w-16 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                              {callStatus === "dialing" ? (
+                                <Loader2 className="h-8 w-8 text-white animate-spin" />
+                              ) : (
+                                <Phone className="h-8 w-8 text-white animate-bounce" />
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                            {callStatus === "dialing" ? "Initiating Call..." : "Ringing Customer..."}
+                          </p>
+                          <p className="text-xs font-mono font-bold text-slate-500 mt-0.5">{maskPhoneNumber(outboundPhone)}</p>
+                        </div>
+                      )}
+
+                      {/* Connected / Hold */}
+                      {(callStatus === "connected" || callStatus === "hold") && (
+                        <div className="my-3 text-center">
+                          <div className={`h-14 w-14 rounded-full mx-auto flex items-center justify-center mb-1.5 border-2 ${
+                            callStatus === "hold"
+                              ? "bg-amber-500/10 border-amber-500 text-amber-500"
+                              : "bg-emerald-500/10 border-emerald-500 text-emerald-500"
+                          }`}>
+                            {callStatus === "hold" ? <Pause className="h-7 w-7 animate-pulse" /> : <User className="h-7 w-7" />}
+                          </div>
+                          <p className="text-xs font-extrabold text-slate-900 dark:text-white">
+                            {callStatus === "hold" ? "Call On Hold" : "Connected Live"}
+                          </p>
+                          <p className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+                            {formatTime(callDuration)}
+                          </p>
+
+                          {showInCallKeypad && renderKeypad()}
+                        </div>
+                      )}
+
+                      {/* Wrap-up Disposition */}
+                      {callStatus === "wrapup" && (
+                        <div className="my-2 p-3 bg-white dark:bg-[#111827] rounded-xl border border-slate-200 dark:border-white/10 space-y-2.5">
+                          <div className="flex items-center gap-1.5 pb-1.5 border-b border-slate-200 dark:border-white/10">
+                            <MessageSquare className="h-3.5 w-3.5 text-amber-500" />
+                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                              After-Call Work (Wrap-up)
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+                              Call Disposition *
+                            </label>
+                            <CustomSelect
+                              value={disposition}
+                              onChange={setDisposition}
+                              options={DISPOSITION_OPTIONS}
+                              placeholder="Select Disposition"
+                              triggerClassName="h-8 rounded-lg text-xs dark:bg-slate-800 dark:text-white dark:border-white/10"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+                                Follow-up Date
+                              </label>
+                              <input
+                                type="date"
+                                value={followUpDate}
+                                onChange={e => setFollowUpDate(e.target.value)}
+                                className="w-full h-8 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold text-slate-900 dark:text-white outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+                                Follow-up Time
+                              </label>
+                              <input
+                                type="time"
+                                value={followUpTime}
+                                onChange={e => setFollowUpTime(e.target.value)}
+                                className="w-full h-8 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold text-slate-900 dark:text-white outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+                              Customer Notes
+                            </label>
+                            <textarea
+                              placeholder="Log customer response..."
+                              value={notes}
+                              onChange={e => setNotes(e.target.value)}
+                              rows={2}
+                              className="w-full p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-medium text-slate-900 dark:text-white resize-none outline-none"
+                            />
+                          </div>
+
+                          <button
+                            onClick={handleSaveAndNext}
+                            disabled={isSavingOutcome}
+                            className="w-full h-9 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-black text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                          >
+                            {isSavingOutcome ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Save className="h-3.5 w-3.5" />
+                            )}
+                            <span>Save Disposition</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Main Dial Action Button Bar */}
+                      <div className="w-full mt-3 pt-3 border-t border-slate-200/80 dark:border-white/10">
+                        {callStatus === "ready" && (
+                          <button
+                            type="button"
+                            onClick={handleDial}
+                            disabled={!isValidMobile || isCreatingLead || isDialing}
+                            className="w-full h-[48px] bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                          >
+                            {isDialing || isCreatingLead ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" /> Starting Call...
+                              </>
+                            ) : (
+                              <>
+                                <Phone className="h-4 w-4 fill-current" /> Call Customer
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        {(callStatus === "dialing" || callStatus === "ringing") && (
+                          <button
+                            onClick={handleHangup}
+                            className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                          >
+                            <PhoneOff className="h-4 w-4 fill-current" /> Cancel Dialing
+                          </button>
+                        )}
+
+                        {(callStatus === "connected" || callStatus === "hold") && (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-4 gap-1.5">
+                              <button
+                                onClick={handleMuteToggle}
+                                disabled={isMuteLoading}
+                                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                                  isMuted
+                                    ? "bg-amber-500 text-white border-amber-600"
+                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                                }`}
+                                title="Mute/Unmute Mic"
+                              >
+                                {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                                <span className="text-[8px] font-black uppercase">{isMuted ? "Muted" : "Mute"}</span>
+                              </button>
+
+                              <button
+                                onClick={handleHoldToggle}
+                                disabled={isHoldLoading || isHoldProcessing}
+                                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                                  callStatus === "hold"
+                                    ? "bg-amber-500 text-white border-amber-600"
+                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                                }`}
+                                title="Hold/Resume Call"
+                              >
+                                {callStatus === "hold" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                                <span className="text-[8px] font-black uppercase">{callStatus === "hold" ? "Resume" : "Hold"}</span>
+                              </button>
+
+                              <button
+                                onClick={() => setShowInCallKeypad(!showInCallKeypad)}
+                                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                                  showInCallKeypad
+                                    ? "bg-blue-600 text-white border-blue-700"
+                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                                }`}
+                                title="Keypad DTMF"
+                              >
+                                <Hash className="h-3.5 w-3.5" />
+                                <span className="text-[8px] font-black uppercase">Keypad</span>
+                              </button>
+
+                              <button
+                                onClick={() => setShowTransferModal(true)}
+                                className="p-2 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95"
+                                title="Transfer Call"
+                              >
+                                <PhoneForwarded className="h-3.5 w-3.5" />
+                                <span className="text-[8px] font-black uppercase">Transfer</span>
+                              </button>
+                            </div>
+
+                            <button
+                              onClick={handleHangup}
+                              className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-black text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                            >
+                              <PhoneOff className="h-4 w-4 fill-current" /> End Call
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* ── FLOATING LEAD ACTION RAIL ── */}
-                    <div className="absolute right-1 top-2 bottom-2 z-20 flex flex-col items-center gap-2.5 py-3 px-1.5 bg-white/95 dark:bg-[#172033]/95 backdrop-blur-md border border-slate-200/80 dark:border-white/10 rounded-full shadow-md">
+                    {/* Floating Action Rail on Right Edge */}
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2.5 py-3 px-1.5 bg-white/95 dark:bg-[#172033]/95 backdrop-blur-md border border-slate-200/80 dark:border-white/10 rounded-full shadow-md">
                       {/* 👤 User Profile Icon */}
                       <div className="relative group">
                         <button
-                          onClick={() => {
-                            if (!selectedLead && displayedLeads.length > 0) setSelectedLead(displayedLeads[0]);
-                            setActiveSlideOver(activeSlideOver === "profile" ? null : "profile");
-                          }}
+                          onClick={() => setActiveSlideOver(activeSlideOver === "profile" ? null : "profile")}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
                             activeSlideOver === "profile"
                               ? "bg-blue-600 text-white shadow-blue-500/40 ring-2 ring-blue-400/50 scale-105"
@@ -1869,10 +1983,7 @@ export default function Dialer() {
                       {/* 📞 Call History Icon */}
                       <div className="relative group">
                         <button
-                          onClick={() => {
-                            if (!selectedLead && displayedLeads.length > 0) setSelectedLead(displayedLeads[0]);
-                            setActiveSlideOver(activeSlideOver === "history" ? null : "history");
-                          }}
+                          onClick={() => setActiveSlideOver(activeSlideOver === "history" ? null : "history")}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
                             activeSlideOver === "history"
                               ? "bg-blue-600 text-white shadow-blue-500/40 ring-2 ring-blue-400/50 scale-105"
@@ -1889,10 +2000,7 @@ export default function Dialer() {
                       {/* 📝 Disposition Icon */}
                       <div className="relative group">
                         <button
-                          onClick={() => {
-                            if (!selectedLead && displayedLeads.length > 0) setSelectedLead(displayedLeads[0]);
-                            setActiveSlideOver(activeSlideOver === "disposition" ? null : "disposition");
-                          }}
+                          onClick={() => setActiveSlideOver(activeSlideOver === "disposition" ? null : "disposition")}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
                             activeSlideOver === "disposition"
                               ? "bg-blue-600 text-white shadow-blue-500/40 ring-2 ring-blue-400/50 scale-105"
@@ -1909,10 +2017,7 @@ export default function Dialer() {
                       {/* 📋 Call Logs Icon */}
                       <div className="relative group">
                         <button
-                          onClick={() => {
-                            if (!selectedLead && displayedLeads.length > 0) setSelectedLead(displayedLeads[0]);
-                            setActiveSlideOver(activeSlideOver === "logs" ? null : "logs");
-                          }}
+                          onClick={() => setActiveSlideOver(activeSlideOver === "logs" ? null : "logs")}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
                             activeSlideOver === "logs"
                               ? "bg-blue-600 text-white shadow-blue-500/40 ring-2 ring-blue-400/50 scale-105"
@@ -1925,11 +2030,6 @@ export default function Dialer() {
                           Call Logs
                         </div>
                       </div>
-
-                      {/* ⌨️ Softphone Dialer Icon */}
-                      <div className="relative group">
-                        <button
-                          onClick={() => setActiveSlideOver(activeSlideOver === "dialer" ? null : "dialer")}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
                             activeSlideOver === "dialer"
                               ? "bg-[#F4B400] text-[#123E8A] shadow-amber-500/40 ring-2 ring-amber-400/50 scale-105"
