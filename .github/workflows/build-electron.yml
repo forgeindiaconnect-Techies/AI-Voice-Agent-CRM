@@ -1,0 +1,44 @@
+name: Build Electron Desktop Executable
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build Windows Executable (.exe)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend & Electron Dependencies
+        run: |
+          cd frontend
+          npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+
+      - name: Build Electron Executable Package
+        run: |
+          cd frontend
+          npm run electron:build
+
+      - name: Upload Windows Setup Executable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Forge-CRM-Windows-Setup
+          path: frontend/release/**/*.exe
+          if-no-files-found: error
+          retention-days: 30
