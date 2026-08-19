@@ -155,56 +155,6 @@ export default function LeadActionSlideOver({
               title="Close panel"
             >
               <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {/* Tab Navigation Rail Bar */}
-          <div className="flex items-center gap-1 mt-3 p-1 bg-slate-200/60 dark:bg-[#1A2438] rounded-xl text-[11px] font-bold text-slate-600 dark:text-slate-400">
-            <button
-              onClick={() => onSelectTab("profile")}
-              className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer ${
-                activeTab === "profile" ? "bg-white dark:bg-blue-600 text-blue-700 dark:text-white shadow-xs" : "hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <User className="h-3.5 w-3.5" />
-              <span>Profile</span>
-            </button>
-            <button
-              onClick={() => onSelectTab("history")}
-              className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer ${
-                activeTab === "history" ? "bg-white dark:bg-blue-600 text-blue-700 dark:text-white shadow-xs" : "hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <PhoneCall className="h-3.5 w-3.5" />
-              <span>History</span>
-            </button>
-            <button
-              onClick={() => onSelectTab("disposition")}
-              className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer ${
-                activeTab === "disposition" ? "bg-white dark:bg-blue-600 text-blue-700 dark:text-white shadow-xs" : "hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              <span>Dispo</span>
-            </button>
-            <button
-              onClick={() => onSelectTab("logs")}
-              className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer ${
-                activeTab === "logs" ? "bg-white dark:bg-blue-600 text-blue-700 dark:text-white shadow-xs" : "hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <ListOrdered className="h-3.5 w-3.5" />
-              <span>Logs</span>
-            </button>
-            <button
-              onClick={() => onSelectTab("dialer")}
-              className={`flex-1 py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 transition cursor-pointer ${
-                activeTab === "dialer" ? "bg-white dark:bg-blue-600 text-blue-700 dark:text-white shadow-xs" : "hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <Phone className="h-3.5 w-3.5" />
-              <span>Dialer</span>
-            </button>
           </div>
         </div>
 
