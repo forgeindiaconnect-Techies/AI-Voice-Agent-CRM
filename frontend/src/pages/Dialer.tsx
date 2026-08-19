@@ -53,7 +53,7 @@ import {
   Sliders,
   PhoneMissed,
   FileText
-} from "lucide-react";
+} from "lucide-react"; // Verified single import of icons
 
 type CallStatus =
   | "ready"
