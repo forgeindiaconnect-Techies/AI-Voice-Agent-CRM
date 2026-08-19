@@ -1564,48 +1564,6 @@ export default function Dialer() {
   return (
     <div className="space-y-4 max-w-[1700px] mx-auto h-[calc(100vh-85px)] flex flex-col font-sans pb-4">
 
-      {/* Top Bar Header with Agent Status Switcher */}
-      <div className="bg-white dark:bg-[#111827] p-3.5 px-5 rounded-[20px] shadow-xs border border-slate-200 dark:border-white/10 shrink-0">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-blue-600/10 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center border border-blue-500/20 shadow-2xs">
-              <Headphones className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-extrabold tracking-tight flex items-center gap-1.5">
-                  <span className="text-blue-700 dark:text-blue-400 font-black">BPO Call Center</span>
-                  <span className="text-amber-500 font-black">Agent Console</span>
-                </h1>
-                <span className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                  Live Station
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Outbound Manual Dialing · Lead Handling · Real-time Call Workstation
-              </p>
-            </div>
-          </div>
-
-          {/* Agent Status Selector Dropdown */}
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-[#182233] p-2 px-3.5 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status:</span>
-            <select
-              value={agentStatus}
-              onChange={(e) => setAgentStatus(e.target.value as AgentStatus)}
-              className="bg-transparent text-xs font-extrabold text-slate-900 dark:text-white outline-none cursor-pointer"
-            >
-              <option value="ready" className="text-slate-900 bg-white">🟢 Ready</option>
-              <option value="on_call" className="text-slate-900 bg-white">🟡 On Call</option>
-              <option value="wrap_up" className="text-slate-900 bg-white">🟠 Wrap-up</option>
-              <option value="break" className="text-slate-900 bg-white">🔴 On Break</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden min-h-0">
         <AnimatePresence mode="wait">
@@ -1639,6 +1597,21 @@ export default function Dialer() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Agent Status Selector Dropdown */}
+                      <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#182233] p-1.5 px-3 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status:</span>
+                        <select
+                          value={agentStatus}
+                          onChange={(e) => setAgentStatus(e.target.value as AgentStatus)}
+                          className="bg-transparent text-xs font-extrabold text-slate-900 dark:text-white outline-none cursor-pointer"
+                        >
+                          <option value="ready" className="text-slate-900 bg-white">🟢 Ready</option>
+                          <option value="on_call" className="text-slate-900 bg-white">🟡 On Call</option>
+                          <option value="wrap_up" className="text-slate-900 bg-white">🟠 Wrap-up</option>
+                          <option value="break" className="text-slate-900 bg-white">🔴 On Break</option>
+                        </select>
+                      </div>
+
                       <button
                         onClick={() => setActiveSlideOver("dialer")}
                         className="h-9 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs active:scale-95"
