@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Device } from "@twilio/voice-sdk";
 import { CustomPauseIcon } from "../components/CustomPauseIcon";
 import { CustomSelect } from "../components/CustomSelect";
-import LeadDetailsDrawer from "../components/LeadDetailsDrawer";
 import LeadFilterModal from "../components/LeadFilterModal";
 import LeadActionSlideOver, { ActiveSlideOverTab } from "../components/LeadActionSlideOver";
 import {
@@ -596,6 +595,7 @@ export default function Dialer() {
     setSelectedLead(lead);
     const cleanPhone = sanitizeMobileNumber(lead.phone);
     setOutboundPhone(cleanPhone);
+    setActiveSlideOver("profile");
   };
 
   const handleUpdateLeadDisposition = async (leadId: string, status: string, notes: string, followUpDate?: string) => {
@@ -2204,16 +2204,6 @@ export default function Dialer() {
         </div>
       )}
 
-      {/* Lead Details Drawer */}
-      {selectedLead && (
-        <LeadDetailsDrawer
-          lead={selectedLead as any}
-          onClose={() => setSelectedLead(null)}
-          onUpdateDisposition={handleUpdateLeadDisposition}
-          showToast={showToast}
-          onCall={(l) => handleQuickCall(l)}
-        />
-      )}
 
       {/* Advanced Lead Filter Modal */}
       <LeadFilterModal
