@@ -1525,14 +1525,14 @@ export default function Dialer() {
                                 <span>Added: {formatDate(lead.created_at)}</span>
                               </div>
 
-                              <div className="flex gap-2 mt-2.5 pt-2 border-t border-slate-200/50 dark:border-white/5">
+                              <div className="mt-2.5 pt-2 border-t border-slate-200/50 dark:border-white/5">
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleQuickCall(lead);
                                   }}
                                   disabled={callStatus !== "ready" || isDialing}
-                                  className="flex-1 py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-40 cursor-pointer active:scale-95"
+                                  className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition disabled:opacity-40 cursor-pointer active:scale-95 shadow-2xs"
                                 >
                                   {quickCallingLeadId === lead._id ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1540,17 +1540,6 @@ export default function Dialer() {
                                     <Phone className="h-3.5 w-3.5" />
                                   )}
                                   <span>Quick Dial</span>
-                                </button>
-
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedLead(lead);
-                                    setActiveSlideOver("profile");
-                                  }}
-                                  className="py-1.5 px-3 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-xs transition cursor-pointer"
-                                >
-                                  Details
                                 </button>
                               </div>
                             </div>
