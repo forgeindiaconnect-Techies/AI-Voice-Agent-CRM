@@ -1341,19 +1341,9 @@ export default function Dialer() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleSelectLead(lead);
-                                }}
-                                className="py-1.5 px-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-white rounded-lg font-bold text-xs transition cursor-pointer"
-                              >
-                                Select
-                              </button>
-
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
                                   setSelectedLead(lead);
                                 }}
-                                className="py-1.5 px-3 border border-slate-200 dark:border-white/10 hover:bg-slate-100 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-xs transition cursor-pointer"
+                                className="py-1.5 px-3 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-xs transition cursor-pointer"
                               >
                                 Details
                               </button>
