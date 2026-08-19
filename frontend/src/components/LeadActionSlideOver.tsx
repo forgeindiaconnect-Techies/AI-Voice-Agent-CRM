@@ -160,7 +160,7 @@ export default function LeadActionSlideOver({
         </div>
 
         {/* Panel Body Content (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 softphone-scrollbar">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 softphone-scrollbar no-scrollbar">
 
           {/* TAB 1: USER PROFILE */}
           {activeTab === "profile" && (
