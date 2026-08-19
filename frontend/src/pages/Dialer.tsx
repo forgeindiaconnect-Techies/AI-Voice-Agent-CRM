@@ -1540,7 +1540,7 @@ export default function Dialer() {
               </button>
 
               <button
-                onClick={() => setIsTransferModalOpen(true)}
+                onClick={() => setShowTransferModal(true)}
                 className="p-2 rounded-xl border bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95"
                 title="Transfer Call"
               >
