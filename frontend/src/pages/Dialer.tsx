@@ -2030,18 +2030,6 @@ export default function Dialer() {
                           Call Logs
                         </div>
                       </div>
-                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                            activeSlideOver === "dialer"
-                              ? "bg-[#F4B400] text-[#123E8A] shadow-amber-500/40 ring-2 ring-amber-400/50 scale-105"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-500/20 hover:text-amber-600 dark:hover:text-amber-400"
-                          }`}
-                        >
-                          <Phone className="h-4.5 w-4.5" />
-                        </button>
-                        <div className="absolute right-12 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-bold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md z-30">
-                          Softphone Dialer
-                        </div>
-                      </div>
                     </div>
 
                     {/* RIGHT SLIDE-OVER PANEL */}
