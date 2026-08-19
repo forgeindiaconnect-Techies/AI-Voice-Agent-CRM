@@ -61,9 +61,20 @@ export default function LeadActionSlideOver({
 
   if (!activeTab || !selectedLead) return null;
 
+  const maskPhoneNumber = (phoneStr?: string) => {
+    if (!phoneStr) return "N/A";
+    const clean = phoneStr.replace(/\D/g, "");
+    if (clean.length >= 10) {
+      const last10 = clean.slice(-10);
+      return `+91 ${last10.slice(0, 3)}****${last10.slice(7)}`;
+    }
+    return phoneStr;
+  };
+
   const leadId = selectedLead._id || selectedLead.id || "N/A";
   const leadName = selectedLead.name || "Customer Lead";
   const leadPhone = selectedLead.phone || "N/A";
+  const maskedPhone = maskPhoneNumber(leadPhone);
   const leadEmail = selectedLead.email || `${leadPhone.replace(/\D/g, "")}@customer.crm`;
   const leadSource = selectedLead.source || "Manual";
   const leadStatus = selectedLead.status || "new";
@@ -129,7 +140,7 @@ export default function LeadActionSlideOver({
                   {getTabTitle()}
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate max-w-[220px]">
-                  {leadName} • <span className="font-mono text-blue-600 dark:text-blue-400">{leadPhone}</span>
+                  {leadName} • <span className="font-mono text-blue-600 dark:text-blue-400">{maskedPhone}</span>
                 </p>
               </div>
             </div>
@@ -200,7 +211,7 @@ export default function LeadActionSlideOver({
                     {leadName}
                   </h4>
                   <p className="text-xs font-mono text-blue-600 dark:text-blue-400 font-bold">
-                    {leadPhone}
+                    {maskedPhone}
                   </p>
                   <span className="inline-block mt-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 text-emerald-600">
                     {leadStatus.replace(/_/g, " ")}

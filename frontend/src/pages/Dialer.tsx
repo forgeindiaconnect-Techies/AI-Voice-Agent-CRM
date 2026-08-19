@@ -1507,7 +1507,7 @@ export default function Dialer() {
                                     {lead.priority === "high" && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />}
                                   </h3>
                                   <p className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 mt-0.5">
-                                    {lead.phone}
+                                    {maskPhoneNumber(lead.phone)}
                                   </p>
                                 </div>
                                 <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase border ${

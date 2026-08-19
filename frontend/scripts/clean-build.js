@@ -83,9 +83,8 @@ function forceCleanDir(dirPath) {
   }
 }
 
-// 2. Clean build output directories
+// 2. Clean build output directories (dist & dist-electron)
 const dirsToClean = [
-  path.join(frontendDir, 'release'),
   path.join(frontendDir, 'dist'),
   path.join(frontendDir, 'dist-electron')
 ];
