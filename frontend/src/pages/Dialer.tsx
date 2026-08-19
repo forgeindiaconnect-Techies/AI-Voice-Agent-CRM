@@ -1661,7 +1661,6 @@ export default function Dialer() {
                           TARGET MOBILE NUMBER
                         </label>
                         <div className="relative h-[48px] flex items-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-xl px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-2xs">
-                          <span className="text-xs font-bold text-slate-400 mr-2 border-r pr-2 border-slate-200 dark:border-white/10">+91</span>
                           <input
                             type="text"
                             inputMode="numeric"
@@ -1673,7 +1672,7 @@ export default function Dialer() {
                             }}
                             readOnly={callStatus !== "ready"}
                             placeholder="Enter 10-digit number"
-                            className="w-full bg-transparent font-mono font-extrabold text-base text-slate-900 dark:text-white outline-none tracking-widest placeholder:text-slate-400 placeholder:text-xs placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
+                            className="w-full bg-transparent font-mono font-extrabold text-base text-slate-900 dark:text-white outline-none tracking-widest text-center placeholder:text-slate-400 placeholder:text-xs placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
                           />
                           {callStatus === "ready" && outboundPhone.length > 0 && (
                             <button
