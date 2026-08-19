@@ -188,6 +188,7 @@ export default function Dialer() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [leadDirection, setLeadDirection] = useState<"outbound" | "inbound">("outbound");
 
   // ADVANCED LEAD FILTER STATE
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
@@ -560,6 +561,21 @@ export default function Dialer() {
     leads, searchQuery, filterUserId, filterPhone, statusFilter,
     filterSource, filterStartDate, filterEndDate, filterAgent
   ]);
+
+  const outboundLeadsCount = useMemo(() => {
+    return filteredLeads.filter((l: any) => !(l.direction === "inbound" || (l.source && l.source.toLowerCase().includes("inbound")) || l.type === "inbound")).length;
+  }, [filteredLeads]);
+
+  const inboundLeadsCount = useMemo(() => {
+    return filteredLeads.filter((l: any) => (l.direction === "inbound" || (l.source && l.source.toLowerCase().includes("inbound")) || l.type === "inbound")).length;
+  }, [filteredLeads]);
+
+  const displayedLeads = useMemo(() => {
+    return filteredLeads.filter((l: any) => {
+      const isInbound = (l.direction === "inbound" || (l.source && l.source.toLowerCase().includes("inbound")) || l.type === "inbound");
+      return leadDirection === "inbound" ? isInbound : !isInbound;
+    });
+  }, [filteredLeads, leadDirection]);
 
   const handleSaveSlideOverDisposition = async (status: string, notes: string, followUpDate?: string) => {
     if (!selectedLead?._id) return;
@@ -1585,15 +1601,51 @@ export default function Dialer() {
                 <div className="bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-4 flex-1 flex flex-col overflow-hidden shadow-2xs relative w-full">
 
                   {/* Header & Controls */}
-                  <div className="flex justify-between items-center mb-3 shrink-0">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                      <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                        Assigned Leads Workspace
-                      </h2>
-                      <span className="bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase">
-                        {filteredLeads.length} Available
-                      </span>
+                  <div className="flex justify-between items-center mb-3 shrink-0 flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                        <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+                          Assigned Leads Workspace
+                        </h2>
+                      </div>
+
+                      {/* Clean Segmented Tab Switcher */}
+                      <div className="h-9 p-1 bg-slate-100 dark:bg-[#182233] rounded-xl flex items-center gap-1 border border-slate-200 dark:border-white/10 shadow-2xs">
+                        <button
+                          onClick={() => setLeadDirection("outbound")}
+                          className={`h-7 px-3 text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            leadDirection === "outbound"
+                              ? "bg-blue-600 text-white shadow-xs font-black"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                          }`}
+                        >
+                          <PhoneCall className="h-3.5 w-3.5" />
+                          <span>Outbound Leads</span>
+                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
+                            leadDirection === "outbound" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                          }`}>
+                            {outboundLeadsCount}
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={() => setLeadDirection("inbound")}
+                          className={`h-7 px-3 text-xs font-extrabold rounded-lg transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            leadDirection === "inbound"
+                              ? "bg-blue-600 text-white shadow-xs font-black"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                          }`}
+                        >
+                          <Ear className="h-3.5 w-3.5" />
+                          <span>Inbound Leads</span>
+                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
+                            leadDirection === "inbound" ? "bg-white/20 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                          }`}>
+                            {inboundLeadsCount}
+                          </span>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1743,14 +1795,18 @@ export default function Dialer() {
                           <Loader2 className="h-7 w-7 animate-spin text-blue-600 mb-2" />
                           <p className="font-bold text-xs">Loading Assigned Leads...</p>
                         </div>
-                      ) : filteredLeads.length === 0 ? (
+                      ) : displayedLeads.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-[#172033] rounded-xl border border-dashed border-slate-200 dark:border-white/10 p-8 text-center">
                           <AlertCircle className="h-9 w-9 text-slate-300 dark:text-slate-600 mb-2" />
-                          <p className="font-extrabold text-xs text-slate-700 dark:text-white">No Leads Available</p>
-                          <p className="text-[11px] mt-1 text-slate-500 max-w-xs">There are currently no assigned leads in your queue. Add a lead or import a campaign file to start calling.</p>
+                          <p className="font-extrabold text-xs text-slate-700 dark:text-white">
+                            No {leadDirection === "inbound" ? "Inbound" : "Outbound"} Leads Available
+                          </p>
+                          <p className="text-[11px] mt-1 text-slate-500 max-w-xs">
+                            There are currently no {leadDirection === "inbound" ? "inbound" : "outbound"} assigned leads matching your filter criteria.
+                          </p>
                         </div>
                       ) : (
-                        filteredLeads.map((lead, idx) => {
+                        displayedLeads.map((lead, idx) => {
                           const isSelected = selectedLead?._id === lead._id;
                           const isBeingCalled = outboundPhone && sanitizeMobileNumber(lead.phone) === outboundPhone;
 
@@ -1794,7 +1850,7 @@ export default function Dialer() {
                       <div className="relative group">
                         <button
                           onClick={() => {
-                            if (!selectedLead && filteredLeads.length > 0) setSelectedLead(filteredLeads[0]);
+                            if (!selectedLead && displayedLeads.length > 0) setSelectedLead(displayedLeads[0]);
                             setActiveSlideOver(activeSlideOver === "profile" ? null : "profile");
                           }}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
@@ -1814,7 +1870,7 @@ export default function Dialer() {
                       <div className="relative group">
                         <button
                           onClick={() => {
-                            if (!selectedLead && filteredLeads.length > 0) setSelectedLead(filteredLeads[0]);
+                            if (!selectedLead && displayedLeads.length > 0) setSelectedLead(displayedLeads[0]);
                             setActiveSlideOver(activeSlideOver === "history" ? null : "history");
                           }}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
@@ -1834,7 +1890,7 @@ export default function Dialer() {
                       <div className="relative group">
                         <button
                           onClick={() => {
-                            if (!selectedLead && filteredLeads.length > 0) setSelectedLead(filteredLeads[0]);
+                            if (!selectedLead && displayedLeads.length > 0) setSelectedLead(displayedLeads[0]);
                             setActiveSlideOver(activeSlideOver === "disposition" ? null : "disposition");
                           }}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
@@ -1854,7 +1910,7 @@ export default function Dialer() {
                       <div className="relative group">
                         <button
                           onClick={() => {
-                            if (!selectedLead && filteredLeads.length > 0) setSelectedLead(filteredLeads[0]);
+                            if (!selectedLead && displayedLeads.length > 0) setSelectedLead(displayedLeads[0]);
                             setActiveSlideOver(activeSlideOver === "logs" ? null : "logs");
                           }}
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
