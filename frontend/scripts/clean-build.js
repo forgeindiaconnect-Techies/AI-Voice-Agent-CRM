@@ -83,11 +83,10 @@ function forceCleanDir(dirPath) {
   }
 }
 
-// 2. Clean build output directories (dist, dist-electron & release/win-unpacked)
+// 2. Clean build output directories (dist & dist-electron)
 const dirsToClean = [
   path.join(frontendDir, 'dist'),
-  path.join(frontendDir, 'dist-electron'),
-  path.join(frontendDir, 'release', 'win-unpacked')
+  path.join(frontendDir, 'dist-electron')
 ];
 
 for (const dir of dirsToClean) {
