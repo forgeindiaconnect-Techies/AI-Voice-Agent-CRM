@@ -305,5 +305,22 @@ class AIAgentUpdate(BaseModel):
     assigned_pool_id: Optional[str] = None
 
 
+class InboundACDPayload(BaseModel):
+    phone: str
+    name: Optional[str] = None
+    pool_id: Optional[str] = "banking_customer_care"
+    require_agent: Optional[bool] = True
+    auto_answer: Optional[bool] = True
+
+
+class CallDispositionPayload(BaseModel):
+    disposition: str
+    notes: Optional[str] = None
+    follow_up_date: Optional[str] = None
+    follow_up_time: Optional[str] = None
+    rating: Optional[int] = 5
+
+
+
 
 

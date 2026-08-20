@@ -18,8 +18,6 @@ import {
   ShieldCheck,
   Search,
   Bell,
-  Sun,
-  Moon,
   ChevronRight,
   Activity,
   RefreshCw,
@@ -42,23 +40,16 @@ export default function Layout() {
     return saved ? JSON.parse(saved) : false;
   });
 
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem("darkMode");
-    return saved ? JSON.parse(saved) : false;
-  });
+  const darkMode = false;
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Enforce Light Theme Permanently
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("darkMode", JSON.stringify(true));
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("darkMode", JSON.stringify(false));
-    }
-  }, [darkMode]);
+    document.documentElement.classList.remove("dark");
+    localStorage.removeItem("darkMode");
+  }, []);
 
   // Ctrl + B keybinding to toggle sidebar expansion
   useEffect(() => {
@@ -821,49 +812,7 @@ export default function Layout() {
               )}
             </div>
 
-            {/* Theme Toggle */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="flex items-center justify-center h-9 w-9 rounded-xl transition-all duration-200 cursor-pointer"
-              style={
-                darkMode
-                  ? {
-                      background: "rgba(21,31,50,0.7)",
-                      border: "1px solid rgba(255,255,255,0.07)",
-                      color: "#FCD34D",
-                    }
-                  : { color: "#64748B" }
-              }
-              onMouseEnter={(e) => {
-                if (darkMode) {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(245,158,11,0.12)";
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(245,158,11,0.3)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (darkMode) {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(21,31,50,0.7)";
-                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.07)";
-                }
-              }}
-              title="Toggle Theme"
-            >
-              {darkMode ? (
-                <Sun className="h-4 w-4" style={{ color: "#FCD34D" }} />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </button>
 
-            {/* Divider */}
-            <div
-              className="h-5"
-              style={{
-                borderLeft: darkMode
-                  ? "1px solid rgba(255,255,255,0.08)"
-                  : "1px solid #E7ECF5",
-              }}
-            />
 
             {/* User Profile Pill */}
             <div className="flex items-center gap-2.5 bg-slate-100/90 dark:bg-[#151F32] px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 shadow-2xs">

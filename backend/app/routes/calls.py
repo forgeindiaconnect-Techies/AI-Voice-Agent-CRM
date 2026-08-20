@@ -18,13 +18,14 @@ from app.schemas.common import (
     MonitorActionPayload,
     Role,
     CallQualityEvaluation,
-    CallQualityEvaluation,
     ManualDialPayload,
     VapiDialPayload,
     ManualCallActionPayload,
     ManualCallTransferPayload,
     ManualDTMFPayload,
     ManualConferencePayload,
+    InboundACDPayload,
+    CallDispositionPayload,
 )
 from app.services.ws_manager import ws_manager
 
@@ -547,6 +548,271 @@ async def simulate_outbound(payload: OutboundSimulationPayload):
     return {"status": "ignored"}
 
 
+# --- INBOUND BPO AUTOMATIC CALL DISTRIBUTION (ACD) ENGINE ---
+
+from datetime import datetime
+import re
+
+async def dispatch_next_queued_call(agent_id: str, pool_id: str = None):
+    """
+    ACD Engine Helper: Auto-connects the longest waiting queued caller to an available agent.
+    """
+    query = {"status": "queued", "direction": "inbound"}
+    if pool_id:
+        query["$or"] = [{"pool_id": pool_id}, {"pool_id": "general"}, {"pool_id": "banking_customer_care"}]
+    
+    queued_call = await calls_col.find_one_and_update(
+        query,
+        {"$set": {
+            "status": "live",
+            "agent_id": agent_id,
+            "started_at": utcnow(),
+            "auto_answered": True
+        }},
+        sort=[("queued_at", 1)],
+        return_document=True
+    )
+    
+    if queued_call:
+        call_id_str = str(queued_call["_id"])
+        await users_col.update_one({"_id": ObjectId(agent_id)}, {"$set": {"status": "on_call"}})
+        
+        lead = None
+        if queued_call.get("lead_id"):
+            try:
+                lead = await leads_col.find_one({"_id": ObjectId(queued_call["lead_id"])})
+            except Exception:
+                pass
+            if lead:
+                await leads_col.update_one(
+                    {"_id": ObjectId(queued_call["lead_id"])},
+                    {"$set": {"status": "in_progress", "assigned_agent_id": agent_id}}
+                )
+        
+        caller_name = lead.get("name") if lead else queued_call.get("caller_name", "Inbound Customer")
+        caller_phone = lead.get("phone") if lead else queued_call.get("caller_phone", "")
+        
+        event_payload = {
+            "event": "inbound_call_auto_answered",
+            "call_id": call_id_str,
+            "agent_id": agent_id,
+            "lead_id": queued_call.get("lead_id"),
+            "lead_name": caller_name,
+            "phone": caller_phone,
+            "pool_id": queued_call.get("pool_id", "banking_customer_care"),
+            "auto_answered": True,
+            "connected_at": utcnow().isoformat()
+        }
+        await ws_manager.broadcast("global", event_payload)
+        await ws_manager.broadcast("global", {"event": "queue_updated"})
+        await ws_manager.broadcast("global", {"event": "users_updated"})
+        return oid_str(queued_call)
+    return None
+
+
+@router.post("/inbound/acd")
+async def process_inbound_acd(payload: InboundACDPayload):
+    """
+    Real-Time Banking BPO ACD Endpoint:
+    1. Detects customer by phone number (or creates lead if new).
+    2. Checks for an available agent with status 'ready' or 'online'.
+    3. If READY agent is available, auto-connects & routes call instantly without manual click.
+    4. If NO agent is available, queues call with position & wait time tracking.
+    """
+    clean_phone = re.sub(r"\D", "", payload.phone)
+    if len(clean_phone) > 10:
+        clean_phone = clean_phone[-10:]
+    
+    # 1. Automatic Customer Lookup / Detection
+    lead = await leads_col.find_one({"phone": {"$regex": clean_phone}}) if clean_phone else None
+    if not lead:
+        lead_name = payload.name or f"Inbound Banking Customer (+91 {clean_phone or '9876543210'})"
+        lead_doc = {
+            "lead_id": f"LD{utcnow().strftime('%M%S%f')[:5]}",
+            "name": lead_name,
+            "phone": clean_phone or "9876543210",
+            "status": "new",
+            "pool_id": payload.pool_id or "banking_customer_care",
+            "created_at": utcnow()
+        }
+        res_lead = await leads_col.insert_one(lead_doc)
+        lead_doc["_id"] = res_lead.inserted_id
+        lead = lead_doc
+
+    lead_id_str = str(lead["_id"])
+    pool_id = payload.pool_id or lead.get("pool_id", "banking_customer_care")
+
+    # 2. Check for READY / Available Agent
+    agent = await users_col.find_one({"role": Role.AGENT, "status": "ready", "pool_id": pool_id})
+    if not agent:
+        agent = await users_col.find_one({"role": Role.AGENT, "status": "ready"})
+    if not agent:
+        agent = await users_col.find_one({"role": Role.AGENT, "status": "online", "pool_id": pool_id})
+    if not agent:
+        agent = await users_col.find_one({"role": Role.AGENT, "status": "online"})
+
+    if agent:
+        # ⚡ 3. AUTO-CONNECT TO READY AGENT INSTANTLY
+        agent_id = str(agent["_id"])
+        doc = {
+            "lead_id": lead_id_str,
+            "pool_id": pool_id,
+            "agent_id": agent_id,
+            "direction": "inbound",
+            "status": "live",
+            "is_ai": False,
+            "auto_answered": payload.auto_answer,
+            "started_at": utcnow(),
+            "caller_name": lead["name"],
+            "caller_phone": lead["phone"]
+        }
+        result = await calls_col.insert_one(doc)
+        doc["_id"] = result.inserted_id
+
+        await users_col.update_one({"_id": ObjectId(agent_id)}, {"$set": {"status": "on_call"}})
+        await leads_col.update_one({"_id": ObjectId(lead_id_str)}, {"$set": {"status": "in_progress", "assigned_agent_id": agent_id}})
+
+        event_payload = {
+            "event": "inbound_call_auto_answered",
+            "call_id": str(doc["_id"]),
+            "agent_id": agent_id,
+            "agent_name": agent.get("name", "Agent"),
+            "lead_id": lead_id_str,
+            "lead_name": lead["name"],
+            "phone": lead["phone"],
+            "pool_id": pool_id,
+            "auto_answered": payload.auto_answer
+        }
+        await ws_manager.broadcast("global", event_payload)
+        await ws_manager.broadcast("global", {"event": "users_updated"})
+        return {"status": "connected", "call": oid_str(doc), "lead": oid_str(lead), "agent_id": agent_id, "auto_answered": True}
+    else:
+        # 📥 4. NO READY AGENT -> QUEUE CALL WITH POSITION & WAIT TIME TRACKING
+        queued_doc = {
+            "lead_id": lead_id_str,
+            "pool_id": pool_id,
+            "direction": "inbound",
+            "status": "queued",
+            "is_ai": False,
+            "queued_at": utcnow(),
+            "caller_name": lead["name"],
+            "caller_phone": lead["phone"]
+        }
+        result = await calls_col.insert_one(queued_doc)
+        queued_doc["_id"] = result.inserted_id
+
+        queue_position = await calls_col.count_documents({"direction": "inbound", "status": "queued"})
+
+        event_payload = {
+            "event": "inbound_call_queued",
+            "call_id": str(queued_doc["_id"]),
+            "lead_id": lead_id_str,
+            "lead_name": lead["name"],
+            "phone": lead["phone"],
+            "pool_id": pool_id,
+            "queue_position": queue_position,
+            "queued_at": utcnow().isoformat()
+        }
+        await ws_manager.broadcast("global", event_payload)
+        await ws_manager.broadcast("global", {"event": "queue_updated"})
+
+        return {
+            "status": "queued",
+            "call_id": str(queued_doc["_id"]),
+            "queue_position": queue_position,
+            "wait_seconds": 0,
+            "lead": oid_str(lead),
+            "message": f"Inbound call placed into queue at position #{queue_position}"
+        }
+
+
+@router.get("/inbound/queue", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+async def get_inbound_queue(user: dict = Depends(get_current_user)):
+    """Returns active ACD queue items, positions, wait times, and ready agents count."""
+    cursor = calls_col.find({"direction": "inbound", "status": "queued"}).sort("queued_at", 1)
+    raw_items = await cursor.to_list(length=100)
+    
+    queue_list = []
+    now = utcnow()
+    for idx, item in enumerate(raw_items):
+        queued_at = item.get("queued_at") or now
+        wait_seconds = int((now - queued_at).total_seconds()) if isinstance(queued_at, datetime) else 0
+        queue_list.append({
+            "id": str(item["_id"]),
+            "lead_id": item.get("lead_id"),
+            "name": item.get("caller_name", "Banking Customer"),
+            "phone": item.get("caller_phone", ""),
+            "pool_id": item.get("pool_id", "banking_customer_care"),
+            "position": idx + 1,
+            "wait_seconds": max(0, wait_seconds),
+            "queued_at": queued_at.isoformat() if hasattr(queued_at, "isoformat") else str(queued_at)
+        })
+        
+    ready_agents_count = await users_col.count_documents({"role": Role.AGENT, "status": {"$in": ["ready", "online"]}})
+    return {
+        "queue": queue_list,
+        "total_queued": len(queue_list),
+        "available_ready_agents": ready_agents_count
+    }
+
+
+@router.post("/{call_id}/disposition", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+async def record_call_disposition(call_id: str, payload: CallDispositionPayload, user: dict = Depends(get_current_user)):
+    """Records call disposition, updates lead state, resets agent to READY, and triggers auto-connect for queued calls."""
+    agent_id = str(user.get("id") or user.get("_id"))
+    call = await calls_col.find_one({"_id": ObjectId(call_id)})
+    if not call:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Call record not found")
+        
+    started_at = call.get("started_at") or utcnow()
+    ended_at = utcnow()
+    duration = int((ended_at - started_at).total_seconds())
+    
+    update_fields = {
+        "status": "completed",
+        "ended_at": ended_at,
+        "duration_seconds": max(1, duration),
+        "outcome": payload.disposition,
+        "disposition": payload.disposition,
+        "notes": payload.notes or "",
+        "follow_up_date": payload.follow_up_date,
+        "follow_up_time": payload.follow_up_time,
+        "rating": payload.rating,
+        "recording_url": "https://actions.google.com/sounds/v1/ambiences/office_voices.ogg",
+        "ai_summary": f"Inbound BPO Call completed ({payload.disposition.upper()}). Notes: {payload.notes or 'No notes provided'}"
+    }
+    await calls_col.update_one({"_id": ObjectId(call_id)}, {"$set": update_fields})
+    
+    if call.get("lead_id"):
+        try:
+            await leads_col.update_one(
+                {"_id": ObjectId(call["lead_id"])},
+                {"$set": {
+                    "status": "completed" if payload.disposition in ["resolved", "closed"] else "in_progress",
+                    "last_disposition": payload.disposition,
+                    "notes": payload.notes
+                }}
+            )
+        except Exception:
+            pass
+        
+    # Reset agent status to READY
+    await users_col.update_one({"_id": ObjectId(agent_id)}, {"$set": {"status": "ready"}})
+    
+    # Auto-dispatch next queued caller if any
+    dispatched_call = await dispatch_next_queued_call(agent_id, call.get("pool_id"))
+    
+    await ws_manager.broadcast("global", {"event": "leads_updated"})
+    await ws_manager.broadcast("global", {"event": "users_updated"})
+    
+    return {
+        "status": "dispositioned",
+        "call_id": call_id,
+        "agent_status": "ready",
+        "next_auto_connected_call": dispatched_call
+    }
+
+
 @router.post("/simulate/inbound")
 async def simulate_inbound(payload: InboundSimulationPayload):
     lead = await leads_col.find_one({"phone": payload.phone})
@@ -584,7 +850,9 @@ async def simulate_inbound(payload: InboundSimulationPayload):
         return oid_str(doc)
         
     else:
-        agent = await users_col.find_one({"role": Role.AGENT, "pool_id": payload.pool_id, "status": "online"})
+        agent = await users_col.find_one({"role": Role.AGENT, "pool_id": payload.pool_id, "status": "ready"})
+        if not agent:
+            agent = await users_col.find_one({"role": Role.AGENT, "status": "ready"})
         if not agent:
             agent = await users_col.find_one({"role": Role.AGENT, "status": "online"})
             
@@ -605,6 +873,7 @@ async def simulate_inbound(payload: InboundSimulationPayload):
         await leads_col.update_one({"_id": ObjectId(lead_id_str)}, {"$set": {"status": "in_progress", "assigned_agent_id": agent_id}})
         await ws_manager.broadcast("global", {"event": "call_started", "call_id": str(doc["_id"]), "lead_name": payload.name})
         return oid_str(doc)
+
 
 
 @router.get("/inbound/summary", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])

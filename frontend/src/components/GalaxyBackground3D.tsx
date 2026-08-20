@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 
 interface GalaxyBackground3DProps {
-  darkMode: boolean;
+  darkMode?: boolean;
 }
 
-export default function GalaxyBackground3D({ darkMode }: GalaxyBackground3DProps) {
+export default function GalaxyBackground3D({ darkMode = false }: GalaxyBackground3DProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {

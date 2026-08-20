@@ -498,10 +498,11 @@ async def decide_transfer_request(request_id: str, payload: PoolTransferDecision
 
 @router.patch("/status", dependencies=[Depends(require_roles(Role.AGENT, Role.TEAM_LEADER, Role.ADMIN))])
 async def update_user_status(status_val: str, user: dict = Depends(get_current_user)):
-    """Allows agents or supervisors to change their active status (online, offline, busy, break)."""
+    """Allows agents or supervisors to change their active BPO status (ready, on_call, break, wrapup, online, offline, busy)."""
     uid = user.get("id") or str(user["_id"])
-    if status_val not in ["online", "offline", "busy", "break"]:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid status value")
+    valid_statuses = ["ready", "online", "on_call", "break", "wrapup", "offline", "busy"]
+    if status_val not in valid_statuses:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Invalid status value. Must be one of {valid_statuses}")
         
     await users_col.update_one({"_id": ObjectId(uid)}, {"$set": {"status": status_val}})
     if user["role"] == Role.AGENT:
@@ -516,5 +517,20 @@ async def update_user_status(status_val: str, user: dict = Depends(get_current_u
         "timestamp": utcnow()
     })
     
+    # If agent becomes READY, check if there are queued calls to auto-dispatch
+    auto_connected = None
+    if status_val in ["ready", "online"]:
+        try:
+            from app.routes.calls import dispatch_next_queued_call
+            auto_connected = await dispatch_next_queued_call(uid, user.get("pool_id"))
+        except Exception:
+            pass
+
+    await ws_manager.broadcast("global", {
+        "event": "agent_status_changed",
+        "user_id": uid,
+        "status": status_val,
+        "auto_connected_call": auto_connected
+    })
     await ws_manager.broadcast("global", {"event": "users_updated"})
-    return {"status": "success", "user_status": status_val}
+    return {"status": "success", "user_status": status_val, "auto_connected_call": auto_connected}

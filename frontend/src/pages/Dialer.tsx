@@ -13,6 +13,8 @@ import {
   PhoneCall,
   PhoneOff,
   PhoneForwarded,
+  PhoneIncoming,
+  PhoneOutgoing,
   Mic,
   MicOff,
   Pause,
@@ -44,6 +46,7 @@ import {
   Calendar,
   Clock,
   ChevronRight,
+  ChevronDown,
   Coffee,
   Check,
   Share2,
@@ -146,7 +149,8 @@ export default function Dialer() {
   // AGENT STATE
   const [agentStatus, setAgentStatus] = useState<AgentStatus>("ready");
 
-  // OUTBOUND DIALER STATE
+  // OUTBOUND / INBOUND DIALER MODE STATE
+  const [dialerMode, setDialerMode] = useState<"outbound" | "inbound">("outbound");
   const [outboundPhone, setOutboundPhone] = useState("");
   const [callMode, setCallMode] = useState<"human" | "ai">("human");
   const [callStatus, setCallStatus] = useState<CallStatus>("ready");
@@ -176,8 +180,18 @@ export default function Dialer() {
   const [isHoldLoading, setIsHoldLoading] = useState(false);
   const [isHoldProcessing, setIsHoldProcessing] = useState(false);
 
-  // INCOMING CALL STATE
+  // INCOMING & INBOUND ACD QUEUE STATE
+  type QueuedInboundCall = {
+    id: string;
+    phone: string;
+    name: string;
+    queuedAt: number;
+    department?: string;
+  };
   const [incomingCall, setIncomingCall] = useState<{ id: string; phone: string; name: string } | null>(null);
+  const [inboundQueue, setInboundQueue] = useState<QueuedInboundCall[]>([]);
+  const [queueWaitSeconds, setQueueWaitSeconds] = useState<number>(0);
+  const [autoAnswerEnabled, setAutoAnswerEnabled] = useState<boolean>(true);
 
   // SUPERVISOR STATE
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
@@ -237,6 +251,20 @@ export default function Dialer() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState("");
+
+  // BPO AGENT STATUS SELECTOR STATE
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const statusMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutsideStatus(e: MouseEvent) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(e.target as Node)) {
+        setIsStatusMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutsideStatus);
+    return () => document.removeEventListener("mousedown", handleClickOutsideStatus);
+  }, []);
 
   // Clean / sanitize mobile number helper
   const sanitizeMobileNumber = useCallback((val: string): string => {
@@ -364,6 +392,37 @@ export default function Dialer() {
               setCallStatus("wrapup");
               setAgentStatus("wrap_up");
               fetchCallHistory();
+            }
+            if (data.event === "inbound_call_auto_answered") {
+              const cleanPhone = (data.phone || "9876543210").replace(/\D/g, "").slice(-10);
+              setCurrentCallId(data.call_id);
+              setOutboundPhone(cleanPhone);
+              setCallStatus("connected");
+              setAgentStatus("on_call");
+              setCallDuration(0);
+              setIsMuted(false);
+              setIsSpeaker(false);
+              setIsDialing(false);
+              isDialingRef.current = false;
+              setInboundQueue(prev => prev.filter(c => c.id !== data.call_id && c.phone !== cleanPhone));
+              showToast(`Inbound Call Connected: Call from ${data.lead_name || 'Customer'} (+91 ${cleanPhone})`, "success");
+            }
+            if (data.event === "inbound_call_queued") {
+              const cleanPhone = (data.phone || "9876543210").replace(/\D/g, "").slice(-10);
+              const newQueued: QueuedInboundCall = {
+                id: data.call_id || `acd_inc_${Date.now()}`,
+                phone: cleanPhone,
+                name: data.lead_name || "Banking Customer",
+                queuedAt: Date.now(),
+                department: data.pool_id || "Banking Customer Care"
+              };
+              setInboundQueue(prev => [...prev.filter(c => c.id !== newQueued.id), newQueued]);
+              showToast(`📥 Inbound Call Queued (Position #${data.queue_position || 1})`, "warning");
+            }
+            if (data.event === "agent_status_changed") {
+              if (data.status) {
+                setAgentStatus(data.status === "wrapup" ? "wrap_up" : data.status);
+              }
             }
             if (data.event === "incoming_call" || data.event === "inbound_call") {
               setIncomingCall({
@@ -642,6 +701,163 @@ export default function Dialer() {
       } catch (err: any) {
         showToast(err.message || "Failed to send DTMF", "error");
       }
+    }
+  };
+
+  // INBOUND ACD ENGINE CONNECT & DISPATCH LOGIC
+  const connectInboundCall = useCallback((callItem: QueuedInboundCall) => {
+    const cleanPhone = sanitizeMobileNumber(callItem.phone) || "9876543210";
+    const matched = leads.find(l => l.phone.replace(/\D/g, "").slice(-10) === cleanPhone);
+
+    setCurrentCallId(callItem.id);
+    setOutboundPhone(cleanPhone);
+    if (matched) {
+      setSelectedLead(matched);
+    }
+    setCallStatus("connected");
+    setAgentStatus("on_call");
+    setCallDuration(0);
+    setIsMuted(false);
+    setIsSpeaker(false);
+    setIsDialing(false);
+    isDialingRef.current = false;
+
+    // Remove from queue if present
+    setInboundQueue(prev => prev.filter(c => c.id !== callItem.id));
+  }, [leads, sanitizeMobileNumber]);
+
+  const handleInboundACDCall = useCallback(async (customPhone?: string, customName?: string) => {
+    const targetPhone = customPhone || outboundPhone || "9876543210";
+    const cleanPhone = sanitizeMobileNumber(targetPhone) || "9876543210";
+    const matched = leads.find(l => l.phone.replace(/\D/g, "").slice(-10) === cleanPhone);
+    const callerName = customName || matched?.name || `Banking Inbound Customer (${cleanPhone})`;
+
+    try {
+      const res = await api.post("/api/calls/inbound/acd", {
+        phone: cleanPhone,
+        name: callerName,
+        pool_id: selectedLead?.pool_id || "banking_customer_care",
+        auto_answer: autoAnswerEnabled
+      });
+
+      const data = res.data;
+      if (data.status === "connected") {
+        if (autoAnswerEnabled && agentStatus === "ready") {
+          setCurrentCallId(data.call?._id || data.call_id);
+          setOutboundPhone(cleanPhone);
+          if (data.lead) setSelectedLead(data.lead);
+          setCallStatus("connected");
+          setAgentStatus("on_call");
+          setCallDuration(0);
+          setIsMuted(false);
+          setIsSpeaker(false);
+          setIsDialing(false);
+          isDialingRef.current = false;
+          showToast(`Inbound Call Connected: Call from ${data.lead?.name || callerName} (+91 ${cleanPhone})`, "success");
+        } else {
+          setIncomingCall({ id: data.call?._id || `inc_${Date.now()}`, phone: cleanPhone, name: data.lead?.name || callerName });
+          setOutboundPhone(cleanPhone);
+          if (data.lead) setSelectedLead(data.lead);
+          setCallStatus("ringing");
+          showToast(`Incoming Line Ringing: ${callerName} (+91 ${cleanPhone})`, "info");
+        }
+      } else if (data.status === "queued") {
+        const newCall: QueuedInboundCall = {
+          id: data.call_id || `acd_inc_${Date.now()}`,
+          phone: cleanPhone,
+          name: data.lead?.name || callerName,
+          queuedAt: Date.now(),
+          department: "Banking Customer Care"
+        };
+        setInboundQueue(prev => [...prev.filter(c => c.id !== newCall.id), newCall]);
+        showToast(`Inbound Call Queued (Position #${data.queue_position || inboundQueue.length + 1})`, "warning");
+      }
+    } catch (err) {
+      // Local fallback
+      const newCall: QueuedInboundCall = {
+        id: `acd_inc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        phone: cleanPhone,
+        name: callerName,
+        queuedAt: Date.now(),
+        department: "Banking Customer Care"
+      };
+
+      setOutboundPhone(cleanPhone);
+      if (matched) setSelectedLead(matched);
+
+      if (agentStatus === "ready" && (callStatus === "ready" || callStatus === "wrapup")) {
+        if (autoAnswerEnabled) {
+          connectInboundCall(newCall);
+          showToast(`Inbound Call Connected: Call from ${callerName} (+91 ${cleanPhone})`, "success");
+        } else {
+          setIncomingCall({ id: newCall.id, phone: cleanPhone, name: callerName });
+          setCallStatus("ringing");
+          showToast(`Incoming Line Ringing: ${callerName} (+91 ${cleanPhone})`, "info");
+        }
+      } else {
+        setInboundQueue(prev => [...prev, newCall]);
+        showToast(`Inbound Call Queued (Position #${inboundQueue.length + 1})`, "warning");
+      }
+    }
+  }, [agentStatus, callStatus, outboundPhone, leads, inboundQueue.length, connectInboundCall, sanitizeMobileNumber, autoAnswerEnabled, selectedLead]);
+
+  const updateAgentBPOStatus = async (newStatus: AgentStatus) => {
+    setAgentStatus(newStatus);
+    try {
+      const res = await api.patch(`/api/users/status?status_val=${newStatus}`);
+      if (res.data?.auto_connected_call) {
+        showToast("Inbound Call Connected!", "success");
+      } else {
+        showToast(`Agent Status Updated: ${newStatus.replace("_", " ").toUpperCase()}`, "info");
+      }
+    } catch (err) {
+      console.warn("Status patch warning:", err);
+    }
+  };
+
+  const handleAnswerRingingCall = () => {
+    setCallStatus("connected");
+    setAgentStatus("on_call");
+    setCallDuration(0);
+    showToast(`Inbound Call Answered & Connected`, "success");
+  };
+
+  const handleRejectRingingCall = () => {
+    setCallStatus("ready");
+    setIncomingCall(null);
+    showToast("Inbound Call Rejected / Missed", "warning");
+  };
+
+  // AUTO-CONNECT QUEUED CALL WHEN AGENT BECOMES READY
+  useEffect(() => {
+    if (agentStatus === "ready" && callStatus === "ready" && inboundQueue.length > 0) {
+      const nextCall = inboundQueue[0];
+      showToast(`Inbound Call Connected: ${nextCall.name} (+91 ${nextCall.phone})`, "success");
+      connectInboundCall(nextCall);
+    }
+  }, [agentStatus, callStatus, inboundQueue, connectInboundCall]);
+
+  // QUEUE WAIT TIME TIMER
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (inboundQueue.length > 0) {
+      interval = setInterval(() => {
+        setQueueWaitSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      setQueueWaitSeconds(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [inboundQueue.length]);
+
+  // Manual Answer Fallback
+  const handleInboundAnswer = () => {
+    if (inboundQueue.length > 0) {
+      connectInboundCall(inboundQueue[0]);
+    } else {
+      handleInboundACDCall(outboundPhone, selectedLead?.name);
     }
   };
 
@@ -1583,41 +1799,138 @@ export default function Dialer() {
                 <div className="bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-5 flex-1 flex flex-col items-center overflow-y-auto no-scrollbar shadow-2xs relative w-full">
 
                   {/* Top Header & Agent Status Bar */}
-                  <div className="w-full flex justify-between items-center mb-4 shrink-0 pb-3 border-b border-slate-100 dark:border-white/10">
+                  <div className="w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 shrink-0 pb-3 border-b border-slate-100 dark:border-white/10">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center border border-amber-500/20 shadow-2xs">
-                        <PhoneCall className="h-5 w-5" />
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center border shadow-2xs transition-colors ${
+                        dialerMode === "inbound"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                      }`}>
+                        {dialerMode === "inbound" ? (
+                          <PhoneIncoming className="h-5 w-5" />
+                        ) : (
+                          <PhoneCall className="h-5 w-5" />
+                        )}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
                             Softphone Dialer Workstation
                           </h2>
-                          <span className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                            Live Station
+                          <span className={`border text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 transition-colors ${
+                            dialerMode === "inbound"
+                              ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                              : "bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400"
+                          }`}>
+                            <span className={`h-1.5 w-1.5 rounded-full animate-ping ${dialerMode === "inbound" ? "bg-emerald-500" : "bg-amber-500"}`} />
+                            {dialerMode === "inbound" ? "Inbound Line Active" : "Live Station"}
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                          Manual Outbound Dialing · Agent &amp; AI Call Modes · Real-time Call Console
+                          {dialerMode === "inbound"
+                            ? "Inbound Call Receiving Console · Live Queue & Incoming Call Routing"
+                            : "Manual Outbound Dialing · Agent & AI Call Modes · Real-time Call Console"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      {/* Agent Status Selector Dropdown */}
-                      <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#182233] p-1.5 px-3 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Status:</span>
-                        <select
-                          value={agentStatus}
-                          onChange={(e) => setAgentStatus(e.target.value as AgentStatus)}
-                          className="bg-transparent text-xs font-extrabold text-slate-900 dark:text-white outline-none cursor-pointer"
+                    <div className="flex items-center gap-2.5">
+                      {/* Segmented Control [ Outbound ] [ Inbound ] */}
+                      <div className="flex items-center p-1 bg-slate-100 dark:bg-[#182233] rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDialerMode("outbound");
+                            setLeadDirection("outbound");
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            dialerMode === "outbound"
+                              ? "bg-blue-600 text-white shadow-xs"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                          }`}
                         >
-                          <option value="ready" className="text-slate-900 bg-white">🟢 Ready</option>
-                          <option value="on_call" className="text-slate-900 bg-white">🟡 On Call</option>
-                          <option value="wrap_up" className="text-slate-900 bg-white">🟠 Wrap-up</option>
-                          <option value="break" className="text-slate-900 bg-white">🔴 On Break</option>
-                        </select>
+                          <PhoneOutgoing className="h-3.5 w-3.5" />
+                          <span>Outbound</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDialerMode("inbound");
+                            setLeadDirection("inbound");
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            dialerMode === "inbound"
+                              ? "bg-emerald-600 text-white shadow-xs"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                          }`}
+                        >
+                          <PhoneIncoming className="h-3.5 w-3.5" />
+                          <span>Inbound</span>
+                        </button>
+                      </div>
+
+                      {/* Modern BPO CRM Agent Status Selector */}
+                      <div className="relative inline-block text-left" ref={statusMenuRef}>
+                        <button
+                          type="button"
+                          onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
+                          className="h-9 px-3 bg-white dark:bg-[#182233] hover:bg-slate-50 dark:hover:bg-[#1e2d44] text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 rounded-[12px] shadow-2xs hover:shadow-xs flex items-center gap-2 transition cursor-pointer active:scale-95"
+                        >
+                          <span className={`h-2 w-2 rounded-full shrink-0 ${
+                            agentStatus === "ready" ? "bg-emerald-500" :
+                            agentStatus === "on_call" ? "bg-amber-500" :
+                            agentStatus === "wrap_up" ? "bg-orange-500" : "bg-rose-500"
+                          }`} />
+                          <span className="text-xs font-black tracking-tight">
+                            {agentStatus === "ready" ? "Ready" :
+                             agentStatus === "on_call" ? "On Call" :
+                             agentStatus === "wrap_up" ? "Wrap-up" : "On Break"}
+                          </span>
+                          <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${isStatusMenuOpen ? "rotate-180" : ""}`} />
+                        </button>
+
+                        <AnimatePresence>
+                          {isStatusMenuOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                              transition={{ duration: 0.12 }}
+                              className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-[#151F32] border border-slate-200 dark:border-white/10 rounded-[12px] shadow-xl p-1 z-50 overflow-hidden"
+                            >
+                              {[
+                                { value: "ready" as AgentStatus, label: "Ready", dot: "bg-emerald-500" },
+                                { value: "on_call" as AgentStatus, label: "On Call", dot: "bg-amber-500" },
+                                { value: "wrap_up" as AgentStatus, label: "Wrap-up", dot: "bg-orange-500" },
+                                { value: "break" as AgentStatus, label: "On Break", dot: "bg-rose-500" },
+                              ].map((opt) => {
+                                const isSelected = agentStatus === opt.value;
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    onClick={() => {
+                                      updateAgentBPOStatus(opt.value);
+                                      setIsStatusMenuOpen(false);
+                                    }}
+                                    className={`w-full h-8 px-2.5 rounded-[8px] flex items-center justify-between text-xs transition cursor-pointer ${
+                                      isSelected
+                                        ? "bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 font-extrabold"
+                                        : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 font-semibold"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className={`h-2 w-2 rounded-full ${opt.dot} shrink-0`} />
+                                      <span>{opt.label}</span>
+                                    </div>
+                                    {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
+                                  </button>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
 
                       <button
@@ -1638,10 +1951,18 @@ export default function Dialer() {
                       
                       {/* Selected Customer Info Badge */}
                       {selectedLead && (
-                        <div className="mb-3 p-3 bg-blue-50/80 dark:bg-blue-500/10 rounded-xl border border-blue-200 dark:border-blue-500/20">
+                        <div className={`mb-3 p-3 rounded-xl border ${
+                          dialerMode === "inbound"
+                            ? "bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20"
+                            : "bg-blue-50/80 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20"
+                        }`}>
                           <div className="flex justify-between items-center">
                             <div>
-                              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider">Target Customer</p>
+                              <p className={`text-[10px] font-black uppercase tracking-wider ${
+                                dialerMode === "inbound" ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400"
+                              }`}>
+                                {dialerMode === "inbound" ? "Inbound Caller Info" : "Target Customer"}
+                              </p>
                               <p className="text-xs font-extrabold text-slate-900 dark:text-white mt-0.5">{selectedLead.name}</p>
                               <p className="text-xs font-mono font-bold text-slate-600 dark:text-slate-300">{maskPhoneNumber(selectedLead.phone)}</p>
                             </div>
@@ -1658,7 +1979,7 @@ export default function Dialer() {
                       {/* Target Mobile Input */}
                       <div className="mb-3">
                         <label className="block text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                          TARGET MOBILE NUMBER
+                          {dialerMode === "inbound" ? "INBOUND CALLER / LINE NUMBER" : "TARGET MOBILE NUMBER"}
                         </label>
                         <div className="relative h-[48px] flex items-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-xl px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-2xs">
                           <input
@@ -1671,7 +1992,7 @@ export default function Dialer() {
                               setOutboundPhone(sanitizeMobileNumber(e.target.value));
                             }}
                             readOnly={callStatus !== "ready"}
-                            placeholder="Enter 10-digit number"
+                            placeholder={dialerMode === "inbound" ? "Enter caller 10-digit number" : "Enter 10-digit number"}
                             className="w-full bg-transparent font-mono font-extrabold text-base text-slate-900 dark:text-white outline-none tracking-widest text-center placeholder:text-slate-400 placeholder:text-xs placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
                           />
                           {callStatus === "ready" && outboundPhone.length > 0 && (
@@ -1694,17 +2015,247 @@ export default function Dialer() {
                             </p>
                           ) : (
                             <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                              Enter 10-digit mobile number
+                              {dialerMode === "inbound" ? "Enter caller number or answer incoming line" : "Enter 10-digit mobile number"}
                             </p>
                           )}
                         </div>
                       </div>
 
-                      {/* Keypad Grid */}
-                      {callStatus === "ready" && renderKeypad()}
+                      {/* Keypad Grid (Outbound Mode) */}
+                      {dialerMode === "outbound" && callStatus === "ready" && renderKeypad()}
 
-                      {/* Calling / Ringing */}
-                      {(callStatus === "dialing" || callStatus === "ringing") && (
+                      {/* ── INBOUND ACD CALL INTERFACE (REPLACES KEYPAD IN INBOUND MODE) ── */}
+                      {dialerMode === "inbound" && (
+                        <div className="my-2 space-y-3">
+
+                          {/* CASE 1: INBOUND LINE RINGING (INCOMING CALL CARD MATCHING DESIGN) */}
+                          {callStatus === "ringing" && (
+                            <div className="bg-white dark:bg-[#111827] rounded-2xl border-2 border-emerald-500 p-5 text-center shadow-xl relative overflow-hidden">
+                              <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500" />
+
+                              {/* Call Ring Avatar */}
+                              <div className="relative h-16 w-16 mx-auto mb-3 flex items-center justify-center">
+                                <div className="relative h-14 w-14 rounded-full bg-emerald-50 dark:bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
+                                  <PhoneIncoming className="h-7 w-7" />
+                                </div>
+                              </div>
+
+                              {/* Caller Info */}
+                              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                                {incomingCall?.name || selectedLead?.name || (outboundPhone ? `Incoming Caller (${outboundPhone})` : "Incoming Caller (John Doe)")}
+                              </h3>
+                              <p className="text-xs font-mono font-extrabold text-slate-500 dark:text-slate-400 mt-0.5">
+                                +91 {outboundPhone || incomingCall?.phone || "98765 43210"}
+                              </p>
+
+                              {/* Line Ringing Badge */}
+                              <div className="mt-3 inline-flex items-center px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full border border-emerald-300 dark:border-emerald-500/30">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                  INBOUND LINE RINGING
+                                </span>
+                              </div>
+
+                              {/* Green Answer & Red Reject Buttons */}
+                              <div className="mt-5 grid grid-cols-2 gap-3">
+                                <button
+                                  type="button"
+                                  onClick={handleAnswerRingingCall}
+                                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
+                                >
+                                  <PhoneIncoming className="h-4 w-4" /> Answer
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleRejectRingingCall}
+                                  className="h-11 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
+                                >
+                                  <PhoneOff className="h-4 w-4" /> Reject
+                                </button>
+                              </div>
+
+                              {/* Disabled Secondary Action Matrix: Hold, Mute, Transfer */}
+                              <div className="mt-3 grid grid-cols-3 gap-2 opacity-40 pointer-events-none">
+                                <div className="py-2 px-1 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 text-[9px] font-black uppercase flex items-center justify-center gap-1">
+                                  <Pause className="h-3 w-3" /> Hold
+                                </div>
+                                <div className="py-2 px-1 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 text-[9px] font-black uppercase flex items-center justify-center gap-1">
+                                  <Mic className="h-3 w-3" /> Mute
+                                </div>
+                                <div className="py-2 px-1 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 text-[9px] font-black uppercase flex items-center justify-center gap-1">
+                                  <PhoneForwarded className="h-3 w-3" /> Transfer
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* CASE 2: CALL CONNECTED OR ON HOLD */}
+                          {(callStatus === "connected" || callStatus === "hold") && (
+                            <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-white/10 p-4 text-center shadow-2xs relative overflow-hidden">
+                              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" />
+                              
+                              {/* Call Avatar & Wave */}
+                              <div className="relative h-16 w-16 mx-auto mb-2 flex items-center justify-center">
+                                <div className={`relative h-14 w-14 rounded-full flex items-center justify-center border-2 transition-all shadow-md ${
+                                  callStatus === "hold"
+                                    ? "bg-amber-500 text-white border-amber-400"
+                                    : "bg-emerald-500 text-white border-emerald-400"
+                                }`}>
+                                  {callStatus === "hold" ? <Pause className="h-7 w-7 animate-pulse" /> : <User className="h-7 w-7" />}
+                                </div>
+                              </div>
+
+                              {/* Caller Info */}
+                              <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                                {selectedLead?.name || (outboundPhone ? `Customer +91 ${outboundPhone}` : "Inbound Customer")}
+                              </h3>
+                              <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+                                {outboundPhone ? `+91 ${outboundPhone}` : "+91 98765 43210"}
+                              </p>
+
+                              {/* Timer Pill */}
+                              <div className="mt-2.5 inline-flex items-center px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full border border-emerald-300 dark:border-emerald-500/30">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                  {callStatus === "hold" ? `On Hold: ${formatTime(callDuration)}` : `Connected: ${formatTime(callDuration)}`}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* CASE 3: INBOUND CALL QUEUED (AGENT NOT READY OR BUSY) */}
+                          {callStatus === "ready" && inboundQueue.length > 0 && (
+                            <div className="bg-amber-50/90 dark:bg-amber-500/10 rounded-2xl border border-amber-300 dark:border-amber-500/30 p-4 text-center shadow-2xs relative overflow-hidden">
+                              <div className="flex items-center justify-between border-b border-amber-200 dark:border-amber-500/20 pb-2 mb-3">
+                                <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider">
+                                  Inbound Queue Position #{1}
+                                </span>
+                                <span className="text-xs font-mono font-black text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                  <Clock className="h-3.5 w-3.5" /> Wait Time: {formatTime(queueWaitSeconds)}
+                                </span>
+                              </div>
+
+                              <div className="relative h-12 w-12 mx-auto mb-2 flex items-center justify-center bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full border border-amber-300 dark:border-amber-500/40">
+                                <PhoneIncoming className="h-6 w-6 animate-bounce" />
+                              </div>
+
+                              <h3 className="text-xs font-extrabold text-slate-900 dark:text-white">
+                                {inboundQueue[0].name}
+                              </h3>
+                              <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
+                                +91 {inboundQueue[0].phone}
+                              </p>
+
+                              <div className="mt-3 p-2 bg-white/80 dark:bg-[#111827]/80 rounded-xl border border-amber-200 dark:border-amber-500/20 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                                Agent Status: <strong className="text-amber-600 dark:text-amber-400 uppercase">{agentStatus.replace(/_/g, " ")}</strong>.
+                                <p className="text-[9px] text-slate-400 mt-0.5">Switch status to READY to auto-connect queued call!</p>
+                              </div>
+
+                              <div className="mt-3 grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => updateAgentBPOStatus("ready")}
+                                  className="h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-1 shadow-xs transition active:scale-95 cursor-pointer"
+                                >
+                                  Set READY &amp; Connect
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInboundQueue(prev => prev.slice(1));
+                                    showToast("Queued call dismissed", "info");
+                                  }}
+                                  className="h-9 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer"
+                                >
+                                  Dismiss Queue
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* CASE 4: STANDBY / READY TO RECEIVE & DISPATCH INBOUND CALLS */}
+                          {callStatus === "ready" && inboundQueue.length === 0 && (
+                            <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-white/10 p-4 text-center shadow-2xs relative">
+                              <div className="relative h-14 w-14 mx-auto mb-2 flex items-center justify-center bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-300 dark:border-emerald-500/30">
+                                <PhoneCall className="h-7 w-7" />
+                              </div>
+
+                              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                Inbound ACD Engine Active
+                              </h3>
+                              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">
+                                Incoming customer calls auto-route and connect to <strong className="text-emerald-600 dark:text-emerald-400">READY</strong> agents instantly without manual clicks.
+                              </p>
+
+                              {/* Test Simulation Button */}
+                              <div className="mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleInboundACDCall()}
+                                  className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-xs transition active:scale-95 cursor-pointer"
+                                >
+                                  Dispatch Inbound Call
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Inbound Call Controls Matrix (Hold, Mute, Transfer, Hangup) */}
+                          {callStatus !== "wrapup" && (callStatus === "connected" || callStatus === "hold") && (
+                            <div className="space-y-2 pt-1">
+                              {/* Controls Row: Hold, Mute, Transfer */}
+                              <div className="grid grid-cols-3 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={handleHoldToggle}
+                                  className={`py-2.5 px-2 rounded-xl border flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                                    callStatus === "hold"
+                                      ? "bg-amber-500 text-white border-amber-600"
+                                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                  }`}
+                                >
+                                  {callStatus === "hold" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                                  <span className="text-[10px] font-black uppercase">{callStatus === "hold" ? "Resume" : "Hold"}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={handleMuteToggle}
+                                  className={`py-2.5 px-2 rounded-xl border flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                                    isMuted
+                                      ? "bg-amber-500 text-white border-amber-600"
+                                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                  }`}
+                                >
+                                  {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                                  <span className="text-[10px] font-black uppercase">{isMuted ? "Muted" : "Mute"}</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setShowTransferModal(true)}
+                                  className="py-2.5 px-2 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-95"
+                                >
+                                  <PhoneForwarded className="h-3.5 w-3.5" />
+                                  <span className="text-[10px] font-black uppercase">Transfer</span>
+                                </button>
+                              </div>
+
+                              {/* Reject / Hangup Call Button */}
+                              <button
+                                type="button"
+                                onClick={handleHangup}
+                                className="w-full h-11 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl font-black text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <PhoneOff className="h-4 w-4 fill-current" />
+                                <span>End Inbound Call &amp; Open Wrap-up</span>
+                              </button>
+                            </div>
+                          )}
+
+                        </div>
+                      )}
+
+                      {/* Outbound Calling / Ringing */}
+                      {dialerMode === "outbound" && (callStatus === "dialing" || callStatus === "ringing") && (
                         <div className="my-5 text-center">
                           <div className="relative h-16 w-16 mx-auto mb-2">
                             <div className="absolute inset-0 rounded-full bg-blue-500/20 animate-ping" />
@@ -1723,8 +2274,8 @@ export default function Dialer() {
                         </div>
                       )}
 
-                      {/* Connected / Hold */}
-                      {(callStatus === "connected" || callStatus === "hold") && (
+                      {/* Outbound Connected / Hold */}
+                      {dialerMode === "outbound" && (callStatus === "connected" || callStatus === "hold") && (
                         <div className="my-3 text-center">
                           <div className={`h-14 w-14 rounded-full mx-auto flex items-center justify-center mb-1.5 border-2 ${
                             callStatus === "hold"
@@ -1820,99 +2371,101 @@ export default function Dialer() {
                         </div>
                       )}
 
-                      {/* Main Dial Action Button Bar */}
-                      <div className="w-full mt-3 pt-3 border-t border-slate-200/80 dark:border-white/10">
-                        {callStatus === "ready" && (
-                          <button
-                            type="button"
-                            onClick={() => setShowCallMethodModal(true)}
-                            disabled={!isValidMobile || isCreatingLead || isDialing}
-                            className="w-full h-[48px] bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-                          >
-                            {isDialing || isCreatingLead ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" /> Starting Call...
-                              </>
-                            ) : (
-                              <>
-                                <Phone className="h-4 w-4 fill-current" /> Call Customer
-                              </>
-                            )}
-                          </button>
-                        )}
+                      {/* Main Dial Action Button Bar (Outbound Mode) */}
+                      {dialerMode === "outbound" && (
+                        <div className="w-full mt-3 pt-3 border-t border-slate-200/80 dark:border-white/10">
+                          {callStatus === "ready" && (
+                            <button
+                              type="button"
+                              onClick={() => setShowCallMethodModal(true)}
+                              disabled={!isValidMobile || isCreatingLead || isDialing}
+                              className="w-full h-[48px] bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                            >
+                              {isDialing || isCreatingLead ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" /> Starting Call...
+                                </>
+                              ) : (
+                                <>
+                                  <Phone className="h-4 w-4 fill-current" /> Call Customer
+                                </>
+                              )}
+                            </button>
+                          )}
 
-                        {(callStatus === "dialing" || callStatus === "ringing") && (
-                          <button
-                            onClick={handleHangup}
-                            className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
-                          >
-                            <PhoneOff className="h-4 w-4 fill-current" /> Cancel Dialing
-                          </button>
-                        )}
-
-                        {(callStatus === "connected" || callStatus === "hold") && (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-4 gap-1.5">
-                              <button
-                                onClick={handleMuteToggle}
-                                disabled={isMuteLoading}
-                                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
-                                  isMuted
-                                    ? "bg-amber-500 text-white border-amber-600"
-                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
-                                }`}
-                                title="Mute/Unmute Mic"
-                              >
-                                {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-                                <span className="text-[8px] font-black uppercase">{isMuted ? "Muted" : "Mute"}</span>
-                              </button>
-
-                              <button
-                                onClick={handleHoldToggle}
-                                disabled={isHoldLoading || isHoldProcessing}
-                                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
-                                  callStatus === "hold"
-                                    ? "bg-amber-500 text-white border-amber-600"
-                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
-                                }`}
-                                title="Hold/Resume Call"
-                              >
-                                {callStatus === "hold" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
-                                <span className="text-[8px] font-black uppercase">{callStatus === "hold" ? "Resume" : "Hold"}</span>
-                              </button>
-
-                              <button
-                                onClick={() => setShowInCallKeypad(!showInCallKeypad)}
-                                className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
-                                  showInCallKeypad
-                                    ? "bg-blue-600 text-white border-blue-700"
-                                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
-                                }`}
-                                title="Keypad DTMF"
-                              >
-                                <Hash className="h-3.5 w-3.5" />
-                                <span className="text-[8px] font-black uppercase">Keypad</span>
-                              </button>
-
-                              <button
-                                onClick={() => setShowTransferModal(true)}
-                                className="p-2 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95"
-                                title="Transfer Call"
-                              >
-                                <PhoneForwarded className="h-3.5 w-3.5" />
-                                <span className="text-[8px] font-black uppercase">Transfer</span>
-                              </button>
-                            </div>
-
+                          {(callStatus === "dialing" || callStatus === "ringing") && (
                             <button
                               onClick={handleHangup}
-                              className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-black text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                              className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                             >
-                              <PhoneOff className="h-4 w-4 fill-current" /> End Call
+                              <PhoneOff className="h-4 w-4 fill-current" /> Cancel Dialing
                             </button>
-                          </div>
-                        )}
-                      </div>
+                          )}
+
+                          {(callStatus === "connected" || callStatus === "hold") && (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-4 gap-1.5">
+                                <button
+                                  onClick={handleMuteToggle}
+                                  disabled={isMuteLoading}
+                                  className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                                    isMuted
+                                      ? "bg-amber-500 text-white border-amber-600"
+                                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                                  }`}
+                                  title="Mute/Unmute Mic"
+                                >
+                                  {isMuted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                                  <span className="text-[8px] font-black uppercase">{isMuted ? "Muted" : "Mute"}</span>
+                                </button>
+
+                                <button
+                                  onClick={handleHoldToggle}
+                                  disabled={isHoldLoading || isHoldProcessing}
+                                  className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                                    callStatus === "hold"
+                                      ? "bg-amber-500 text-white border-amber-600"
+                                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                                  }`}
+                                  title="Hold/Resume Call"
+                                >
+                                  {callStatus === "hold" ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                                  <span className="text-[8px] font-black uppercase">{callStatus === "hold" ? "Resume" : "Hold"}</span>
+                                </button>
+
+                                <button
+                                  onClick={() => setShowInCallKeypad(!showInCallKeypad)}
+                                  className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95 ${
+                                    showInCallKeypad
+                                      ? "bg-blue-600 text-white border-blue-700"
+                                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300"
+                                  }`}
+                                  title="Keypad DTMF"
+                                >
+                                  <Hash className="h-3.5 w-3.5" />
+                                  <span className="text-[8px] font-black uppercase">Keypad</span>
+                                </button>
+
+                                <button
+                                  onClick={() => setShowTransferModal(true)}
+                                  className="p-2 rounded-xl border bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 flex flex-col items-center justify-center gap-1 transition cursor-pointer active:scale-95"
+                                  title="Transfer Call"
+                                >
+                                  <PhoneForwarded className="h-3.5 w-3.5" />
+                                  <span className="text-[8px] font-black uppercase">Transfer</span>
+                                </button>
+                              </div>
+
+                              <button
+                                onClick={handleHangup}
+                                className="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl py-3 font-black text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                              >
+                                <PhoneOff className="h-4 w-4 fill-current" /> End Call
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Floating Action Rail on Right Edge */}
