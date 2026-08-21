@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, User, Phone, PhoneCall, FileText, ListOrdered, Copy, Mail, Calendar, Clock,
@@ -80,40 +81,56 @@ export default function LeadActionSlideOver({
   const timelineEvents: CallEventItem[] = useMemo(() => {
     if (!selectedLead) return [];
     const eventsList: CallEventItem[] = [];
+
     if (leadCalls.length > 0) {
       leadCalls.forEach((call: any) => {
         if (Array.isArray(call.events) && call.events.length > 0) {
           eventsList.push(...call.events);
         } else {
           // Generate realistic persisted events from call metadata if legacy record without events array
-          const startTimeStr = call.started_at ? new Date(call.started_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "11:30:00 AM";
+          const startTime = call.started_at ? new Date(call.started_at) : new Date();
+          const callId = call._id || call.id || Math.random().toString(36).substring(7);
+
+          const formatTs = (d: Date, offsetSec: number) => {
+            const t = new Date(d.getTime() + offsetSec * 1000);
+            return t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          };
+
           eventsList.push({
-            id: `evt_init_${call._id || call.id || Math.random()}`,
-            timestamp: startTimeStr,
+            id: `evt_init_${callId}`,
+            timestamp: formatTs(startTime, 0),
             title: "SIP WebRTC Session Initialized",
             description: "Twilio Voice SDK connected via WebSocket transport",
             type: "initializing"
           });
+
           eventsList.push({
-            id: `evt_ring_${call._id || call.id || Math.random()}`,
-            timestamp: startTimeStr,
+            id: `evt_ring_${callId}`,
+            timestamp: formatTs(startTime, 1),
             title: "Outbound PSTN Ringing State",
             description: "Target carrier signal received (180 Ringing)",
             type: "ringing"
           });
+
+          const durSec = call.duration_seconds || call.duration || 45;
+          const formattedDur = `${Math.floor(durSec / 60).toString().padStart(2, "0")}:${(durSec % 60).toString().padStart(2, "0")}`;
+
           eventsList.push({
-            id: `evt_conn_${call._id || call.id || Math.random()}`,
-            timestamp: startTimeStr,
+            id: `evt_conn_${callId}`,
+            timestamp: formatTs(startTime, 4),
             title: "Call Connected & Answered",
-            description: `Two-way audio channel established (${call.duration_seconds || call.duration || "00:45"})`,
+            description: `Two-way audio channel established (${formattedDur})`,
             type: "connected"
           });
+
           if (call.disposition || call.outcome) {
+            const dispName = (call.disposition || call.outcome).replace(/_/g, " ").toUpperCase();
+            const notesText = call.notes ? ` • Notes: ${call.notes}` : "";
             eventsList.push({
-              id: `evt_disp_${call._id || call.id || Math.random()}`,
-              timestamp: startTimeStr,
-              title: `Agent Updated Disposition (${(call.disposition || call.outcome).replace(/_/g, " ").toUpperCase()})`,
-              description: `Status set to: ${(call.disposition || call.outcome).replace(/_/g, " ").toUpperCase()}` + (call.notes ? ` • Notes: ${call.notes}` : ""),
+              id: `evt_disp_${callId}`,
+              timestamp: formatTs(startTime, Math.min(durSec, 15)),
+              title: `Agent Updated Disposition (${dispName})`,
+              description: `Status set to: ${dispName}${notesText}`,
               type: "disposition"
             });
           }
@@ -121,30 +138,44 @@ export default function LeadActionSlideOver({
       });
     } else {
       // Default initial events for newly created lead
-      const nowStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const now = new Date();
+      const formatTs = (d: Date, offsetSec: number) => {
+        const t = new Date(d.getTime() + offsetSec * 1000);
+        return t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      };
+
       eventsList.push({
         id: "evt_init_default",
-        timestamp: nowStr,
+        timestamp: formatTs(now, 0),
         title: "SIP WebRTC Session Initialized",
         description: "Twilio Voice SDK connected via WebSocket transport",
         type: "initializing"
       });
       eventsList.push({
         id: "evt_ring_default",
-        timestamp: nowStr,
+        timestamp: formatTs(now, 1),
         title: "Outbound PSTN Ringing State",
         description: "Target carrier signal received (180 Ringing)",
         type: "ringing"
       });
       eventsList.push({
         id: "evt_conn_default",
-        timestamp: nowStr,
+        timestamp: formatTs(now, 4),
         title: "Call Connected & Answered",
         description: "Two-way audio channel established",
         type: "connected"
       });
     }
-    return eventsList;
+
+    // Deduplicate events by id
+    const uniqueMap = new Map<string, CallEventItem>();
+    eventsList.forEach((evt) => {
+      if (!uniqueMap.has(evt.id)) {
+        uniqueMap.set(evt.id, evt);
+      }
+    });
+
+    return Array.from(uniqueMap.values());
   }, [selectedLead, leadCalls]);
 
   // UNCONDITIONAL HOOKS END HERE. EARLY RETURN IS PLACED AFTER ALL HOOKS.
@@ -155,12 +186,17 @@ export default function LeadActionSlideOver({
     const clean = phoneStr.replace(/\D/g, "");
     if (clean.length >= 10) {
       const last10 = clean.slice(-10);
-      return `+91 ${last10.slice(0, 3)}****${last10.slice(7)}`;
+      return `+91 ${last10.slice(0, 4)}****${last10.slice(-3)}`;
     }
     return phoneStr;
   };
 
-  const leadName = selectedLead.name || "Customer Lead";
+  const maskLeadName = (nameStr?: string) => {
+    if (!nameStr) return "Customer Lead";
+    return nameStr.replace(/(\d{4})\d{3,4}(\d{3})/, "$1****$2");
+  };
+
+  const leadName = maskLeadName(selectedLead.name || "Customer Lead");
   const maskedPhone = maskPhoneNumber(leadPhone);
   const leadEmail = selectedLead.email || `${leadPhone.replace(/\D/g, "")}@customer.crm`;
   const leadSource = selectedLead.source || "Manual";
@@ -196,48 +232,60 @@ export default function LeadActionSlideOver({
     }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <motion.div
-        initial={{ x: "100%", opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: "100%", opacity: 0 }}
-        transition={{ type: "spring", damping: 26, stiffness: 270 }}
-        className="absolute right-0 top-0 bottom-0 w-[380px] sm:w-[420px] max-w-full bg-white dark:bg-[#111827] border-l border-slate-200 dark:border-white/10 shadow-2xl z-30 flex flex-col rounded-r-[20px] overflow-hidden"
-      >
-        {/* Sticky Header */}
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-white/10 bg-slate-50/80 dark:bg-[#172033]/80 backdrop-blur-md shrink-0">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                {activeTab === "profile" && <User className="h-4 w-4" />}
-                {activeTab === "history" && <PhoneCall className="h-4 w-4" />}
-                {activeTab === "disposition" && <FileText className="h-4 w-4" />}
-                {activeTab === "logs" && <ListOrdered className="h-4 w-4" />}
-                {activeTab === "dialer" && <Phone className="h-4 w-4" />}
-              </div>
-              <div>
-                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white uppercase tracking-wider">
-                  {getTabTitle()}
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate max-w-[220px]">
-                  {leadName} • <span className="font-mono text-blue-600 dark:text-blue-400">{maskedPhone}</span>
-                </p>
+      {activeTab && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 font-sans box-border">
+          {/* Backdrop Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-slate-950/65 backdrop-blur-xs cursor-pointer z-[99998]"
+          />
+
+          {/* User Profile / Action Modal Container */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 12 }}
+            transition={{ type: "spring", damping: 26, stiffness: 280 }}
+            className="relative z-[100000] w-[min(480px,92vw)] max-h-[85vh] min-h-[320px] flex flex-col bg-white dark:bg-[#111827] border border-slate-200/90 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden box-border"
+          >
+            {/* Sticky Top Header */}
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-white/10 bg-slate-50/90 dark:bg-[#172033]/90 backdrop-blur-md shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                    {activeTab === "profile" && <User className="h-4.5 w-4.5" />}
+                    {activeTab === "history" && <PhoneCall className="h-4.5 w-4.5" />}
+                    {activeTab === "disposition" && <FileText className="h-4.5 w-4.5" />}
+                    {activeTab === "logs" && <ListOrdered className="h-4.5 w-4.5" />}
+                    {activeTab === "dialer" && <Phone className="h-4.5 w-4.5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider">
+                      {getTabTitle()}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate max-w-[240px] mt-0.5">
+                      {leadName} • <span className="font-mono text-blue-600 dark:text-blue-400">{maskedPhone}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-white/10 transition cursor-pointer shrink-0 ml-2"
+                  title="Close modal"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition cursor-pointer"
-              title="Close panel"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Panel Body Content (Scrollable) */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4 softphone-scrollbar no-scrollbar">
+            {/* Panel Body Content (Internal Scrollable Container) */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 softphone-scrollbar">
 
           {/* TAB 1: USER PROFILE */}
           {activeTab === "profile" && (
@@ -520,8 +568,11 @@ export default function LeadActionSlideOver({
             </div>
           )}
 
+            </div>
+          </motion.div>
         </div>
-      </motion.div>
-    </AnimatePresence>
+      )}
+    </AnimatePresence>,
+    document.body
   );
 }

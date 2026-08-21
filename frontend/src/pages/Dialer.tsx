@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
+import { usePresence } from "../context/PresenceContext";
 import { api, getWsUrl } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,7 +57,8 @@ import {
   TrendingUp,
   Sliders,
   PhoneMissed,
-  FileText
+  FileText,
+  Activity
 } from "lucide-react"; // Verified single import of icons
 
 type CallStatus =
@@ -145,6 +147,64 @@ type CallHistoryItem = {
 export default function Dialer() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { myStatus, pauseReason, myPresence, wsConnected, setPresenceStatus } = usePresence();
+
+  const formatSecsToHMS = (totalSeconds: number) => {
+    if (!totalSeconds || isNaN(totalSeconds)) return "00:00:00";
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = Math.floor(totalSeconds % 60);
+    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const [nowTicker, setNowTicker] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNowTicker(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const loginTimeStr = myPresence?.login_at && myPresence?.status !== "offline"
+    ? new Date(myPresence.login_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    : myPresence?.status === "offline" ? "Offline" : "09:00:00 AM";
+
+  const loginHoursVal = useMemo(() => {
+    if (!myPresence?.login_at || myPresence?.status === "offline") {
+      if (myPresence?.status === "offline" && myPresence?.login_at && myPresence?.logout_at) {
+        const startMs = new Date(myPresence.login_at).getTime();
+        const endMs = new Date(myPresence.logout_at).getTime();
+        const diffSec = Math.max(0, Math.floor((endMs - startMs) / 1000));
+        const hrs = (diffSec / 3600).toFixed(1);
+        return `${hrs} hrs`;
+      }
+      return "0.0 hrs";
+    }
+    try {
+      const loginDt = new Date(myPresence.login_at);
+      const diffMs = Math.max(0, nowTicker - loginDt.getTime());
+      const totalSecs = Math.floor(diffMs / 1000);
+      const hrsFloat = (totalSecs / 3600).toFixed(1);
+      const mins = Math.floor((totalSecs % 3600) / 60);
+      const secs = totalSecs % 60;
+      return `${hrsFloat} hrs (${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")})`;
+    } catch {
+      return "0.0 hrs";
+    }
+  }, [myPresence?.login_at, myPresence?.logout_at, myPresence?.status, nowTicker]);
+
+  const maskPhoneNumber = (phoneStr?: string): string => {
+    if (!phoneStr) return "N/A";
+    const clean = phoneStr.replace(/\D/g, "");
+    if (clean.length >= 10) {
+      const last10 = clean.slice(-10);
+      return `+91 ${last10.slice(0, 4)}****${last10.slice(-3)}`;
+    }
+    return phoneStr;
+  };
+
+  const maskLeadName = (nameStr?: string): string => {
+    if (!nameStr) return "Customer Lead";
+    return nameStr.replace(/(\d{4})\d{3,4}(\d{3})/, "$1****$2");
+  };
 
   const [activeTab, setActiveTab] = useState<Tab>("outbound");
 
@@ -254,6 +314,30 @@ export default function Dialer() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [historySearchQuery, setHistorySearchQuery] = useState("");
 
+  // DERIVED TELEMETRY & METRICS (INITIALIZED AFTER ALL STATES)
+  const readyTimeFormatted = formatSecsToHMS(myPresence?.ready_seconds || 0);
+  const pauseTimeFormatted = formatSecsToHMS(myPresence?.paused_seconds || 0);
+  const stopCount = 0;
+  const ringingTimeFormatted = formatSecsToHMS(myPresence?.ringing_seconds || 0);
+  const callSetupTimeFormatted = formatSecsToHMS(myPresence?.setup_seconds || 0);
+  const totalCallTimeFormatted = formatSecsToHMS(myPresence?.talk_seconds || 0);
+  const disposeTimeFormatted = formatSecsToHMS(myPresence?.dispose_seconds || 0);
+
+  const totalCallsHandled = (myPresence?.total_calls_handled !== undefined && myPresence?.total_calls_handled !== null)
+    ? myPresence.total_calls_handled
+    : (callHistory ? callHistory.length : 0);
+
+  const shiftLogPercentage = totalCallsHandled > 0 ? "100% Shift Log" : "0% Shift Log";
+
+  const avgHandlingTimeFormatted = useMemo(() => {
+    const totalHandled = totalCallsHandled || 1;
+    const totalSecs = (myPresence?.talk_seconds || 0) + (myPresence?.dispose_seconds || 0) + (myPresence?.ringing_seconds || 0);
+    const avgSecs = Math.floor(totalSecs / Math.max(1, totalHandled));
+    const mins = Math.floor(avgSecs / 60);
+    const secs = avgSecs % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }, [myPresence, totalCallsHandled]);
+
   // BPO AGENT STATUS SELECTOR STATE
   const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
   const statusMenuRef = useRef<HTMLDivElement>(null);
@@ -302,17 +386,6 @@ export default function Dialer() {
     }
     return "";
   }, [outboundPhone, isValidMobile]);
-
-  // Mask phone numbers for BPO privacy
-  const maskPhoneNumber = (phoneStr?: string) => {
-    if (!phoneStr) return "N/A";
-    const clean = phoneStr.replace(/\D/g, "");
-    if (clean.length >= 10) {
-      const last10 = clean.slice(-10);
-      return `+91 ${last10.slice(0, 3)}****${last10.slice(7)}`;
-    }
-    return phoneStr;
-  };
 
   // FETCH DATA
   const fetchLeads = useCallback(async () => {
@@ -1849,148 +1922,172 @@ export default function Dialer() {
                 {/* Primary Softphone Dialer Workstation Box */}
                 <div className="bg-white dark:bg-[#111827] rounded-[12px] border border-slate-200 dark:border-white/10 p-3.5 sm:p-4 flex-1 flex flex-col items-center overflow-y-auto no-scrollbar shadow-2xs relative w-full">
 
-                  {/* Top Header & Agent Status Bar */}
-                  <div className="w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 shrink-0 pb-3 border-b border-slate-100 dark:border-white/10">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center border shadow-2xs transition-colors ${
-                        dialerMode === "inbound"
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                      }`}>
-                        {dialerMode === "inbound" ? (
-                          <PhoneIncoming className="h-5 w-5" />
-                        ) : (
-                          <PhoneCall className="h-5 w-5" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                            Softphone Dialer Workstation
-                          </h2>
-                          <span className={`border text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 transition-colors ${
-                            dialerMode === "inbound"
-                              ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
-                              : "bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/30 text-amber-700 dark:text-amber-400"
-                          }`}>
-                            <span className={`h-1.5 w-1.5 rounded-full animate-ping ${dialerMode === "inbound" ? "bg-emerald-500" : "bg-amber-500"}`} />
-                            {dialerMode === "inbound" ? "Inbound Line Active" : "Live Station"}
-                          </span>
+                  {/* BPO AGENT DIALER CONSOLE HEADER */}
+                  <div className="w-full bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xs mb-4">
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-2xl bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-500/20 shadow-2xs">
+                          <Headphones className="h-5 w-5 text-[#2563EB] dark:text-[#3B82F6]" />
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                          {dialerMode === "inbound"
-                            ? "Inbound Call Receiving Console · Live Queue & Incoming Call Routing"
-                            : "Manual Outbound Dialing · Agent & AI Call Modes · Real-time Call Console"}
-                        </p>
+                        <div>
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5">
+                              Agent <span className="text-[#F4B400]">Dialer Console</span>
+                            </h1>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
+                              myStatus === "ready"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30"
+                                : myStatus === "paused"
+                                ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30"
+                                : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30"
+                            }`}>
+                              <span className={`h-2 w-2 rounded-full ${
+                                myStatus === "ready" ? "bg-emerald-500" : myStatus === "paused" ? "bg-amber-500" : "bg-rose-500"
+                              }`} />
+                              Agent {myStatus === "ready" ? "Ready" : myStatus === "paused" ? (pauseReason || "Paused") : "Offline"}
+                            </span>
+
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/30 flex items-center gap-1.5">
+                              <span className={`h-2 w-2 rounded-full ${wsConnected ? "bg-blue-500 animate-pulse" : "bg-slate-400"}`} />
+                              {wsConnected ? "WebSocket Stream Live" : "Reconnecting..."}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                            Assigned Queue &amp; Softphone Workspace • Real-Time Session Sync
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Real-time Agent Status Action Buttons */}
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        <button
+                          onClick={() => setPresenceStatus("ready")}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            myStatus === "ready"
+                              ? "bg-emerald-600 text-white shadow-xs"
+                              : "bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 dark:bg-slate-800 dark:hover:bg-emerald-950/40 dark:text-slate-300 dark:hover:text-emerald-400"
+                          }`}
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Set Ready
+                        </button>
+
+                        <button
+                          onClick={() => setPresenceStatus("paused", pauseReason || "Tea Break")}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            myStatus === "paused"
+                              ? "bg-amber-500 text-white shadow-xs"
+                              : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 dark:bg-slate-800 dark:hover:bg-amber-950/40 dark:text-slate-300 dark:hover:text-amber-400"
+                          }`}
+                        >
+                          <Clock className="h-3.5 w-3.5" />
+                          Pause / Break
+                        </button>
+
+                        <button
+                          onClick={() => setPresenceStatus("offline")}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                            myStatus === "offline"
+                              ? "bg-rose-600 text-white shadow-xs"
+                              : "bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400"
+                          }`}
+                        >
+                          <PhoneOff className="h-3.5 w-3.5" />
+                          Go Offline
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TODAY's SUMMARY & OPERATIONAL TELEMETRY PANEL */}
+                  <div className="w-full bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xs mb-5 space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-500/20 shadow-2xs">
+                          <Activity className="h-4.5 w-4.5 text-[#2563EB] dark:text-[#3B82F6]" />
+                        </div>
+                        <div>
+                          <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Today's Summary &amp; Telemetry</h2>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Real-time agent shift times, call setup, disposition, and handling performance</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">
+                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 shadow-2xs">
+                          <RefreshCw className="h-3 w-3 text-blue-500 animate-spin-slow" />
+                          Last Update: <strong className="font-mono text-slate-900 dark:text-white">{new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</strong>
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5">
-                      {/* Segmented Control [ Outbound ] [ Inbound ] */}
-                      <div className="flex items-center p-1 bg-slate-100 dark:bg-[#182233] rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDialerMode("outbound");
-                            setLeadDirection("outbound");
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                            dialerMode === "outbound"
-                              ? "bg-blue-600 text-white shadow-xs"
-                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                          }`}
-                        >
-                          <PhoneOutgoing className="h-3.5 w-3.5" />
-                          <span>Outbound</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDialerMode("inbound");
-                            setLeadDirection("inbound");
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                            dialerMode === "inbound"
-                              ? "bg-emerald-600 text-white shadow-xs"
-                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                          }`}
-                        >
-                          <PhoneIncoming className="h-3.5 w-3.5" />
-                          <span>Inbound</span>
-                        </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {/* 1. Login */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Login</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{loginTimeStr}</div>
                       </div>
 
-                      {/* Modern BPO CRM Agent Status Selector */}
-                      <div className="relative inline-block text-left" ref={statusMenuRef}>
-                        <button
-                          type="button"
-                          onClick={() => setIsStatusMenuOpen(!isStatusMenuOpen)}
-                          className="h-9 px-3 bg-white dark:bg-[#182233] hover:bg-slate-50 dark:hover:bg-[#1e2d44] text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 rounded-[12px] shadow-2xs hover:shadow-xs flex items-center gap-2 transition cursor-pointer active:scale-95"
-                        >
-                          <span className={`h-2 w-2 rounded-full shrink-0 ${
-                            agentStatus === "ready" ? "bg-emerald-500" :
-                            agentStatus === "on_call" ? "bg-amber-500" :
-                            agentStatus === "wrap_up" ? "bg-orange-500" : "bg-rose-500"
-                          }`} />
-                          <span className="text-xs font-black tracking-tight">
-                            {agentStatus === "ready" ? "Ready" :
-                             agentStatus === "on_call" ? "On Call" :
-                             agentStatus === "wrap_up" ? "Wrap-up" : "On Break"}
-                          </span>
-                          <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${isStatusMenuOpen ? "rotate-180" : ""}`} />
-                        </button>
-
-                        <AnimatePresence>
-                          {isStatusMenuOpen && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                              animate={{ opacity: 1, scale: 1, y: 0 }}
-                              exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                              transition={{ duration: 0.12 }}
-                              className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-[#151F32] border border-slate-200 dark:border-white/10 rounded-[12px] shadow-xl p-1 z-50 overflow-hidden"
-                            >
-                              {[
-                                { value: "ready" as AgentStatus, label: "Ready", dot: "bg-emerald-500" },
-                                { value: "on_call" as AgentStatus, label: "On Call", dot: "bg-amber-500" },
-                                { value: "wrap_up" as AgentStatus, label: "Wrap-up", dot: "bg-orange-500" },
-                                { value: "break" as AgentStatus, label: "On Break", dot: "bg-rose-500" },
-                              ].map((opt) => {
-                                const isSelected = agentStatus === opt.value;
-                                return (
-                                  <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => {
-                                      updateAgentBPOStatus(opt.value);
-                                      setIsStatusMenuOpen(false);
-                                    }}
-                                    className={`w-full h-8 px-2.5 rounded-[8px] flex items-center justify-between text-xs transition cursor-pointer ${
-                                      isSelected
-                                        ? "bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 font-extrabold"
-                                        : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 font-semibold"
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span className={`h-2 w-2 rounded-full ${opt.dot} shrink-0`} />
-                                      <span>{opt.label}</span>
-                                    </div>
-                                    {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />}
-                                  </button>
-                                );
-                              })}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                      {/* 2. Login Hr */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Login Hr</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-blue-600 dark:text-blue-400">{loginHoursVal}</div>
                       </div>
 
-                      <button
-                        onClick={fetchLeads}
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-400 transition cursor-pointer border border-slate-200/80 dark:border-white/10"
-                        title="Refresh Workstation"
-                      >
-                        <RefreshCw className={`h-4 w-4 ${isLoadingLeads ? 'animate-spin' : ''}`} />
-                      </button>
+                      {/* 3. Ready */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ready</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{readyTimeFormatted}</div>
+                      </div>
+
+                      {/* 4. Pause */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pause</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{pauseTimeFormatted}</div>
+                      </div>
+
+                      {/* 5. Stop */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Stop</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{stopCount}</div>
+                      </div>
+
+                      {/* 6. Ringing Time */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ringing Time</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{ringingTimeFormatted}</div>
+                      </div>
+
+                      {/* 7. Call Setup Time */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Call Setup Time</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-sky-600 dark:text-sky-400">{callSetupTimeFormatted}</div>
+                      </div>
+
+                      {/* 8. Total Call Time */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Call Time</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-blue-600 dark:text-blue-400">{totalCallTimeFormatted}</div>
+                      </div>
+
+                      {/* 9. Dispose Time */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Dispose Time</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-purple-600 dark:text-purple-400">{disposeTimeFormatted}</div>
+                      </div>
+
+                      {/* 10. Average Handling Time */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Avg Handling Time</span>
+                        <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{avgHandlingTimeFormatted}</div>
+                      </div>
+
+                      {/* 11. Total Calls Handled */}
+                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Calls Handled</span>
+                        <div className="text-sm font-black font-mono text-slate-900 dark:text-white flex items-center justify-between">
+                          <span>{totalCallsHandled} calls</span>
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 font-sans">{shiftLogPercentage}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -2807,119 +2904,97 @@ export default function Dialer() {
       )}
 
 
-      {/* Choose Call Method & Select SIM Selection Modal Popup */}
+      {/* Choose Call Method Modal Popup */}
       {showCallMethodModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-white/10 p-5 max-w-sm w-full shadow-2xl overflow-hidden relative">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#151F32] rounded-3xl border border-slate-200/80 dark:border-white/10 p-6 max-w-[420px] w-full shadow-2xl overflow-hidden relative space-y-5">
             
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center border border-emerald-500/20">
-                  <PhoneCall className="h-4.5 w-4.5" />
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-[#22C55E] rounded-2xl flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-500/20 shadow-2xs">
+                  <PhoneCall className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white tracking-tight">
                     Choose Call Method
                   </h3>
-                  <p className="text-[11px] font-mono font-semibold text-blue-600 dark:text-blue-400">
-                    Target: +91 {outboundPhone}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-[#3B82F6] border border-blue-100 dark:border-blue-500/20">
+                      Target: {maskPhoneNumber(outboundPhone)}
+                    </span>
+                  </div>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCallMethodModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer"
+                className="h-8 w-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Step 1: Choose Call Method */}
-            <div className="mb-4">
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">
-                Choose Call Method
+            {/* Selection Grid */}
+            <div>
+              <label className="block text-[10.5px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5">
+                Select Connection Method
               </label>
-              <div className="grid grid-cols-2 gap-2.5">
-                {/* 👤 Agent Call Option */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Agent Call Option */}
                 <button
                   type="button"
                   onClick={() => setSelectedCallMethod("human")}
-                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                  className={`p-4 rounded-2xl border flex flex-col items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer active:scale-95 text-center ${
                     selectedCallMethod === "human"
-                      ? "bg-[#F4B400]/15 border-[#F4B400] ring-2 ring-[#F4B400]/40 text-[#123E8A] dark:text-amber-400 font-black shadow-2xs"
-                      : "bg-slate-50 dark:bg-[#182233] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                      ? "bg-amber-500/10 border-amber-500 ring-2 ring-amber-500/30 text-amber-900 dark:text-amber-300 font-black shadow-2xs"
+                      : "bg-slate-50/80 dark:bg-slate-900/60 border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20"
                   }`}
                 >
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                    selectedCallMethod === "human" ? "bg-[#F4B400] text-[#123E8A]" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  <div className={`h-10 w-10 rounded-2xl flex items-center justify-center transition-transform duration-200 ${
+                    selectedCallMethod === "human" 
+                      ? "bg-amber-500 text-white shadow-xs scale-105" 
+                      : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                   }`}>
-                    <User className="h-4 w-4" />
+                    <User className="h-5 w-5" />
                   </div>
-                  <span className="text-xs font-extrabold">👤 Agent Call</span>
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-black block text-slate-900 dark:text-white">Agent Call</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block">Human Softphone</span>
+                  </div>
                 </button>
 
-                {/* 🤖 AI Call Option */}
+                {/* AI Call Option */}
                 <button
                   type="button"
                   onClick={() => setSelectedCallMethod("ai")}
-                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                  className={`p-4 rounded-2xl border flex flex-col items-center justify-center gap-2.5 transition-all duration-200 cursor-pointer active:scale-95 text-center ${
                     selectedCallMethod === "ai"
-                      ? "bg-purple-500/15 border-purple-500 ring-2 ring-purple-500/40 text-purple-700 dark:text-purple-300 font-black shadow-2xs"
-                      : "bg-slate-50 dark:bg-[#182233] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                      ? "bg-purple-500/10 border-purple-500 ring-2 ring-purple-500/30 text-purple-900 dark:text-purple-300 font-black shadow-2xs"
+                      : "bg-slate-50/80 dark:bg-slate-900/60 border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20"
                   }`}
                 >
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                    selectedCallMethod === "ai" ? "bg-purple-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                  <div className={`h-10 w-10 rounded-2xl flex items-center justify-center transition-transform duration-200 ${
+                    selectedCallMethod === "ai" 
+                      ? "bg-purple-600 text-white shadow-xs scale-105" 
+                      : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                   }`}>
-                    <Bot className="h-4 w-4" />
+                    <Bot className="h-5 w-5" />
                   </div>
-                  <span className="text-xs font-extrabold">🤖 AI Call</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Step 2: Select SIM */}
-            <div className="mb-5">
-              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">
-                Select SIM
-              </label>
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setSelectedSim("sim1")}
-                  className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 transition cursor-pointer text-xs font-extrabold ${
-                    selectedSim === "sim1"
-                      ? "bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/30"
-                      : "bg-slate-50 dark:bg-[#182233] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                  }`}
-                >
-                  <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span>SIM 1</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedSim("sim2")}
-                  className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 transition cursor-pointer text-xs font-extrabold ${
-                    selectedSim === "sim2"
-                      ? "bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300 ring-2 ring-blue-500/30"
-                      : "bg-slate-50 dark:bg-[#182233] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                  }`}
-                >
-                  <Smartphone className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                  <span>SIM 2</span>
+                  <div className="space-y-0.5">
+                    <span className="text-xs font-black block text-slate-900 dark:text-white">AI Call</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block">Autonomous Voice</span>
+                  </div>
                 </button>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => setShowCallMethodModal(false)}
-                className="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-extrabold text-xs cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-extrabold text-xs cursor-pointer transition shrink-0"
               >
                 Cancel
               </button>
@@ -2927,11 +3002,11 @@ export default function Dialer() {
                 type="button"
                 onClick={() => {
                   setShowCallMethodModal(false);
-                  handleDial(selectedCallMethod, selectedSim);
+                  handleDial(selectedCallMethod, "sim1");
                 }}
-                className="flex-2 py-2.5 bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs shadow-md shadow-emerald-600/20 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer active:scale-98 whitespace-nowrap"
               >
-                <Phone className="h-3.5 w-3.5 fill-current" />
+                <Phone className="h-4 w-4 fill-current shrink-0" />
                 <span>Start {selectedCallMethod === "ai" ? "AI Call" : "Agent Call"}</span>
               </button>
             </div>

@@ -112,6 +112,16 @@ async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user
     doc["role"] = user.get("role")
     doc["timestamp"] = doc["created_at"]
 
+    actor_role = (user.get("role") or "System").replace("_", " ").title()
+    actor_name = user.get("name") or user.get("email") or "System Automation"
+    init_history_entry = {
+        "timestamp": utcnow(),
+        "action": "Created in CRM",
+        "actor": f"{actor_name} ({actor_role})",
+        "notes": f"Source: {payload.source or 'Manual Dialer'}"
+    }
+    doc["history"] = [init_history_entry]
+
     result = await leads_col.insert_one(doc)
     doc["_id"] = result.inserted_id
 
@@ -126,7 +136,16 @@ async def create_lead(payload: LeadCreate, user: dict = Depends(get_current_user
         "timestamp": utcnow()
     })
 
-    await ws_manager.broadcast("global", {"event": "leads_updated"})
+    await ws_manager.broadcast("global", {
+        "event": "leads_updated",
+        "type": "lead_activity_updated",
+        "data": {
+            "lead_id": str(doc["_id"]),
+            "lead_code": doc["lead_id"],
+            "history_entry": init_history_entry,
+            "status": LeadStatus.NEW
+        }
+    })
     return oid_str(doc)
 
 
@@ -440,7 +459,27 @@ async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_use
     if payload.pool_id:
         update_doc["pool_id"] = payload.pool_id
 
-    result = await leads_col.update_many(db_query, {"$set": update_doc})
+    actor_role = (user.get("role") or "User").replace("_", " ").title()
+    actor_name = user.get("name") or "Supervisor"
+    assign_history_entry = {
+        "timestamp": utcnow(),
+        "action": f"Assigned to {agent_name or target_agent_id or 'Agent'}",
+        "actor": f"{actor_name} ({actor_role})",
+        "notes": f"Pool: {payload.pool_id}" if payload.pool_id else "Lead assignment"
+    }
+
+    result = await leads_col.update_many(
+        db_query,
+        {
+            "$set": update_doc,
+            "$push": {
+                "history": {
+                    "$each": [assign_history_entry],
+                    "$position": 0
+                }
+            }
+        }
+    )
 
     updated_docs = await leads_col.find(db_query, {"_id": 1, "id": 1, "lead_id": 1}).to_list(length=2000)
     updated_id_set = set()
@@ -459,7 +498,14 @@ async def assign_leads(payload: LeadAssign, user: dict = Depends(get_current_use
         "timestamp": utcnow()
     })
 
-    await ws_manager.broadcast("global", {"event": "leads_updated"})
+    await ws_manager.broadcast("global", {
+        "event": "leads_updated",
+        "type": "lead_activity_updated",
+        "data": {
+            "lead_ids": list(updated_id_set),
+            "history_entry": assign_history_entry
+        }
+    })
     return {
         "status": "success",
         "assigned_count": result.modified_count,
@@ -620,6 +666,17 @@ async def update_disposition(lead_id: str, payload: DispositionUpdate, user: dic
         if current_status != "new" and current_status != LeadStatus.NEW:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Agents can only edit leads in NEW status")
 
+    actor_role = (user.get("role") or "User").replace("_", " ").title()
+    actor_name = user.get("name") or user.get("email") or "Agent"
+    status_label = payload.status.replace("_", " ").title()
+
+    history_entry = {
+        "timestamp": utcnow(),
+        "action": f"Disposition Updated to {status_label}",
+        "actor": f"{actor_name} ({actor_role})",
+        "notes": payload.notes or (f"Follow-up: {payload.follow_up_at}" if payload.follow_up_at else "Status change")
+    }
+
     update = {"status": payload.status, "updated_at": utcnow()}
     if payload.sub_disposition:
         update["sub_disposition"] = payload.sub_disposition
@@ -628,7 +685,18 @@ async def update_disposition(lead_id: str, payload: DispositionUpdate, user: dic
     if payload.follow_up_at:
         update["follow_up_at"] = payload.follow_up_at
         
-    await leads_col.update_one(query, {"$set": update})
+    await leads_col.update_one(
+        query,
+        {
+            "$set": update,
+            "$push": {
+                "history": {
+                    "$each": [history_entry],
+                    "$position": 0
+                }
+            }
+        }
+    )
 
     await audit_logs_col.insert_one({
         "action": "update_disposition",
@@ -638,7 +706,16 @@ async def update_disposition(lead_id: str, payload: DispositionUpdate, user: dic
         "timestamp": utcnow()
     })
 
-    await ws_manager.broadcast("global", {"event": "leads_updated"})
+    await ws_manager.broadcast("global", {
+        "event": "leads_updated",
+        "type": "lead_activity_updated",
+        "data": {
+            "lead_id": str(lead.get("_id")),
+            "lead_code": lead.get("lead_id"),
+            "history_entry": history_entry,
+            "status": payload.status
+        }
+    })
     return {"status": "updated"}
 
 

@@ -115,6 +115,17 @@ async def login(payload: UserLogin, request: Request):
         "timestamp": utcnow()
     })
 
+    # Trigger real-time presence tracking update on login
+    try:
+        from app.routes.presence import record_presence_change
+        await record_presence_change(
+            user_id=str(user["_id"]),
+            new_status="ready",
+            source="login"
+        )
+    except Exception as e:
+        logger.warning(f"[PRESENCE LOGIN ERROR] Failed to record presence change: {e}")
+
     return {
         "access_token": access,
         "refresh_token": refresh,
@@ -125,6 +136,7 @@ async def login(payload: UserLogin, request: Request):
             "role": user["role"],
             "employee_id": user["employee_id"],
             "pool_id": user.get("pool_id"),
+            "status": "ready",
         },
     }
 

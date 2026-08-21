@@ -111,12 +111,9 @@ export function PhoneInput({
       )}
 
       <div className="relative flex items-center">
-        {/* Fixed Non-editable Country Code Badge + Icon */}
-        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none select-none z-10">
-          <Phone className="h-3.5 w-3.5 text-[#64748B] dark:text-slate-500" />
-          <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F8FAFC] bg-[#F1F5F9] dark:bg-slate-800 border border-[#D9E2EC] dark:border-slate-700 px-1.5 py-0.5 rounded-[6px] font-mono">
-            {countryCode}
-          </span>
+        {/* Phone Icon */}
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none select-none z-10">
+          <Phone className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
         </div>
 
         {/* 10-Digit Mobile Number Input Field */}
@@ -130,8 +127,8 @@ export function PhoneInput({
           onPaste={handlePaste}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
-          className={`w-full pl-[76px] pr-10 bg-white dark:bg-[#09111E] border rounded-[10px] text-[15px] font-medium text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#94A3B8] dark:placeholder-slate-600 focus:outline-none transition-colors duration-150 hover:border-[#2563EB] ${
-            inputClassName || "h-[46px]"
+          className={`w-full pl-8.5 pr-8 bg-white dark:bg-[#09111E] border rounded-lg text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-colors duration-150 hover:border-[#2563EB] ${
+            inputClassName || "h-[36px]"
           } ${
             showError
               ? "border-rose-500 focus:ring-2 focus:ring-rose-500/15 focus:border-rose-500"

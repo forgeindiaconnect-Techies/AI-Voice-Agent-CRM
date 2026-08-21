@@ -28,6 +28,7 @@ from app.schemas.common import (
     CallDispositionPayload,
 )
 from app.services.ws_manager import ws_manager
+from app.routes.presence import record_call_completion
 
 router = APIRouter(prefix="/api/calls", tags=["calls"])
 
@@ -1245,6 +1246,14 @@ async def force_end_stuck_call(call_id: str, user: dict = Depends(get_current_us
             {"$set": {"status": "completed", "outcome": "force_ended", "ended_at": utcnow()}}
         )
         release_call_lock(agent_id=call.get("agent_id"), call_id=call_id)
+        agent_id = call.get("agent_id") or _uid(user)
+        if agent_id:
+            await record_call_completion(
+                user_id=str(agent_id),
+                duration_seconds=0,
+                call_id=call_id,
+                outcome="force_ended"
+            )
         await ws_manager.broadcast("global", {"event": "call_ended", "call_id": call_id, "outcome": "force_ended"})
     else:
         release_call_lock(agent_id=_uid(user), call_id=call_id)
@@ -1944,7 +1953,16 @@ async def end_manual_call(call_id: str, payload: CallEnd, user: dict = Depends(g
         "outcome": payload.outcome,
         "pool_id": call["pool_id"]
     }
-    release_call_lock(agent_id=call.get("agent_id") or _uid(user), call_id=call_id)
+    agent_id = call.get("agent_id") if call else _uid(user)
+    if agent_id:
+        await record_call_completion(
+            user_id=str(agent_id),
+            duration_seconds=payload.duration_seconds or 0,
+            call_id=call_id,
+            outcome=payload.outcome or "completed"
+        )
+
+    release_call_lock(agent_id=agent_id or _uid(user), call_id=call_id)
     return {"status": "completed"}
 
 

@@ -28,7 +28,12 @@ export const getBaseUrl = (): string => {
     return url;
   }
 
-  // 3. Permanent Default Target: Production Render Backend
+  // 3. Check if running locally on localhost or 127.0.0.1
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return "http://localhost:8000";
+  }
+
+  // 4. Default Target: Production Render Backend
   return RENDER_PROD_URL;
 };
 

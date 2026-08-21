@@ -12,7 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from app.core.config import settings
 from app.core.database import init_indexes, check_db_connection
 from app.core.http import get_http_client, close_http_client
-from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws, ai_agents
+from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws, ai_agents, presence
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logger = logging.getLogger("uvicorn.error")
@@ -101,6 +101,7 @@ app.include_router(leave.router)
 app.include_router(reports.router)
 app.include_router(ws.router)
 app.include_router(ai_agents.router)
+app.include_router(presence.router)
 
 
 # ── Startup ──────────────────────────────────────────────────────────────────

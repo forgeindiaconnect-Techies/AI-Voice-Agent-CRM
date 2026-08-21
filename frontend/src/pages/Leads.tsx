@@ -340,6 +340,21 @@ export default function Leads() {
     };
   }, [showManualModal]);
 
+  const maskPhoneNumber = (phoneStr?: string): string => {
+    if (!phoneStr) return "N/A";
+    const clean = phoneStr.replace(/\D/g, "");
+    if (clean.length >= 10) {
+      const last10 = clean.slice(-10);
+      return `+91 ${last10.slice(0, 4)}****${last10.slice(-3)}`;
+    }
+    return phoneStr;
+  };
+
+  const maskLeadName = (nameStr?: string): string => {
+    if (!nameStr) return "Customer Lead";
+    return nameStr.replace(/(\d{4})\d{3,4}(\d{3})/, "$1****$2");
+  };
+
   // Stepper file upload states
   const [file, setFile] = useState<File | null>(null);
   const [importStep, setImportStep] = useState<"upload" | "mapping" | "assign" | "report">("upload");
@@ -1059,8 +1074,8 @@ export default function Leads() {
     const value = (manualForm as any)[field];
     const showError = error && touched;
     return (
-      <div className="flex flex-col gap-1 w-full text-left font-sans">
-        <label className="text-[12px] sm:text-[13px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+      <div className="flex flex-col gap-0.5 w-full text-left font-sans">
+        <label className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
         </label>
         <div className="relative">
@@ -1071,7 +1086,7 @@ export default function Leads() {
             value={value}
             onChange={e => handleFieldChange(field, e.target.value)}
             onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
-            className={`w-full h-[42px] sm:h-[44px] px-3.5 border rounded-[10px] bg-white dark:bg-[#09111E] text-[13px] sm:text-[14px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all duration-150 hover:border-[#2563EB] ${
+            className={`w-full h-[34px] sm:h-[36px] px-3 border rounded-lg bg-white dark:bg-[#09111E] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all duration-150 hover:border-[#2563EB] ${
               showError
                 ? "border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                 : "border-slate-200/90 dark:border-slate-700/80 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
@@ -1079,7 +1094,7 @@ export default function Leads() {
           />
         </div>
         {showError && (
-          <p className="text-[11px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
+          <p className="text-[10px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
             <AlertCircle className="h-3 w-3 shrink-0" />
             {error}
           </p>
@@ -1100,8 +1115,8 @@ export default function Leads() {
     const value = (manualForm as any)[field];
     const showError = error && touched;
     return (
-      <div className="flex flex-col gap-1 w-full text-left font-sans">
-        <label className="text-[12px] sm:text-[13px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+      <div className="flex flex-col gap-0.5 w-full text-left font-sans">
+        <label className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           {label}<span className="text-rose-500 ml-0.5">*</span>
         </label>
         <CustomSelect
@@ -1117,14 +1132,14 @@ export default function Leads() {
           options={options}
           placeholder={placeholder}
           searchable={true}
-          triggerClassName={`h-[42px] sm:h-[44px] rounded-[10px] text-[13px] sm:text-[14px] font-semibold border transition-all duration-150 bg-white dark:bg-[#09111E] hover:border-[#2563EB] ${
+          triggerClassName={`h-[34px] sm:h-[36px] rounded-lg text-xs font-semibold border transition-all duration-150 bg-white dark:bg-[#09111E] hover:border-[#2563EB] ${
             showError
               ? "border-rose-500 focus:border-rose-500 ring-2 ring-rose-500/20"
               : "border-slate-200/90 dark:border-slate-700/80"
           }`}
         />
         {showError && (
-          <p className="text-[11px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
+          <p className="text-[10px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
             <AlertCircle className="h-3 w-3 shrink-0" />
             {error}
           </p>
@@ -1147,8 +1162,8 @@ export default function Leads() {
     const value = (manualForm as any)[field];
     const showError = error && touched;
     return (
-      <div className="flex flex-col gap-1 w-full text-left font-sans">
-        <label className="text-[12px] sm:text-[13px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+      <div className="flex flex-col gap-0.5 w-full text-left font-sans">
+        <label className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
         </label>
         <textarea
@@ -1157,14 +1172,14 @@ export default function Leads() {
           value={value}
           onChange={customChange || (e => handleFieldChange(field, e.target.value))}
           onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
-          className={`w-full h-[84px] sm:h-[88px] px-3.5 py-2.5 border rounded-[10px] bg-white dark:bg-[#09111E] text-[13px] sm:text-[14px] font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none transition-all duration-150 placeholder-slate-400 dark:placeholder-slate-500 hover:border-[#2563EB] ${
+          className={`w-full h-[56px] sm:h-[60px] px-3 py-2 border rounded-lg bg-white dark:bg-[#09111E] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none transition-all duration-150 placeholder-slate-400 dark:placeholder-slate-500 hover:border-[#2563EB] ${
             showError
               ? "border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
               : "border-slate-200/90 dark:border-slate-700/80 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
           }`}
         />
         {showError && (
-          <p className="text-[11px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
+          <p className="text-[10px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
             <AlertCircle className="h-3 w-3 shrink-0" />
             {error}
           </p>
@@ -1760,7 +1775,7 @@ export default function Leads() {
                               className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white hover:text-[#2563EB] dark:hover:text-[#60A5FA] cursor-pointer transition truncate max-w-[150px]"
                               title={l.name}
                             >
-                              {l.name}
+                              {maskLeadName(l.name)}
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <div className="h-1.5 w-16 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -1774,7 +1789,7 @@ export default function Leads() {
 
                       {/* Phone & Location */}
                       <td className="px-3 py-2">
-                        <div className="font-semibold text-slate-900 dark:text-white text-xs">{l.phone}</div>
+                        <div className="font-semibold text-slate-900 dark:text-white text-xs">{maskPhoneNumber(l.phone)}</div>
                         <div className="text-[10px] text-slate-400 dark:text-[#94A3B8]/70 font-medium flex items-center gap-0.5 mt-0.5">
                           <MapPin className="h-3 w-3 text-[#2563EB] dark:text-[#60A5FA] shrink-0" />
                           <span className="truncate max-w-[120px]" title={l.location || (l.extra?.state ? `${l.extra.district ? l.extra.district + ', ' : ''}${l.extra.state}` : '') || "N/A"}>
@@ -1978,61 +1993,61 @@ export default function Leads() {
               .dark .lm-scroll { scrollbar-color: #334155 transparent; }
             `}} />
             <motion.div
-              initial={{ scale: 0.97, opacity: 0, y: 10 }}
+              initial={{ scale: 0.96, opacity: 0, y: 8 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.97, opacity: 0, y: 10 }}
+              exit={{ scale: 0.96, opacity: 0, y: 8 }}
               transition={{ duration: 0.18, ease: "easeOut" }}
-              className="w-full max-w-[980px] lg:max-w-[1020px] h-full max-h-[84vh] bg-white dark:bg-[#0F172A] rounded-[16px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-white/10 flex flex-col overflow-hidden relative pointer-events-auto z-[9999] mx-auto my-auto box-border"
+              className="w-[min(880px,78vw)] h-[min(540px,72vh)] max-w-[880px] max-h-[72vh] min-h-[360px] bg-white dark:bg-[#0F172A] rounded-2xl shadow-2xl border border-slate-200/90 dark:border-white/10 flex flex-col overflow-hidden relative pointer-events-auto z-[9999] mx-auto my-auto box-border"
             >
               {/* ── Top Brand Bar ── */}
-              <div className="h-[3.5px] min-h-[3.5px] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#FACC15] shrink-0" />
+              <div className="h-[3px] min-h-[3px] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#FACC15] shrink-0" />
 
-              {/* ── FIXED HEADER (50-52px) ── */}
-              <div className="h-[50px] sm:h-[52px] min-h-[50px] flex items-center justify-between px-5 border-b border-slate-200/80 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-10">
+              {/* ── FIXED HEADER (44-46px) ── */}
+              <div className="h-[44px] sm:h-[46px] min-h-[44px] flex items-center justify-between px-4 sm:px-5 border-b border-slate-200/80 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-10">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
-                    <UserPlus className="h-4.5 w-4.5" />
+                  <div className="h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
+                    <UserPlus className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold tracking-tight flex items-center gap-1 text-slate-900 dark:text-white leading-tight">
-                      <span className="text-[#2563EB] dark:text-[#3B82F6] font-extrabold">Add Customer</span>
-                      <span className="text-[#FACC15] font-extrabold">Lead</span>
+                    <h3 className="text-sm font-bold tracking-tight flex items-center gap-1 text-slate-900 dark:text-white leading-tight">
+                      <span className="text-[#2563EB] dark:text-[#3B82F6] font-black">Add Customer</span>
+                      <span className="text-[#FACC15] font-black">Lead</span>
                     </h3>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Create a new customer lead record for pipeline routing</p>
+                    <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Create a new customer lead record for pipeline routing</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5">
-                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Enterprise Lead Form
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowManualModal(false)}
-                    className="h-8 w-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
                   >
-                    <X className="h-4.5 w-4.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
 
               {/* ── SCROLLABLE FORM BODY ── */}
               <form onSubmit={handleCreateManualLead} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex-1 overflow-y-auto lm-scroll p-4 sm:p-5 bg-slate-50/50 dark:bg-[#0B1120]/50 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex-1 overflow-y-auto lm-scroll p-3.5 sm:p-4 bg-slate-50/50 dark:bg-[#0B1120]/50 space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
                     {/* ── CARD 1: Profile Information ── */}
-                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-[12px] p-4 sm:p-4.5 shadow-2xs space-y-3">
-                      <div className="pb-2.5 border-b border-slate-100 dark:border-white/10">
-                        <h4 className="text-[15px] sm:text-[16px] font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                          <Users className="h-4.5 w-4.5 text-[#2563EB]" />
+                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-3.5 shadow-2xs space-y-2.5">
+                      <div className="pb-2 border-b border-slate-100 dark:border-white/10">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
+                          <Users className="h-3.5 w-3.5 text-[#2563EB]" />
                           <span>Profile Information</span>
                         </h4>
-                        <p className="text-[11.5px] sm:text-[12px] text-slate-500 dark:text-slate-400 font-medium">Primary contact identity and enterprise details</p>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Primary contact identity and enterprise details</p>
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         {renderTextInput("name", "Customer Name", "text", "Enter customer full name", true)}
                         
                         <div>
@@ -2045,7 +2060,7 @@ export default function Leads() {
                             }}
                             error={getFieldError("phone")}
                             label="Phone Number"
-                            inputClassName="h-[42px] sm:h-[44px] rounded-[10px] text-[13px] sm:text-[14px] font-semibold"
+                            inputClassName="h-[34px] sm:h-[36px] rounded-lg text-xs font-semibold"
                           />
                         </div>
 
@@ -2054,29 +2069,29 @@ export default function Leads() {
                       </div>
                     </div>
 
-                    {/* ── CARD 2: Location ── */}
-                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-[12px] p-4 sm:p-4.5 shadow-2xs space-y-3">
-                      <div className="pb-2.5 border-b border-slate-100 dark:border-white/10">
-                        <h4 className="text-[15px] sm:text-[16px] font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                          <MapPin className="h-4.5 w-4.5 text-amber-500" />
+                    {/* ── CARD 2: Location Details ── */}
+                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-3.5 shadow-2xs space-y-2.5">
+                      <div className="pb-2 border-b border-slate-100 dark:border-white/10">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
+                          <MapPin className="h-3.5 w-3.5 text-amber-500" />
                           <span>Location Details</span>
                         </h4>
-                        <p className="text-[11.5px] sm:text-[12px] text-slate-500 dark:text-slate-400 font-medium">Operational address and geographic details</p>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Operational address and geographic details</p>
                       </div>
 
-                      <div className="space-y-3">
-                        <div className="flex flex-col gap-1 w-full text-left font-sans">
-                          <label className="text-[12px] sm:text-[13px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                      <div className="space-y-2">
+                        <div className="flex flex-col gap-0.5 w-full text-left font-sans">
+                          <label className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                             Country <span className="text-slate-400 font-normal lowercase">(read-only)</span>
                           </label>
                           <input
                             readOnly
                             value="India"
-                            className="w-full h-[42px] sm:h-[44px] border border-slate-200/80 dark:border-slate-800 rounded-[10px] px-3.5 bg-slate-100/70 dark:bg-slate-800/40 text-[13px] sm:text-[14px] font-semibold text-slate-500 dark:text-slate-400 cursor-not-allowed select-none focus:outline-none"
+                            className="w-full h-[34px] sm:h-[36px] border border-slate-200/80 dark:border-slate-800 rounded-lg px-3 bg-slate-100/70 dark:bg-slate-800/40 text-xs font-semibold text-slate-500 dark:text-slate-400 cursor-not-allowed select-none focus:outline-none"
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-2 gap-2">
                           {renderSelectInput("state", "State", stateOptions, "Select State")}
                           {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
                         </div>
@@ -2086,17 +2101,17 @@ export default function Leads() {
                       </div>
                     </div>
 
-                    {/* ── CARD 3: Lead Details ── */}
-                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-[12px] p-4 sm:p-4.5 shadow-2xs space-y-3">
-                      <div className="pb-2.5 border-b border-slate-100 dark:border-white/10">
-                        <h4 className="text-[15px] sm:text-[16px] font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                          <Target className="h-4.5 w-4.5 text-emerald-500" />
+                    {/* ── CARD 3: Pipeline & Routing ── */}
+                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-3.5 shadow-2xs space-y-2.5">
+                      <div className="pb-2 border-b border-slate-100 dark:border-white/10">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
+                          <Target className="h-3.5 w-3.5 text-emerald-500" />
                           <span>Pipeline & Routing</span>
                         </h4>
-                        <p className="text-[11.5px] sm:text-[12px] text-slate-500 dark:text-slate-400 font-medium">Pipeline classification and agent assignment</p>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Pipeline classification and agent assignment</p>
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool", user?.role === "agent")}
                         {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
                         {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
@@ -2105,43 +2120,43 @@ export default function Leads() {
                       </div>
                     </div>
 
-                    {/* ── CARD 4: Additional Information ── */}
-                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-[12px] p-4 sm:p-4.5 shadow-2xs space-y-3 flex flex-col">
-                      <div className="pb-2.5 border-b border-slate-100 dark:border-white/10">
-                        <h4 className="text-[15px] sm:text-[16px] font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                          <FileText className="h-4.5 w-4.5 text-indigo-500" />
+                    {/* ── CARD 4: Additional Notes ── */}
+                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-3.5 shadow-2xs space-y-2.5 flex flex-col">
+                      <div className="pb-2 border-b border-slate-100 dark:border-white/10">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
+                          <FileText className="h-3.5 w-3.5 text-indigo-500" />
                           <span>Additional Notes</span>
                         </h4>
-                        <p className="text-[11.5px] sm:text-[12px] text-slate-500 dark:text-slate-400 font-medium">Contextual notes and call instructions</p>
+                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Contextual notes and call instructions</p>
                       </div>
 
-                      <div className="space-y-3 flex-1 flex flex-col">
-                        {renderTextareaInput("notes", "Notes (Optional)", "Add any extra requirements, call scripts, or notes...", false, 5)}
+                      <div className="space-y-2 flex-1 flex flex-col">
+                        {renderTextareaInput("notes", "Notes (Optional)", "Add any extra requirements, call scripts, or notes...", false, 4)}
                       </div>
                     </div>
 
                   </div>{/* /grid */}
                 </div>{/* /scroll */}
 
-                {/* ── FIXED FOOTER (60px) ── */}
-                <div className="h-[60px] min-h-[60px] flex items-center justify-end gap-3 px-5 sm:px-6 border-t border-slate-200/80 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-10">
+                {/* ── FIXED FOOTER (48-50px) ── */}
+                <div className="h-[48px] min-h-[48px] flex items-center justify-end gap-2.5 px-4 sm:px-5 border-t border-slate-200/80 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-10">
                   <button
                     type="button"
                     onClick={() => setShowManualModal(false)}
-                    className="h-[40px] px-4.5 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-[13px] font-bold rounded-[10px] border border-slate-200/80 dark:border-white/10 transition cursor-pointer shrink-0"
+                    className="h-[34px] px-4 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg border border-slate-200/80 dark:border-white/10 transition cursor-pointer shrink-0"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingManual || !isManualFormValid}
-                    className={`h-[40px] px-5 text-white text-[13px] font-extrabold rounded-[10px] transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-md ${
+                    className={`h-[34px] px-4 text-white text-xs font-extrabold rounded-lg transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
                       isSubmittingManual || !isManualFormValid
                         ? "bg-blue-600/50 cursor-not-allowed shadow-none"
                         : "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] shadow-blue-500/25 active:scale-98"
                     }`}
                   >
-                    {isSubmittingManual && <Loader2 className="h-4 w-4 animate-spin" />}
+                    {isSubmittingManual && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     <span>{isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}</span>
                   </button>
                 </div>

@@ -291,7 +291,7 @@ export default function Layout() {
         <nav
           className={`flex-1 ${
             isSidebarCollapsed ? "px-2 py-3 space-y-4" : "px-3 py-4 space-y-5"
-          } overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
+          } overflow-y-auto no-scrollbar softphone-scrollbar sidebar-no-scrollbar [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
         >
           {navGroups.map((group, gIdx) => (
             <div key={gIdx} className="space-y-0.5">
@@ -326,59 +326,52 @@ export default function Layout() {
                   end={item.to === "/"}
                   onClick={() => setIsMobileOpen(false)}
                   className={({ isActive }) =>
-                    `group relative flex items-center h-[48px] rounded-[12px] transition-all duration-200 ${
+                    `group relative flex items-center h-[44px] rounded-xl transition-all duration-200 ease-out select-none cursor-pointer z-10 ${
                       isSidebarCollapsed
                         ? `w-11 mx-auto justify-center ${
                             isActive
-                              ? "text-white"
+                              ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/30 ring-1 ring-blue-400/40"
                               : darkMode
-                              ? "text-white/50 hover:text-white hover:bg-white/5"
+                              ? "text-slate-400 hover:text-white hover:bg-white/10"
                               : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                           }`
-                        : `gap-3 px-3.5 text-[14px] font-medium ${
+                        : `w-full gap-3 px-3.5 text-sm font-medium ${
                             isActive
-                              ? "text-white font-semibold shadow-md"
+                              ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white font-bold shadow-md shadow-blue-500/30 ring-1 ring-blue-400/40"
                               : darkMode
-                              ? "text-slate-300 hover:text-white hover:bg-white/5"
-                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                              ? "text-slate-300 hover:text-white hover:bg-white/10"
+                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/90"
                           }`
                     }`
-                  }
-                  style={({ isActive }) =>
-                    isActive
-                      ? {
-                          background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
-                          boxShadow: "0 4px 14px 0 rgba(37,99,235,0.39)",
-                          color: "#FFFFFF",
-                        }
-                      : {}
                   }
                 >
                   {({ isActive }) => (
                     <>
-                      {/* Left accent bar on active menu (Blue + Yellow Gradient) */}
-                      {isActive && (
-                        <span className="absolute left-0 top-0 bottom-0 w-[4px] bg-gradient-to-b from-[#2563EB] via-[#3B82F6] to-[#F4B400] rounded-r-full shadow-[0_0_10px_rgba(244,180,0,0.6)]" />
-                      )}
-                      {/* Hover bg (non-active only) */}
-                      {!isActive && (
-                        <span
-                          className="absolute inset-0 rounded-[14px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                          style={{ background: darkMode ? "rgba(255,255,255,0.055)" : "rgba(241,245,249,0.8)" }}
-                        />
+                      {/* Active Pill Indicator Dot */}
+                      {isActive && !isSidebarCollapsed && (
+                        <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-[#FFC107] shadow-sm shadow-amber-400/60" />
                       )}
 
                       {/* Icon */}
                       <span
-                        className="relative flex items-center justify-center shrink-0 transition-colors duration-200"
-                        style={{ color: isActive ? "#FFC107" : undefined }}
+                        className={`relative flex items-center justify-center w-5 h-5 shrink-0 transition-colors duration-200 ${
+                          isActive
+                            ? "text-[#FFC107] drop-shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+                            : "text-slate-500 dark:text-slate-400 group-hover:text-[#2563EB] dark:group-hover:text-[#60A5FA]"
+                        }`}
                       >
                         {item.icon}
                       </span>
 
                       {/* Label */}
                       {!isSidebarCollapsed && (
-                        <span className="relative truncate text-[15px] tracking-tight flex-1 font-medium">
+                        <span
+                          className={`relative truncate text-[14px] tracking-tight flex-1 ${
+                            isActive
+                              ? "font-bold text-white"
+                              : "font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white"
+                          }`}
+                        >
                           {item.label}
                         </span>
                       )}
@@ -386,10 +379,10 @@ export default function Layout() {
                       {/* Badge */}
                       {!isSidebarCollapsed && item.badge}
 
-                      {/* Collapsed tooltip */}
+                      {/* Collapsed Tooltip */}
                       {isSidebarCollapsed && (
                         <span
-                          className="absolute left-full ml-3 px-3 py-1.5 text-xs font-semibold rounded-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          className="absolute left-full ml-3 px-3 py-1.5 text-xs font-semibold rounded-xl whitespace-nowrap z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-xl"
                           style={
                             darkMode
                               ? {
@@ -532,7 +525,7 @@ export default function Layout() {
 
         {/* ── STICKY TOP HEADER ── */}
         <header
-          className="sticky top-0 z-[1000] h-14 px-4 sm:px-5 flex items-center justify-between gap-4 shrink-0 transition-all duration-200"
+          className="sticky top-0 z-30 h-14 px-4 sm:px-5 flex items-center justify-between gap-4 shrink-0 transition-all duration-200"
           style={
             darkMode
               ? {

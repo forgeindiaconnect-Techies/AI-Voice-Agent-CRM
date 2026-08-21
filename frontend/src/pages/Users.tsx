@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
+import { usePresence } from "../context/PresenceContext";
 import { PhoneInput } from "../components/PhoneInput";
 import PortalHeader from "../components/PortalHeader";
 import RegisterUserModal from "../components/RegisterUserModal";
