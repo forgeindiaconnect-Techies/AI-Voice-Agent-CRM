@@ -16,7 +16,6 @@ import {
   Phone,
   LogOut,
   ShieldCheck,
-  Search,
   Bell,
   ChevronRight,
   Activity,
@@ -42,8 +41,6 @@ export default function Layout() {
 
   const darkMode = false;
   const [showNotifications, setShowNotifications] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Enforce Light Theme Permanently
   useEffect(() => {
@@ -68,19 +65,6 @@ export default function Layout() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Ctrl + K keybinding to focus global search
-  useEffect(() => {
-    const handleSearchKey = (e: KeyboardEvent) => {
-      if (document.body.classList.contains("lead-modal-active")) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handleSearchKey);
-    return () => window.removeEventListener("keydown", handleSearchKey);
-  }, []);
-
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev: boolean) => {
       const next = !prev;
@@ -98,16 +82,6 @@ export default function Layout() {
           title: "CORE CRM",
           items: [
             { to: "/", label: "Dashboard", icon: <LayoutGrid className="h-5 w-5" /> },
-            {
-              to: "/ai-agents",
-              label: "AI Agents",
-              icon: <Bot className="h-5 w-5" />,
-              badge: (
-                <span className="dk-live-badge ml-auto shrink-0 dark:bg-[rgba(245,158,11,0.15)] dark:border dark:border-[rgba(245,158,11,0.3)] dark:text-[#FCD34D] bg-[#2D2A17] text-[#D4AF37] border border-[#54481E]/60 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                  3 Live
-                </span>
-              )
-            },
             { to: "/campaigns", label: "Campaigns", icon: <Megaphone className="h-5 w-5" /> },
             { to: "/leads", label: "Lead Management", icon: <Users className="h-5 w-5" /> },
             {
@@ -138,16 +112,6 @@ export default function Layout() {
           title: "CORE CRM",
           items: [
             { to: "/", label: "Dashboard", icon: <LayoutGrid className="h-5 w-5" /> },
-            {
-              to: "/ai-agents",
-              label: "AI Agents",
-              icon: <Bot className="h-5 w-5" />,
-              badge: (
-                <span className="dk-live-badge ml-auto shrink-0 dark:bg-[rgba(245,158,11,0.15)] dark:border dark:border-[rgba(245,158,11,0.3)] dark:text-[#FCD34D] bg-[#2D2A17] text-[#D4AF37] border border-[#54481E]/60 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                  3 Live
-                </span>
-              )
-            },
             { to: "/campaigns", label: "Campaigns", icon: <Megaphone className="h-5 w-5" /> },
             { to: "/leads", label: "Lead Management", icon: <Users className="h-5 w-5" /> },
             {
@@ -568,7 +532,7 @@ export default function Layout() {
 
         {/* ── STICKY TOP HEADER ── */}
         <header
-          className="sticky top-0 z-[1000] h-[68px] px-6 flex items-center justify-between gap-4 shrink-0 transition-all duration-200"
+          className="sticky top-0 z-[1000] h-14 px-4 sm:px-5 flex items-center justify-between gap-4 shrink-0 transition-all duration-200"
           style={
             darkMode
               ? {
@@ -611,92 +575,7 @@ export default function Layout() {
             </div>
           </div>
 
-          {/* Center: Global Search */}
-          <div className="hidden lg:flex items-center relative" style={{ minWidth: 340, maxWidth: 420, width: "100%" }}>
-            {/* Search Icon */}
-            <Search
-              className="absolute left-[14px] top-1/2 -translate-y-1/2 pointer-events-none transition-colors duration-250 z-10"
-              style={{
-                width: 18,
-                height: 18,
-                color: darkMode ? "#60A5FA" : "#2563EB",
-              }}
-            />
 
-            {/* Input */}
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search leads, calls..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="forge-search-input w-full pr-[90px] text-[13.5px] font-medium transition-all duration-250 focus:outline-none"
-              style={{
-                height: 48,
-                paddingLeft: 44,
-                borderRadius: 14,
-                background: darkMode ? "#18243A" : "#FFFFFF",
-                border: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #CBD5E1",
-                color: darkMode ? "#F8FAFC" : "#0F172A",
-              }}
-              onMouseEnter={(e) => {
-                const t = e.currentTarget;
-                t.style.background = darkMode ? "#1D2A44" : "#F8FAFC";
-                t.style.borderColor = darkMode ? "#3B82F6" : "#3B82F6";
-                t.style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={(e) => {
-                const t = e.currentTarget;
-                if (document.activeElement !== t) {
-                  t.style.background = darkMode ? "#18243A" : "#FFFFFF";
-                  t.style.borderColor = darkMode ? "rgba(255,255,255,0.08)" : "#CBD5E1";
-                  t.style.transform = "translateY(0px)";
-                }
-              }}
-              onFocus={(e) => {
-                const t = e.target;
-                t.style.background = darkMode ? "#1D2A44" : "#FFFFFF";
-                t.style.borderColor = "#2563EB";
-                t.style.boxShadow = darkMode
-                  ? "0 0 0 2px rgba(37,99,235,0.35)"
-                  : "0 0 0 2px rgba(37,99,235,0.15)";
-                t.style.transform = "translateY(0px)";
-              }}
-              onBlur={(e) => {
-                const t = e.target;
-                t.style.background = darkMode ? "#18243A" : "#FFFFFF";
-                t.style.borderColor = darkMode ? "rgba(255,255,255,0.08)" : "#CBD5E1";
-                t.style.boxShadow = "none";
-                t.style.transform = "translateY(0px)";
-              }}
-            />
-
-            {/* Ctrl+K Badge */}
-            <div
-              className="absolute right-[10px] top-1/2 -translate-y-1/2 flex items-center gap-[3px] pointer-events-none select-none"
-              style={{
-                height: 30,
-                padding: "0 10px",
-                borderRadius: 8,
-                background: darkMode ? "#0F172A" : "#F8FAFC",
-                border: darkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid #E2E8F0",
-                boxShadow: darkMode ? "0 1px 3px rgba(0,0,0,0.3)" : "0 1px 3px rgba(15,23,42,0.06)",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "ui-monospace, 'SF Mono', 'Cascadia Code', monospace",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: darkMode ? "#94A3B8" : "#64748B",
-                  letterSpacing: "0.02em",
-                  lineHeight: 1,
-                }}
-              >
-                ⌘K
-              </span>
-            </div>
-          </div>
 
           {/* Right Action Toolbar */}
           <div className="flex items-center gap-2">
@@ -846,7 +725,7 @@ export default function Layout() {
         </header>
 
         {/* Scrollable Content Viewport */}
-        <main className="flex-1 overflow-y-auto p-6 softphone-scrollbar relative z-10">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-5 softphone-scrollbar relative z-10">
           <Outlet />
         </main>
       </div>

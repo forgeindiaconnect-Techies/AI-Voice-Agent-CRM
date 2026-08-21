@@ -185,7 +185,7 @@ export function CustomSelect({
           disabled ? "bg-slate-100 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed" : ""
         }`}
       >
-        <span className={selectedOption ? "text-slate-900 dark:text-[#F9FAFC] font-semibold" : "text-slate-400 dark:text-slate-500 font-medium"}>
+        <span className={`truncate whitespace-nowrap ${selectedOption ? "text-slate-900 dark:text-[#F9FAFC] font-semibold" : "text-slate-400 dark:text-slate-500 font-medium"}`}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <div className="flex items-center gap-1.5 shrink-0 ml-2">

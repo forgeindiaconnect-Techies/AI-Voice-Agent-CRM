@@ -48,6 +48,10 @@ async def authenticate_ws(websocket: WebSocket, token: str | None = None) -> dic
             logger.warning(f"[WS AUTH] User inactive or not found for sub: {sub}")
             return None
 
+        user["_id"] = str(user["_id"])
+        if user.get("role") == "supervisor":
+            user["role"] = "team_leader"
+
         logger.info(f"[WS AUTH SUCCESS] Authenticated WS user: {user.get('name') or user.get('email')}")
         return user
     except Exception as e:

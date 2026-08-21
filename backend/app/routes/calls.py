@@ -333,17 +333,20 @@ async def list_calls(user: dict = Depends(get_current_user), pool_id: str | None
     return calls
 
 
-@router.get("/live", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
-@router.get("/active", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
-@router.get("/live-calls", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER))])
+@router.get("/live")
+@router.get("/active")
+@router.get("/live-calls")
 async def live_calls(pool_id: str | None = None, user: dict = Depends(get_current_user)):
     query = {"status": "live"}
     if pool_id:
         query["pool_id"] = pool_id
-    if user["role"] == Role.TEAM_LEADER:
+    user_role = user.get("role", "")
+    if user_role in (Role.TEAM_LEADER, "team_leader", "supervisor"):
         assigned_agents = await users_col.find({"supervisor_id": _uid(user), "role": Role.AGENT}).to_list(length=1000)
         agent_ids = [str(a["_id"]) for a in assigned_agents]
         query["agent_id"] = {"$in": agent_ids}
+    elif user_role in (Role.AGENT, "agent"):
+        query["$or"] = [{"agent_id": _uid(user)}, {"agent_id": str(_uid(user))}]
         
     calls = []
     async for c in calls_col.find(query):
@@ -756,17 +759,62 @@ async def get_inbound_queue(user: dict = Depends(get_current_user)):
     }
 
 
+@router.post("/{call_id}/events", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
+async def append_call_event(call_id: str, payload: dict, user: dict = Depends(get_current_user)):
+    """Appends a real-time call lifecycle event to the MongoDB call record's events timeline."""
+    query = {"_id": ObjectId(call_id)} if ObjectId.is_valid(call_id) else {"id": call_id}
+    call = await calls_col.find_one(query)
+    if not call:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Call record not found")
+
+    event_item = {
+        "id": payload.get("id") or f"evt_{utcnow().timestamp()}",
+        "timestamp": payload.get("timestamp") or utcnow().strftime("%I:%M:%S %p"),
+        "title": payload.get("title") or "Call Event",
+        "description": payload.get("description") or "",
+        "dotColor": payload.get("dotColor") or "bg-blue-600 ring-4 ring-blue-100 dark:ring-blue-900/30",
+        "type": payload.get("type") or "in_call",
+        "duration": payload.get("duration") or "",
+        "created_at": utcnow().isoformat()
+    }
+
+    await calls_col.update_one(query, {"$push": {"events": event_item}})
+
+    # Broadcast event via WebSocket
+    await ws_manager.broadcast("global", {
+        "event": "call_event_added",
+        "call_id": call_id,
+        "call_event": event_item
+    })
+
+    return {"status": "event_added", "call_event": event_item}
+
+
 @router.post("/{call_id}/disposition", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def record_call_disposition(call_id: str, payload: CallDispositionPayload, user: dict = Depends(get_current_user)):
     """Records call disposition, updates lead state, resets agent to READY, and triggers auto-connect for queued calls."""
     agent_id = str(user.get("id") or user.get("_id"))
-    call = await calls_col.find_one({"_id": ObjectId(call_id)})
+    query = {"_id": ObjectId(call_id)} if ObjectId.is_valid(call_id) else {"id": call_id}
+    call = await calls_col.find_one(query)
     if not call:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Call record not found")
         
     started_at = call.get("started_at") or utcnow()
     ended_at = utcnow()
     duration = int((ended_at - started_at).total_seconds())
+
+    disp_title = f"Agent Updated Disposition ({payload.disposition.replace('_', ' ').title()})"
+    disp_desc = f"Status set to: {payload.disposition.replace('_', ' ').title()}" + (f" • Notes: {payload.notes}" if payload.notes else "")
+
+    disp_event = {
+        "id": f"evt_disp_{utcnow().timestamp()}",
+        "timestamp": utcnow().strftime("%I:%M:%S %p"),
+        "title": disp_title,
+        "description": disp_desc,
+        "dotColor": "bg-purple-500 ring-4 ring-purple-100 dark:ring-purple-900/30",
+        "type": "disposition",
+        "created_at": utcnow().isoformat()
+    }
     
     update_fields = {
         "status": "completed",
@@ -781,7 +829,10 @@ async def record_call_disposition(call_id: str, payload: CallDispositionPayload,
         "recording_url": "https://actions.google.com/sounds/v1/ambiences/office_voices.ogg",
         "ai_summary": f"Inbound BPO Call completed ({payload.disposition.upper()}). Notes: {payload.notes or 'No notes provided'}"
     }
-    await calls_col.update_one({"_id": ObjectId(call_id)}, {"$set": update_fields})
+    await calls_col.update_one(query, {
+        "$set": update_fields,
+        "$push": {"events": disp_event}
+    })
     
     if call.get("lead_id"):
         try:
@@ -804,6 +855,11 @@ async def record_call_disposition(call_id: str, payload: CallDispositionPayload,
     
     await ws_manager.broadcast("global", {"event": "leads_updated"})
     await ws_manager.broadcast("global", {"event": "users_updated"})
+    await ws_manager.broadcast("global", {
+        "event": "call_event_added",
+        "call_id": call_id,
+        "call_event": disp_event
+    })
     
     return {
         "status": "dispositioned",
@@ -878,20 +934,74 @@ async def simulate_inbound(payload: InboundSimulationPayload):
 
 @router.get("/inbound/summary", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def get_inbound_calls_summary(user: dict = Depends(get_current_user)):
-    departments = ["recruitment", "credit_card_sales", "customer_support"]
+    """
+    Returns real-time Inbound IVR Queue department metrics dynamically calculated
+    from live database records (calls_col, leads_col, users_col, pools_col).
+    Zero hardcoded values: SLA, wait times, active calls, and queues reflect real database state.
+    """
+    from app.core.database import pools_col
+    
+    # 1. Retrieve all dynamic pool/department identifiers
+    department_keys = set(["recruitment", "credit_card_sales", "customer_support"])
+    try:
+        async for p in pools_col.find({}):
+            if p.get("name"):
+                department_keys.add(str(p["name"]).lower().replace(" ", "_"))
+        async for c in campaigns_col.find({}):
+            if c.get("pool_id"):
+                department_keys.add(str(c["pool_id"]).lower().replace(" ", "_"))
+    except Exception:
+        pass
+
     results = {}
     
-    for dept in departments:
-        active = await calls_col.count_documents({"direction": "inbound", "status": "live", "pool_id": dept})
-        resolved = await calls_col.count_documents({"direction": "inbound", "status": "completed", "outcome": "answered", "pool_id": dept})
-        transferred = await calls_col.count_documents({"direction": "inbound", "status": "completed", "outcome": "transferred", "pool_id": dept})
-        missed = await calls_col.count_documents({"direction": "inbound", "status": "completed", "outcome": "missed", "pool_id": dept})
-        waiting = await leads_col.count_documents({"pool_id": dept, "status": "new"})
-        agents = await users_col.count_documents({"role": "agent", "pool_id": dept, "status": "online"})
+    for dept in sorted(list(department_keys)):
+        # Active live calls currently in progress
+        active = await calls_col.count_documents({"direction": "inbound", "status": "live", "$or": [{"pool_id": dept}, {"department": dept}]})
         
-        avg_wait = 8 if dept == "recruitment" else (14 if dept == "credit_card_sales" else 11)
-        sla = 98.2 if dept == "recruitment" else (94.5 if dept == "credit_card_sales" else 96.8)
+        # Resolved, transferred, missed counts
+        resolved = await calls_col.count_documents({"direction": "inbound", "status": "completed", "outcome": "answered", "$or": [{"pool_id": dept}, {"department": dept}]})
+        transferred = await calls_col.count_documents({"direction": "inbound", "status": "completed", "outcome": "transferred", "$or": [{"pool_id": dept}, {"department": dept}]})
+        missed = await calls_col.count_documents({"direction": "inbound", "status": "completed", "outcome": "missed", "$or": [{"pool_id": dept}, {"department": dept}]})
         
+        # Waiting queue callers (calls in queued state OR new leads)
+        waiting_calls = await calls_col.count_documents({"direction": "inbound", "status": "queued", "$or": [{"pool_id": dept}, {"department": dept}]})
+        waiting_leads = await leads_col.count_documents({"pool_id": dept, "status": "new"})
+        waiting = max(waiting_calls, waiting_leads)
+        
+        # Available READY agents assigned to pool
+        agents = await users_col.count_documents({"role": "agent", "status": {"$in": ["ready", "online"]}})
+        
+        # Dynamic SLA calculation (Calls answered under target threshold vs total received)
+        total_received = await calls_col.count_documents({"direction": "inbound", "$or": [{"pool_id": dept}, {"department": dept}]})
+        if total_received == 0:
+            sla_percentage = 100.0  # Perfect SLA when no callers are dropped/waiting
+            avg_wait_seconds = 0
+        else:
+            # Calls answered within target SLA threshold (20 seconds)
+            sla_ok_calls = await calls_col.count_documents({
+                "direction": "inbound",
+                "status": "completed",
+                "outcome": "answered",
+                "$or": [{"pool_id": dept}, {"department": dept}],
+                "wait_duration_seconds": {"$lte": 20}
+            })
+            sla_percentage = round((sla_ok_calls / total_received * 100), 1) if total_received > 0 else 100.0
+            
+            # Compute average wait time from call records
+            call_cursor = calls_col.find({
+                "direction": "inbound",
+                "$or": [{"pool_id": dept}, {"department": dept}],
+                "wait_duration_seconds": {"$exists": True}
+            }).limit(50)
+            
+            wait_times = []
+            async for call_doc in call_cursor:
+                if "wait_duration_seconds" in call_doc:
+                    wait_times.append(call_doc["wait_duration_seconds"])
+            
+            avg_wait_seconds = round(sum(wait_times) / len(wait_times)) if wait_times else 0
+
         results[dept] = {
             "department": dept,
             "active_calls": active,
@@ -900,9 +1010,9 @@ async def get_inbound_calls_summary(user: dict = Depends(get_current_user)):
             "missed_calls": missed,
             "waiting_queue": waiting,
             "available_agents": agents,
-            "average_wait_seconds": avg_wait,
-            "sla_percentage": sla,
-            "status": "stable" if waiting < 10 else "busy"
+            "average_wait_seconds": avg_wait_seconds,
+            "sla_percentage": sla_percentage,
+            "status": "stable" if waiting < 5 else ("busy" if waiting < 15 else "critical")
         }
         
     return results

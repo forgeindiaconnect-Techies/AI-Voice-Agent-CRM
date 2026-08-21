@@ -34,6 +34,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 # We must list explicit origins when credentials are enabled.
 allowed_origins = [
     settings.FRONTEND_ORIGIN,          # http://localhost:5173
+    "https://ai-voice-agent-crm.onrender.com", # Production Render domain
     "http://localhost:5173",            # explicit fallback
     "http://127.0.0.1:5173",           # alt localhost
     "http://192.168.1.54:5173",         # LAN origin

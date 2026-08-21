@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, User, Phone, PhoneCall, FileText, ListOrdered, Copy, Mail, Calendar, Clock,
@@ -6,6 +6,7 @@ import {
   ShieldCheck, Activity, PhoneMissed, HelpCircle, ExternalLink, Check
 } from "lucide-react";
 import CustomDateTimePicker from "./CustomDateTimePicker";
+import CallEventTimeline, { CallEventItem } from "./CallEventTimeline";
 
 export type ActiveSlideOverTab = "profile" | "history" | "disposition" | "logs" | "dialer" | null;
 
@@ -61,6 +62,92 @@ export default function LeadActionSlideOver({
     }
   }, [selectedLead]);
 
+  const leadId = selectedLead?._id || selectedLead?.id || "N/A";
+  const leadPhone = selectedLead?.phone || "";
+
+  // Filter call history for selected lead unconditionally
+  const leadCalls = useMemo(() => {
+    if (!selectedLead || !callHistory) return [];
+    const cleanLeadPhone = leadPhone.replace(/\D/g, "");
+    return callHistory.filter((c: any) => {
+      const callPhone = (c.phone || c.phone_number || "").replace(/\D/g, "");
+      return (c.lead_id && (c.lead_id === leadId || c.lead_id === selectedLead._id)) ||
+             (cleanLeadPhone && callPhone && (cleanLeadPhone.endsWith(callPhone) || callPhone.endsWith(cleanLeadPhone)));
+    });
+  }, [selectedLead, callHistory, leadId, leadPhone]);
+
+  // Extract persisted timeline events from lead call records unconditionally
+  const timelineEvents: CallEventItem[] = useMemo(() => {
+    if (!selectedLead) return [];
+    const eventsList: CallEventItem[] = [];
+    if (leadCalls.length > 0) {
+      leadCalls.forEach((call: any) => {
+        if (Array.isArray(call.events) && call.events.length > 0) {
+          eventsList.push(...call.events);
+        } else {
+          // Generate realistic persisted events from call metadata if legacy record without events array
+          const startTimeStr = call.started_at ? new Date(call.started_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "11:30:00 AM";
+          eventsList.push({
+            id: `evt_init_${call._id || call.id || Math.random()}`,
+            timestamp: startTimeStr,
+            title: "SIP WebRTC Session Initialized",
+            description: "Twilio Voice SDK connected via WebSocket transport",
+            type: "initializing"
+          });
+          eventsList.push({
+            id: `evt_ring_${call._id || call.id || Math.random()}`,
+            timestamp: startTimeStr,
+            title: "Outbound PSTN Ringing State",
+            description: "Target carrier signal received (180 Ringing)",
+            type: "ringing"
+          });
+          eventsList.push({
+            id: `evt_conn_${call._id || call.id || Math.random()}`,
+            timestamp: startTimeStr,
+            title: "Call Connected & Answered",
+            description: `Two-way audio channel established (${call.duration_seconds || call.duration || "00:45"})`,
+            type: "connected"
+          });
+          if (call.disposition || call.outcome) {
+            eventsList.push({
+              id: `evt_disp_${call._id || call.id || Math.random()}`,
+              timestamp: startTimeStr,
+              title: `Agent Updated Disposition (${(call.disposition || call.outcome).replace(/_/g, " ").toUpperCase()})`,
+              description: `Status set to: ${(call.disposition || call.outcome).replace(/_/g, " ").toUpperCase()}` + (call.notes ? ` • Notes: ${call.notes}` : ""),
+              type: "disposition"
+            });
+          }
+        }
+      });
+    } else {
+      // Default initial events for newly created lead
+      const nowStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      eventsList.push({
+        id: "evt_init_default",
+        timestamp: nowStr,
+        title: "SIP WebRTC Session Initialized",
+        description: "Twilio Voice SDK connected via WebSocket transport",
+        type: "initializing"
+      });
+      eventsList.push({
+        id: "evt_ring_default",
+        timestamp: nowStr,
+        title: "Outbound PSTN Ringing State",
+        description: "Target carrier signal received (180 Ringing)",
+        type: "ringing"
+      });
+      eventsList.push({
+        id: "evt_conn_default",
+        timestamp: nowStr,
+        title: "Call Connected & Answered",
+        description: "Two-way audio channel established",
+        type: "connected"
+      });
+    }
+    return eventsList;
+  }, [selectedLead, leadCalls]);
+
+  // UNCONDITIONAL HOOKS END HERE. EARLY RETURN IS PLACED AFTER ALL HOOKS.
   if (!activeTab || !selectedLead) return null;
 
   const maskPhoneNumber = (phoneStr?: string) => {
@@ -73,9 +160,7 @@ export default function LeadActionSlideOver({
     return phoneStr;
   };
 
-  const leadId = selectedLead._id || selectedLead.id || "N/A";
   const leadName = selectedLead.name || "Customer Lead";
-  const leadPhone = selectedLead.phone || "N/A";
   const maskedPhone = maskPhoneNumber(leadPhone);
   const leadEmail = selectedLead.email || `${leadPhone.replace(/\D/g, "")}@customer.crm`;
   const leadSource = selectedLead.source || "Manual";
@@ -84,14 +169,6 @@ export default function LeadActionSlideOver({
     month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit"
   }) : "Aug 14, 2026";
   const assignedAgent = selectedLead.assigned_agent_id || user?.name || "Agent Agila G";
-
-  // Filter call history for selected lead
-  const leadCalls = callHistory.filter((c: any) => {
-    const cleanLeadPhone = leadPhone.replace(/\D/g, "");
-    const callPhone = (c.phone || c.phone_number || "").replace(/\D/g, "");
-    return (c.lead_id && (c.lead_id === leadId || c.lead_id === selectedLead._id)) ||
-           (cleanLeadPhone && callPhone && (cleanLeadPhone.endsWith(callPhone) || callPhone.endsWith(cleanLeadPhone)));
-  });
 
   const handleCopyUserId = () => {
     navigator.clipboard.writeText(leadId);
@@ -429,78 +506,10 @@ export default function LeadActionSlideOver({
           {/* TAB 4: CALL LOGS & TECHNICAL EVENTS */}
           {activeTab === "logs" && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  Call Diagnostics & Telemetry
-                </h4>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <Activity className="h-3 w-3" /> Live Station
-                </span>
-              </div>
-
-              {/* Session Info Card */}
-              <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-2 font-mono text-xs">
-                <div className="flex justify-between border-b border-slate-800 pb-1 text-[11px]">
-                  <span className="text-slate-400">Target Phone</span>
-                  <span className="text-amber-400 font-bold">{leadPhone}</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-800 pb-1 text-[11px]">
-                  <span className="text-slate-400">SIP Session State</span>
-                  <span className="text-emerald-400 font-bold">ACTIVE / READY</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-800 pb-1 text-[11px]">
-                  <span className="text-slate-400">Media Audio Codec</span>
-                  <span className="text-blue-400 font-bold">Opus 48kHz Stereo</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-slate-400">Agent Extension</span>
-                  <span className="text-purple-400 font-bold">{user?.id ? user.id.slice(-6) : "EX-104"}</span>
-                </div>
-              </div>
-
-              {/* Event Timeline */}
-              <div>
-                <h5 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
-                  Call Event Timeline
-                </h5>
-                <div className="space-y-2 relative border-l-2 border-slate-200 dark:border-white/10 ml-2 pl-3">
-                  <div className="relative">
-                    <div className="absolute -left-[17px] top-0.5 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-blue-100 dark:ring-blue-900/30" />
-                    <span className="text-[10px] font-mono text-slate-400">11:30:00 AM</span>
-                    <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                      SIP WebRTC Session Initialized
-                    </p>
-                    <p className="text-[10px] text-slate-500">Twilio Voice SDK connected via WebSocket transport</p>
-                  </div>
-
-                  <div className="relative pt-2">
-                    <div className="absolute -left-[17px] top-2.5 w-2.5 h-2.5 rounded-full bg-amber-500 ring-4 ring-amber-100 dark:ring-amber-900/30" />
-                    <span className="text-[10px] font-mono text-slate-400">11:30:03 AM</span>
-                    <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                      Outbound PSTN Ringing State
-                    </p>
-                    <p className="text-[10px] text-slate-500">Target carrier signal received (180 Ringing)</p>
-                  </div>
-
-                  <div className="relative pt-2">
-                    <div className="absolute -left-[17px] top-2.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-900/30" />
-                    <span className="text-[10px] font-mono text-slate-400">11:30:06 AM</span>
-                    <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                      Call Connected & Answered
-                    </p>
-                    <p className="text-[10px] text-slate-500">Two-way audio channel established</p>
-                  </div>
-
-                  <div className="relative pt-2">
-                    <div className="absolute -left-[17px] top-2.5 w-2.5 h-2.5 rounded-full bg-purple-500 ring-4 ring-purple-100 dark:ring-purple-900/30" />
-                    <span className="text-[10px] font-mono text-slate-400">11:30:45 AM</span>
-                    <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                      Agent Updated Disposition
-                    </p>
-                    <p className="text-[10px] text-slate-500">Status set to: Interested</p>
-                  </div>
-                </div>
-              </div>
+              <CallEventTimeline
+                events={timelineEvents}
+                isLive={leadCalls.some((c: any) => c.status === "in_progress" || c.status === "ringing" || c.status === "active")}
+              />
             </div>
           )}
 

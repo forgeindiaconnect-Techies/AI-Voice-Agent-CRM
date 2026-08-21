@@ -8,6 +8,7 @@ import { CustomPauseIcon } from "../components/CustomPauseIcon";
 import { CustomSelect } from "../components/CustomSelect";
 import LeadFilterModal from "../components/LeadFilterModal";
 import LeadActionSlideOver, { ActiveSlideOverTab } from "../components/LeadActionSlideOver";
+import CallEventTimeline, { CallEventItem, CallEventType } from "../components/CallEventTimeline";
 import {
   Phone,
   PhoneCall,
@@ -138,6 +139,7 @@ type CallHistoryItem = {
   created_at?: string;
   notes?: string;
   recording_url?: string;
+  events?: CallEventItem[];
 };
 
 export default function Dialer() {
@@ -347,7 +349,8 @@ export default function Dialer() {
 
     const checkActiveSession = async () => {
       try {
-        const active = await api.get("/api/calls/active");
+        const activeRes = await api.get("/api/calls/active").catch(() => null);
+        const active = Array.isArray(activeRes) ? activeRes[0] : activeRes;
         if (active && (active.id || active._id)) {
           setCurrentCallId(active.id || active._id);
           if (active.phone) {
@@ -357,7 +360,7 @@ export default function Dialer() {
           setAgentStatus("on_call");
         }
       } catch (err) {
-        console.warn("[Dialer] Active session check notice:", err);
+        // Silent catch
       }
     };
     checkActiveSession();
@@ -1129,6 +1132,35 @@ export default function Dialer() {
     }
   }, [callStatus, currentCallId, callDuration, notes]);
 
+  // REAL-TIME CALL LIFECYCLE EVENT TRACKER
+  const pushCallTimelineEvent = useCallback((
+    type: CallEventType,
+    title: string,
+    description: string,
+    dotColor?: string
+  ) => {
+    const timeStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const eventItem: CallEventItem = {
+      id: `evt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: timeStr,
+      title,
+      description,
+      type,
+      dotColor
+    };
+
+    if (currentCallId) {
+      api.post(`/api/calls/${currentCallId}/events`, eventItem).catch(() => {});
+      setCallHistory(prev => prev.map(c => {
+        if (c.id === currentCallId || c._id === currentCallId) {
+          const existingEvents = Array.isArray(c.events) ? c.events : [];
+          return { ...c, events: [...existingEvents, eventItem] };
+        }
+        return c;
+      }));
+    }
+  }, [currentCallId]);
+
   const handleMuteToggle = useCallback(async () => {
     if (callStatus !== "connected" && callStatus !== "hold") {
       showToast("Mute is only available during an active call", "warning");
@@ -1148,6 +1180,13 @@ export default function Dialer() {
       }
     }
 
+    pushCallTimelineEvent(
+      "mute",
+      nextMuted ? "Agent Muted Audio" : "Agent Unmuted Audio",
+      nextMuted ? "Microphone input muted" : "Audio channel unmuted",
+      "bg-orange-500 ring-4 ring-orange-100 dark:ring-orange-900/30"
+    );
+
     try {
       if (currentCallId) {
         await api.post(`/api/calls/${currentCallId}/manual-action`, {
@@ -1160,7 +1199,7 @@ export default function Dialer() {
     } finally {
       setIsMuteLoading(false);
     }
-  }, [isMuted, callStatus, currentCallId, isMuteLoading]);
+  }, [isMuted, callStatus, currentCallId, isMuteLoading, pushCallTimelineEvent]);
 
   const handleHoldToggle = useCallback(async () => {
     if (callStatus !== "connected" && callStatus !== "hold") {
@@ -1184,6 +1223,12 @@ export default function Dialer() {
       }
       const finalStatus = isCurrentlyHold ? "connected" : "hold";
       setCallStatus(finalStatus);
+      pushCallTimelineEvent(
+        "hold",
+        isCurrentlyHold ? "Call Resumed" : "Call Placed on Hold",
+        isCurrentlyHold ? "Audio channel resumed on Line 1" : "Call held on Line 1 by agent",
+        isCurrentlyHold ? "bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-900/30" : "bg-orange-500 ring-4 ring-orange-100 dark:ring-orange-900/30"
+      );
       showToast(isCurrentlyHold ? "Call Resumed" : "Call Placed on Hold", "success");
     } catch (err: any) {
       setCallStatus(prevStatus);
@@ -1192,7 +1237,7 @@ export default function Dialer() {
       setIsHoldLoading(false);
       setIsHoldProcessing(false);
     }
-  }, [callStatus, currentCallId, isHoldLoading, isHoldProcessing]);
+  }, [callStatus, currentCallId, isHoldLoading, isHoldProcessing, pushCallTimelineEvent]);
 
   const handleToggleSpeaker = useCallback(() => {
     const nextSpeaker = !isSpeaker;
@@ -1206,6 +1251,12 @@ export default function Dialer() {
     try {
       if (currentCallId) {
         await api.post(`/api/calls/${currentCallId}/transfer`, { target: transferTarget });
+        pushCallTimelineEvent(
+          "transfer",
+          "Call Transfer Initiated",
+          `Transferring live call session to extension/agent ${transferTarget}`,
+          "bg-indigo-500 ring-4 ring-indigo-100 dark:ring-indigo-900/30"
+        );
         showToast(`Call transfer initiated to ${transferTarget}`, "success");
         setShowTransferModal(false);
         setTransferTarget("");
@@ -1796,7 +1847,7 @@ export default function Dialer() {
               <div className="w-full flex-1 flex flex-col gap-3 overflow-hidden h-full min-w-0">
 
                 {/* Primary Softphone Dialer Workstation Box */}
-                <div className="bg-white dark:bg-[#111827] rounded-[20px] border border-slate-200 dark:border-white/10 p-5 flex-1 flex flex-col items-center overflow-y-auto no-scrollbar shadow-2xs relative w-full">
+                <div className="bg-white dark:bg-[#111827] rounded-[12px] border border-slate-200 dark:border-white/10 p-3.5 sm:p-4 flex-1 flex flex-col items-center overflow-y-auto no-scrollbar shadow-2xs relative w-full">
 
                   {/* Top Header & Agent Status Bar */}
                   <div className="w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4 shrink-0 pb-3 border-b border-slate-100 dark:border-white/10">
@@ -2468,76 +2519,90 @@ export default function Dialer() {
                       )}
                     </div>
 
-                    {/* Floating Action Rail on Right Edge */}
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2.5 py-3 px-1.5 bg-white/95 dark:bg-[#172033]/95 backdrop-blur-md border border-slate-200/80 dark:border-white/10 rounded-full shadow-md">
-                      {/* 👤 User Profile Icon */}
-                      <div className="relative group">
-                        <button
-                          onClick={() => setActiveSlideOver(activeSlideOver === "profile" ? null : "profile")}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                            activeSlideOver === "profile"
-                              ? "bg-blue-600 text-white shadow-blue-500/40 ring-2 ring-blue-400/50 scale-105"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/20 hover:text-blue-600 dark:hover:text-blue-400"
-                          }`}
+                    {/* Premium Right Floating Action Rail (Auto-hides when any slide-over drawer panel or modal is open) */}
+                    <AnimatePresence>
+                      {!activeSlideOver && (
+                        <motion.div
+                          initial={{ opacity: 0, x: 24, scale: 0.95 }}
+                          animate={{ opacity: 1, x: 0, scale: 1 }}
+                          exit={{ opacity: 0, x: 24, scale: 0.95 }}
+                          transition={{ duration: 0.18, ease: "easeInOut" }}
+                          className="fixed right-5 sm:right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2 sm:gap-2.5 p-2 bg-white/85 dark:bg-[#111827]/90 backdrop-blur-xl border border-white/70 dark:border-white/10 rounded-[20px] shadow-[0_12px_40px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.4)]"
                         >
-                          <User className="h-4.5 w-4.5" />
-                        </button>
-                        <div className="absolute right-12 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-bold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md z-30">
-                          User Profile
-                        </div>
-                      </div>
+                          {/* 👤 User Profile Icon */}
+                          <div className="relative group">
+                            <button
+                              type="button"
+                              onClick={() => setActiveSlideOver(activeSlideOver === "profile" ? null : "profile")}
+                              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
+                                activeSlideOver === "profile"
+                                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-400/40 scale-[1.05]"
+                                  : "bg-slate-100/90 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-[#2563EB] dark:hover:text-[#60A5FA] hover:scale-105 active:scale-95"
+                              }`}
+                            >
+                              <User className="h-5 w-5" />
+                            </button>
+                            <div className="absolute right-14 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900/90 dark:bg-slate-800/95 text-white text-xs font-bold rounded-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow-xl z-50 backdrop-blur-xs">
+                              User Profile
+                            </div>
+                          </div>
 
-                      {/* 📞 Call History Icon */}
-                      <div className="relative group">
-                        <button
-                          onClick={() => setActiveSlideOver(activeSlideOver === "history" ? null : "history")}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                            activeSlideOver === "history"
-                              ? "bg-blue-600 text-white shadow-blue-500/40 ring-2 ring-blue-400/50 scale-105"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/20 hover:text-blue-600 dark:hover:text-blue-400"
-                          }`}
-                        >
-                          <PhoneCall className="h-4.5 w-4.5" />
-                        </button>
-                        <div className="absolute right-12 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-bold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md z-30">
-                          Call History
-                        </div>
-                      </div>
+                          {/* 📞 Call History Icon */}
+                          <div className="relative group">
+                            <button
+                              type="button"
+                              onClick={() => setActiveSlideOver(activeSlideOver === "history" ? null : "history")}
+                              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
+                                activeSlideOver === "history"
+                                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-400/40 scale-[1.05]"
+                                  : "bg-slate-100/90 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-[#2563EB] dark:hover:text-[#60A5FA] hover:scale-105 active:scale-95"
+                              }`}
+                            >
+                              <PhoneCall className="h-5 w-5" />
+                            </button>
+                            <div className="absolute right-14 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900/90 dark:bg-slate-800/95 text-white text-xs font-bold rounded-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow-xl z-50 backdrop-blur-xs">
+                              Call History
+                            </div>
+                          </div>
 
-                      {/* 📝 Disposition Icon */}
-                      <div className="relative group">
-                        <button
-                          onClick={() => setActiveSlideOver(activeSlideOver === "disposition" ? null : "disposition")}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                            activeSlideOver === "disposition"
-                              ? "bg-blue-600 text-white shadow-blue-500/40 ring-2 ring-blue-400/50 scale-105"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/20 hover:text-blue-600 dark:hover:text-blue-400"
-                          }`}
-                        >
-                          <FileText className="h-4.5 w-4.5" />
-                        </button>
-                        <div className="absolute right-12 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-bold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md z-30">
-                          Disposition
-                        </div>
-                      </div>
+                          {/* 📝 Disposition Icon */}
+                          <div className="relative group">
+                            <button
+                              type="button"
+                              onClick={() => setActiveSlideOver(activeSlideOver === "disposition" ? null : "disposition")}
+                              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
+                                activeSlideOver === "disposition"
+                                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-400/40 scale-[1.05]"
+                                  : "bg-slate-100/90 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-[#2563EB] dark:hover:text-[#60A5FA] hover:scale-105 active:scale-95"
+                              }`}
+                            >
+                              <FileText className="h-5 w-5" />
+                            </button>
+                            <div className="absolute right-14 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900/90 dark:bg-slate-800/95 text-white text-xs font-bold rounded-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow-xl z-50 backdrop-blur-xs">
+                              Lead Disposition
+                            </div>
+                          </div>
 
-                      {/* 📋 Call Logs Icon */}
-                      <div className="relative group">
-                        <button
-                          onClick={() => setActiveSlideOver(activeSlideOver === "logs" ? null : "logs")}
-                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs ${
-                            activeSlideOver === "logs"
-                              ? "bg-blue-600 text-white shadow-blue-500/40 ring-2 ring-blue-400/50 scale-105"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/20 hover:text-blue-600 dark:hover:text-blue-400"
-                          }`}
-                        >
-                          <ListOrdered className="h-4.5 w-4.5" />
-                        </button>
-                        <div className="absolute right-12 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-bold rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md z-30">
-                          Call Logs
-                        </div>
-                      </div>
-                    </div>
+                          {/* 📋 Call Logs Icon */}
+                          <div className="relative group">
+                            <button
+                              type="button"
+                              onClick={() => setActiveSlideOver(activeSlideOver === "logs" ? null : "logs")}
+                              className={`w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
+                                activeSlideOver === "logs"
+                                  ? "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-400/40 scale-[1.05]"
+                                  : "bg-slate-100/90 dark:bg-white/10 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-[#2563EB] dark:hover:text-[#60A5FA] hover:scale-105 active:scale-95"
+                              }`}
+                            >
+                              <ListOrdered className="h-5 w-5" />
+                            </button>
+                            <div className="absolute right-14 top-1/2 -translate-y-1/2 px-3 py-1.5 bg-slate-900/90 dark:bg-slate-800/95 text-white text-xs font-bold rounded-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none shadow-xl z-50 backdrop-blur-xs">
+                              Technical Call Logs
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {/* RIGHT SLIDE-OVER PANEL */}
                     <LeadActionSlideOver

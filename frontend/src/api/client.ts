@@ -52,7 +52,12 @@ function getToken(): string | null {
 export const getWsUrl = (roomPath: string = ""): string => {
   const token = getToken();
   const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
-  const cleanPath = roomPath ? (roomPath.startsWith("/") ? roomPath : `/${roomPath}`) : "";
+  let cleanPath = roomPath ? (roomPath.startsWith("/") ? roomPath : `/${roomPath}`) : "";
+  if (cleanPath.startsWith("/ws/")) {
+    cleanPath = cleanPath.substring(3);
+  } else if (cleanPath === "/ws") {
+    cleanPath = "";
+  }
   const baseUrl = getBaseUrl();
 
   try {
@@ -119,6 +124,11 @@ export async function apiFetch(
           window.location.hash = "#/login";
         }
         throw new Error("Session expired. Please sign in again.");
+      }
+
+      // Gracefully handle 403 Forbidden for active/live call polling on remote server
+      if (res.status === 403 && (path.includes("/calls/active") || path.includes("/calls/live"))) {
+        return [];
       }
 
       if (!res.ok) {

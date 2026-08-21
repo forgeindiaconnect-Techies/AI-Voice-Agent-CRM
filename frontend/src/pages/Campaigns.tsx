@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from "../api/client";
+import { api, getWsUrl } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 import { CustomPauseIcon } from "../components/CustomPauseIcon";
@@ -34,6 +34,7 @@ import {
   AlertCircle,
   Bot,
   UserCog,
+  UserPlus,
   Layers,
   Radio,
   Sliders,
@@ -591,6 +592,48 @@ const AI_VOICE_OPTIONS = [
   { value: "Neural-Hindi-Female", label: "Neural-Female (Hindi)" }
 ];
 
+const INDUSTRY_OPTIONS = [
+  { value: "banking", label: "Banking & Financial Services" },
+  { value: "insurance", label: "Insurance & Risk Policy" },
+  { value: "bpo", label: "General BPO & Customer Care" }
+];
+
+const WORKFLOW_CATEGORY_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  banking: [
+    { value: "credit_cards", label: "Credit Cards Campaign" },
+    { value: "loans", label: "Home / Personal Loans" },
+    { value: "accounts", label: "Savings / Current Accounts" },
+    { value: "collections", label: "Debt Collections & Recovery" },
+    { value: "kyc", label: "KYC Verification" }
+  ],
+  insurance: [
+    { value: "policy_issuance", label: "Policy Issuance" },
+    { value: "renewals", label: "Policy Renewals" },
+    { value: "claims", label: "Claims Processing" },
+    { value: "premium_due", label: "Premium Reminders" }
+  ],
+  bpo: [
+    { value: "sales_lead_gen", label: "Sales Lead Generation" },
+    { value: "customer_support", label: "Customer Support" },
+    { value: "telemarketing", label: "Telemarketing Outreach" },
+    { value: "followup_survey", label: "Follow-up Survey" }
+  ]
+};
+
+const DIALER_MODE_OPTIONS = [
+  { value: "progressive", label: "Progressive Dialer" },
+  { value: "predictive", label: "Predictive AI Dialer" },
+  { value: "power", label: "Power Auto-Dialer" },
+  { value: "inbound_ivr", label: "Inbound IVR Queue" },
+  { value: "manual", label: "Manual Preview Dialer" }
+];
+
+const ROUTING_STRATEGY_OPTIONS = [
+  { value: "longest_idle", label: "Longest Idle Agent First" },
+  { value: "skill_matched", label: "Skill-Based Matching" },
+  { value: "priority", label: "High Priority Queue First" }
+];
+
 // MAIN CAMPAIGNS DASHBOARD COMPONENT
 export default function Campaigns() {
   const { user } = useAuth();
@@ -607,6 +650,7 @@ export default function Campaigns() {
   const [campaignStats, setCampaignStats] = useState<Record<string, CampaignStats>>({});
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
   const [inboundSummary, setInboundSummary] = useState<Record<string, InboundDeptSummary>>({});
+  const [industryFilter, setIndustryFilter] = useState("all");
 
   // Filter, Search & Sort
   const [searchQuery, setSearchQuery] = useState("");
@@ -627,6 +671,10 @@ export default function Campaigns() {
   const [form, setForm] = useState({
     name: "",
     pool_id: "",
+    industry: "banking",
+    workflow_category: "credit_cards",
+    dialer_mode: "progressive",
+    routing_strategy: "longest_idle",
     supervisor_id: "",
     campaign_type: "outbound",
     languagesString: "English",
@@ -666,6 +714,35 @@ export default function Campaigns() {
 
   useEffect(() => {
     loadData();
+
+    let ws: WebSocket | null = null;
+    try {
+      const wsUrl = getWsUrl("/global");
+      ws = new WebSocket(wsUrl);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (
+            data.event === "campaigns_updated" ||
+            data.event === "leads_updated" ||
+            data.event === "agent_status_changed" ||
+            data.event === "inbound_summary_updated" ||
+            data.event === "inbound_call_auto_answered" ||
+            data.event === "inbound_call_queued"
+          ) {
+            loadData();
+          }
+        } catch (err) {
+          console.warn("WS parse warning:", err);
+        }
+      };
+    } catch (err) {
+      console.warn("WS connection error:", err);
+    }
+
+    return () => {
+      if (ws) ws.close();
+    };
   }, [loadData]);
 
   const handleExpandCampaign = async (campaignId: string) => {
@@ -695,6 +772,10 @@ export default function Campaigns() {
       const payload = {
         name: form.name,
         pool_id: form.pool_id,
+        industry: form.industry,
+        workflow_category: form.workflow_category,
+        dialer_mode: form.dialer_mode,
+        routing_strategy: form.routing_strategy,
         supervisor_id: form.supervisor_id || undefined,
         campaign_type: form.campaign_type,
         languages: form.languagesString.split(",").map(l => l.trim()).filter(Boolean),
@@ -714,6 +795,10 @@ export default function Campaigns() {
       setForm({
         name: "",
         pool_id: "",
+        industry: "banking",
+        workflow_category: "credit_cards",
+        dialer_mode: "progressive",
+        routing_strategy: "longest_idle",
         supervisor_id: "",
         campaign_type: "outbound",
         languagesString: "English",
@@ -728,6 +813,34 @@ export default function Campaigns() {
       loadData();
     } catch (err: any) {
       showToast(err.message || "Failed to create campaign.", "error");
+    }
+  }
+
+  async function handleAllocateLeads(campaignId: string) {
+    try {
+      const res = await api.post(`/api/campaigns/${campaignId}/allocate-leads?limit=50`);
+      showToast(`Allocated ${res.allocated_count} pool leads to campaign!`, "success");
+      loadData();
+      if (expandedCampaignId === campaignId) {
+        const stats = await api.get(`/api/campaigns/${campaignId}/stats`);
+        setCampaignStats(prev => ({ ...prev, [campaignId]: stats }));
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to allocate leads.", "error");
+    }
+  }
+
+  async function handleTriggerRetry(campaignId: string) {
+    try {
+      const res = await api.post(`/api/campaigns/${campaignId}/retry`);
+      showToast(`Reset ${res.reset_count} failed leads back to queue!`, "success");
+      loadData();
+      if (expandedCampaignId === campaignId) {
+        const stats = await api.get(`/api/campaigns/${campaignId}/stats`);
+        setCampaignStats(prev => ({ ...prev, [campaignId]: stats }));
+      }
+    } catch (err: any) {
+      showToast(err.message || "Failed to trigger retry.", "error");
     }
   }
 
@@ -793,9 +906,9 @@ export default function Campaigns() {
       <div
         className="
           relative overflow-hidden
-          h-[76px]
-          rounded-[18px]
-          px-6 py-0
+          h-[60px]
+          rounded-[12px]
+          px-4 sm:px-5 py-0
           flex items-center
           border
 
@@ -1175,7 +1288,7 @@ export default function Campaigns() {
               return (
                 <div
                   key={c.id}
-                  className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-white/[0.08] rounded-[18px] p-6 shadow-sm hover:shadow-xl dark:hover:shadow-blue-500/10 dark:hover:bg-[#273549] transition-all duration-200 ease-in-out hover:-translate-y-1 space-y-5 relative overflow-hidden group hover:border-blue-500/40 dark:hover:border-blue-500/40"
+                  className="bg-white dark:bg-[#1E293B] border border-slate-200/80 dark:border-white/[0.08] rounded-[10px] p-3.5 shadow-2xs hover:shadow-md dark:hover:shadow-blue-500/10 dark:hover:bg-[#273549] transition-all duration-200 ease-in-out space-y-3 relative overflow-hidden group hover:border-blue-500/40 dark:hover:border-blue-500/40"
                 >
                   {/* Subtle Top Gold/Blue Accent Line on Hover */}
                   <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#F4B400] opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -1249,6 +1362,24 @@ export default function Campaigns() {
                           )}
 
                           <button
+                            onClick={() => handleAllocateLeads(c.id)}
+                            className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-[#2563EB] border border-blue-200 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 dark:text-[#60A5FA] dark:border-blue-500/30 text-xs font-extrabold rounded-xl transition-all duration-200 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                            title="Allocate unassigned pool leads into campaign"
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            <span>Allocate Leads</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleTriggerRetry(c.id)}
+                            className="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 dark:text-[#FCD34D] dark:border-amber-500/30 text-xs font-extrabold rounded-xl transition-all duration-200 flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                            title="Reset failed / no-answer leads to retry queue"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            <span>Retry Queue</span>
+                          </button>
+
+                          <button
                             onClick={() => {
                               setSelectedCampaign(c);
                               setTempAgentIds(c.agent_ids || []);
@@ -1314,29 +1445,60 @@ export default function Campaigns() {
       {activeTab === "inbound" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {Object.entries(inboundSummary).map(([deptKey, summary]) => (
-              <div key={deptKey} className="bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-[20px] p-5 shadow-sm space-y-4">
-                <div className="flex justify-between items-center border-b pb-3">
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 text-sm capitalize">{deptKey.replace(/_/g, " ")}</h4>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">IVR Queue Routing</span>
+            {Object.entries(inboundSummary).map(([deptKey, summary]) => {
+              const isStable = summary.status === "stable";
+              const isBusy = summary.status === "busy";
+              const slaVal = summary.sla_percentage ?? 100;
+              const slaColorClass = slaVal >= 95 ? "text-emerald-600 dark:text-emerald-400" : slaVal >= 85 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400";
+              const badgeClass = isStable
+                ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-[#34D399] border-emerald-200 dark:border-emerald-500/30"
+                : isBusy
+                ? "bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-[#FCD34D] border-amber-200 dark:border-amber-500/30"
+                : "bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30";
+
+              return (
+                <div key={deptKey} className="bg-white/95 dark:bg-[#1E293B] backdrop-blur-md border border-slate-200/80 dark:border-white/[0.08] rounded-[20px] p-5 shadow-sm space-y-4 hover:shadow-lg transition-all duration-200">
+                  <div className="flex justify-between items-center border-b border-slate-100 dark:border-white/10 pb-3">
+                    <div>
+                      <h4 className="font-extrabold text-slate-900 dark:text-white text-base capitalize">{deptKey.replace(/_/g, " ")}</h4>
+                      <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-bold uppercase tracking-wider">IVR QUEUE ROUTING</span>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-extrabold border ${badgeClass}`}>
+                      {summary.status.toLowerCase()}
+                    </span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    {summary.status}
-                  </span>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 bg-slate-50 dark:bg-[#0F172A] border border-slate-100 dark:border-white/5 rounded-xl space-y-0.5">
+                      <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-bold uppercase tracking-wider">ACTIVE CALLS</span>
+                      <span className="block text-xl font-black text-slate-900 dark:text-white font-mono">{summary.active_calls}</span>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 dark:bg-[#0F172A] border border-slate-100 dark:border-white/5 rounded-xl space-y-0.5">
+                      <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-bold uppercase tracking-wider">SLA SCORE</span>
+                      <span className={`block text-xl font-black font-mono ${slaColorClass}`}>
+                        {summary.sla_percentage}%
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 dark:border-white/5 grid grid-cols-3 gap-2 text-[11px] font-medium text-slate-500 dark:text-[#94A3B8]">
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 dark:text-[#64748B] uppercase">QUEUE SIZE</span>
+                      <span className="font-bold text-slate-800 dark:text-white font-mono">{summary.waiting_queue} waiting</span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 dark:text-[#64748B] uppercase">AVAILABLE</span>
+                      <span className="font-bold text-slate-800 dark:text-white font-mono">{summary.available_agents} agents</span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-slate-400 dark:text-[#64748B] uppercase">AVG WAIT</span>
+                      <span className="font-bold text-slate-800 dark:text-white font-mono">{summary.average_wait_seconds}s</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-slate-50 border rounded-xl">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Active Calls</span>
-                    <span className="block text-base font-black text-slate-900">{summary.active_calls}</span>
-                  </div>
-                  <div className="p-3 bg-slate-50 border rounded-xl">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">SLA Score</span>
-                    <span className="block text-base font-black text-emerald-600">{summary.sla_percentage}%</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -1372,12 +1534,67 @@ export default function Campaigns() {
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div>
+                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1.5">Industry Sector</label>
+                  <CustomSelect
+                    value={form.industry}
+                    onChange={val => {
+                      const categories = WORKFLOW_CATEGORY_OPTIONS[val] || [];
+                      setForm({
+                        ...form,
+                        industry: val,
+                        workflow_category: categories[0]?.value || "credit_cards"
+                      });
+                    }}
+                    options={INDUSTRY_OPTIONS}
+                    placeholder="Select Industry"
+                    triggerClassName="h-11 rounded-xl text-xs dark:bg-[#0F172A] dark:border-white/10 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1.5">Workflow Category</label>
+                  <CustomSelect
+                    value={form.workflow_category}
+                    onChange={val => setForm({ ...form, workflow_category: val })}
+                    options={WORKFLOW_CATEGORY_OPTIONS[form.industry] || WORKFLOW_CATEGORY_OPTIONS.banking}
+                    placeholder="Select Workflow"
+                    triggerClassName="h-11 rounded-xl text-xs dark:bg-[#0F172A] dark:border-white/10 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div>
                   <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1.5">Target Lead Pool</label>
                   <CustomSelect
                     value={form.pool_id}
                     onChange={val => setForm({ ...form, pool_id: val })}
                     options={poolFilterOptions}
                     placeholder="Select Pool"
+                    triggerClassName="h-11 rounded-xl text-xs dark:bg-[#0F172A] dark:border-white/10 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1.5">Dialer Mode</label>
+                  <CustomSelect
+                    value={form.dialer_mode}
+                    onChange={val => setForm({ ...form, dialer_mode: val })}
+                    options={DIALER_MODE_OPTIONS}
+                    placeholder="Select Dialer Mode"
+                    triggerClassName="h-11 rounded-xl text-xs dark:bg-[#0F172A] dark:border-white/10 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider mb-1.5">ACD Routing Strategy</label>
+                  <CustomSelect
+                    value={form.routing_strategy}
+                    onChange={val => setForm({ ...form, routing_strategy: val })}
+                    options={ROUTING_STRATEGY_OPTIONS}
+                    placeholder="Select Routing"
                     triggerClassName="h-11 rounded-xl text-xs dark:bg-[#0F172A] dark:border-white/10 dark:text-white"
                   />
                 </div>

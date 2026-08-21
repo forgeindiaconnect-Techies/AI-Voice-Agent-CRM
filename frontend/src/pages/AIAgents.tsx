@@ -287,84 +287,70 @@ export default function AIAgents() {
   const offlineCount = agents.filter(a => a.status === "offline" || !a.is_active).length;
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto font-sans pb-16">
+    <div className="space-y-4 max-w-[1600px] mx-auto font-sans pb-12">
       
-      {/* ── 1. HEADER SECTION (Clean Pure White Card in Light Mode | Navy Gradient in Dark Mode) ── */}
-      <div className="rounded-[24px] bg-white dark:bg-gradient-to-r dark:from-[#111827] dark:via-[#152238] dark:to-[#1E293B] border border-slate-200/90 dark:border-white/10 p-7 shadow-md shadow-slate-200/50 dark:shadow-lg relative overflow-hidden transition-all duration-300">
+      {/* ── 1. HEADER SECTION (Compact 10px Radius, Balanced 42px Buttons) ── */}
+      <div className="rounded-[10px] bg-white dark:bg-gradient-to-r dark:from-[#111827] dark:via-[#152238] dark:to-[#1E293B] border border-slate-200/90 dark:border-white/10 p-4 sm:p-5 pr-5 sm:pr-6 shadow-sm relative overflow-hidden transition-all duration-300">
         {/* Top Subtle Blue Gradient Accent */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#60A5FA]" />
 
-        {/* Dark Mode Soft Ambient Blue Glow behind Icon */}
-        <div className="hidden dark:block absolute top-1/2 left-8 -translate-y-1/2 w-32 h-32 bg-blue-500/20 blur-2xl pointer-events-none rounded-full" />
-
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 relative z-10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
           
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              {/* 64x64 AI Robot Icon Container with Dual Gradient Border */}
-              <div className="h-[64px] w-[64px] rounded-[22px] p-[3px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-[0_8px_20px_-4px_rgba(37,99,235,0.35),0_8px_20px_-4px_rgba(250,204,21,0.25)] shrink-0 transition-transform duration-300 hover:scale-105">
-                <div className="w-full h-full rounded-[19px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-[19px]" />
-                  <Bot className="h-8 w-8 text-white relative z-10 drop-shadow-xs" />
+          <div className="space-y-2.5 min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              {/* AI Robot Icon Container */}
+              <div className="h-10.5 w-10.5 rounded-lg p-[2px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-xs shrink-0 transition-transform duration-300 hover:scale-105">
+                <div className="w-full h-full rounded-[6px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center relative overflow-hidden">
+                  <Bot className="h-5 w-5 text-white relative z-10 drop-shadow-xs" />
                 </div>
               </div>
-              <div>
-                <div className="flex items-center gap-3 flex-wrap min-w-0">
-                  <div className="flex flex-col items-start">
-                    <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
-                      <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">AI Voice</span>
-                      <span className="text-[#F4B400] font-extrabold">Agents Directory</span>
-                    </h1>
-                  </div>
-                  <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <h1 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-1.5 truncate">
+                    <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">AI Voice</span>
+                    <span className="text-[#F4B400] font-extrabold">Agents Directory</span>
+                  </h1>
+                  <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1 shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
                     NEURAL STUDIO
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">
+                <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium truncate">
                   Manage neural speech bots, personas, speech parameters, and live telemetry
                 </p>
               </div>
             </div>
 
-            {/* 36px Premium Status Chips / Pills */}
-            <div className="flex items-center gap-2.5 pt-1 flex-wrap text-xs font-bold">
-              <span className="h-9 px-3.5 rounded-full bg-slate-100 dark:bg-[#1B2740] text-slate-700 dark:text-[#F8FAFC] border border-slate-200 dark:border-white/10 font-bold flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition">
+            {/* Compact Status Chips */}
+            <div className="flex items-center gap-2 pt-0.5 flex-wrap text-[11px] font-bold">
+              <span className="h-7 px-2.5 rounded-full bg-slate-100 dark:bg-[#1B2740] text-slate-700 dark:text-[#F8FAFC] border border-slate-200 dark:border-white/10 flex items-center gap-1">
                 <span>🤖</span>
-                <span className="font-mono">{agents.length} Total Bots</span>
+                <span className="font-mono">{agents.length} Total</span>
               </span>
-              <span className="h-9 px-3.5 rounded-full bg-[#ECFDF5] dark:bg-emerald-500/15 text-[#047857] dark:text-[#34D399] border border-[#A7F3D0] dark:border-emerald-500/30 font-bold flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-mono">{onlineCount} Online &amp; Active</span>
+              <span className="h-7 px-2.5 rounded-full bg-[#ECFDF5] dark:bg-emerald-500/15 text-[#047857] dark:text-[#34D399] border border-[#A7F3D0] dark:border-emerald-500/30 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="font-mono">{onlineCount} Online</span>
               </span>
-              <span className="h-9 px-3.5 rounded-full bg-[#FEF3C7] dark:bg-amber-500/15 text-[#B45309] dark:text-[#FCD34D] border border-[#FDE68A] dark:border-amber-500/30 font-bold flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition">
-                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-                <span className="font-mono">{busyCount} Busy / In Call</span>
+              <span className="h-7 px-2.5 rounded-full bg-[#FEF3C7] dark:bg-amber-500/15 text-[#B45309] dark:text-[#FCD34D] border border-[#FDE68A] dark:border-amber-500/30 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="font-mono">{busyCount} Busy</span>
               </span>
-              <span className="h-9 px-3.5 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-[#64748B] border border-slate-200 dark:border-slate-700 font-bold flex items-center gap-1.5 shadow-2xs hover:shadow-xs transition">
-                <span className="h-2 w-2 rounded-full bg-slate-400 dark:bg-slate-600" />
-                <span className="font-mono">{offlineCount} Offline / Inactive</span>
+              <span className="h-7 px-2.5 rounded-full bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-[#64748B] border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-600" />
+                <span className="font-mono">{offlineCount} Offline</span>
               </span>
             </div>
           </div>
 
           {/* Action Toolbar */}
-          <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end shrink-0">
-            {/* Circular Refresh Button */}
-            <button
-              onClick={fetchAgents}
-              className="h-11 w-11 rounded-full bg-white hover:bg-slate-50 dark:bg-[#1B2740] dark:hover:bg-[#253655] text-[#2563EB] dark:text-[#F8FAFC] transition-all duration-300 flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-sm cursor-pointer active:scale-95 hover:rotate-180"
-              title="Refresh Agents Data"
-            >
-              <RotateCcw className="h-4.5 w-4.5" />
-            </button>
-
+          <div className="flex items-center shrink-0">
             {isAdmin && (
               <button
+                type="button"
                 onClick={handleOpenCreateModal}
-                className="h-[46px] px-6 rounded-[14px] bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white font-extrabold text-xs shadow-lg shadow-blue-500/25 transition-all duration-200 flex items-center gap-2 active:scale-95 cursor-pointer"
+                className="h-[42px] min-w-[165px] px-3.5 rounded-[10px] bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-semibold text-[14px] shadow-xs hover:shadow-md hover:shadow-blue-500/20 transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
               >
-                <Plus className="h-4.5 w-4.5" />
+                <Plus className="h-4 w-4 shrink-0 stroke-[2.5]" />
                 <span>Create AI Agent</span>
               </button>
             )}
@@ -373,80 +359,75 @@ export default function AIAgents() {
         </div>
       </div>
 
-      {/* ── 2. SEARCH & FILTER BAR (48px / Glass blur) ── */}
-      <div className="bg-white/90 dark:bg-[#111827]/90 backdrop-blur-xl rounded-[16px] p-3 shadow-md border border-slate-200/80 dark:border-white/10 flex flex-col lg:flex-row gap-3 items-center justify-between transition-all duration-200">
+      {/* ── 2. SEARCH & FILTER BAR (Compact 36px / 8px Radius) ── */}
+      <div className="bg-white/90 dark:bg-[#111827]/90 backdrop-blur-xl rounded-[10px] p-2.5 shadow-sm border border-slate-200/80 dark:border-white/10 flex flex-col lg:flex-row gap-2.5 items-center justify-between transition-all duration-200">
         
-        {/* Search Input (60% Width) */}
-        <div className="relative w-full lg:w-[60%]">
-          <Search className="h-4 w-4 text-slate-400 dark:text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        {/* Search Input */}
+        <div className="relative w-full lg:w-[45%]">
+          <Search className="h-3.5 w-3.5 text-slate-400 dark:text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             placeholder="Search AI agents by name, ID, voice model..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full h-12 pl-10 pr-10 border border-slate-200 dark:border-white/10 rounded-[14px] text-xs font-semibold bg-slate-50/80 dark:bg-[#151F32] text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] transition-all duration-200 focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20"
+            className="w-full h-9 pl-9 pr-8 border border-slate-200 dark:border-white/10 rounded-lg text-xs font-semibold bg-slate-50/80 dark:bg-[#151F32] text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] transition-all duration-200 focus:outline-none focus:border-[#2563EB]"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
 
         {/* Filter Controls Row */}
-        <div className="flex items-center gap-2.5 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
+        <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
           
-          {/* Active Filter Count Badge */}
-          <div className="flex items-center gap-2 px-3 bg-slate-100 dark:bg-[#1B2740] rounded-[14px] text-slate-600 dark:text-[#94A3B8] border border-slate-200 dark:border-white/10 shrink-0 h-12">
-            <SlidersHorizontal className="h-4 w-4 text-blue-600 dark:text-[#60A5FA]" />
-            <span className="text-xs font-black">Filters</span>
+          <div className="flex items-center gap-1.5 px-2.5 bg-slate-100 dark:bg-[#1B2740] rounded-lg text-slate-600 dark:text-[#94A3B8] border border-slate-200 dark:border-white/10 shrink-0 h-9">
+            <SlidersHorizontal className="h-3.5 w-3.5 text-blue-600 dark:text-[#60A5FA]" />
+            <span className="text-[11px] font-black">Filters</span>
             {activeFilterCount > 0 && (
-              <span className="flex items-center justify-center bg-[#F59E0B] text-slate-950 text-[10px] font-black h-5 w-5 rounded-full">
+              <span className="flex items-center justify-center bg-[#F59E0B] text-slate-950 text-[9px] font-black h-4 w-4 rounded-full">
                 {activeFilterCount}
               </span>
             )}
           </div>
 
-          {/* Status Select */}
           <CustomSelect
             value={statusFilter}
             onChange={setStatusFilter}
             options={STATUS_FILTER_OPTIONS}
             placeholder="All Statuses"
-            className="w-full sm:w-36 shrink-0"
-            triggerClassName="h-12 rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#151F32]"
+            className="w-full sm:w-32 shrink-0"
+            triggerClassName="h-9 rounded-lg text-xs border-slate-200 dark:border-white/10 dark:bg-[#151F32]"
           />
 
-          {/* Voice Model Select */}
           <CustomSelect
             value={voiceFilter}
             onChange={setVoiceFilter}
             options={VOICE_FILTER_OPTIONS}
             placeholder="All Voice Models"
-            className="w-full sm:w-44 shrink-0"
-            triggerClassName="h-12 rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#151F32]"
+            className="w-full sm:w-40 shrink-0"
+            triggerClassName="h-9 rounded-lg text-xs border-slate-200 dark:border-white/10 dark:bg-[#151F32]"
           />
 
-          {/* Sort By Select */}
           <CustomSelect
             value={sortBy}
             onChange={val => setSortBy(val as any)}
             options={SORT_BY_OPTIONS}
             placeholder="Sort by"
-            className="w-full sm:w-36 shrink-0"
-            triggerClassName="h-12 rounded-[14px] text-xs border-slate-200 dark:border-white/10 dark:bg-[#151F32]"
+            className="w-full sm:w-32 shrink-0"
+            triggerClassName="h-9 rounded-lg text-xs border-slate-200 dark:border-white/10 dark:bg-[#151F32]"
           />
 
-          {/* Reset Filters button */}
           {(searchQuery || activeFilterCount > 0) && (
             <button
               onClick={resetFilters}
-              className="h-12 px-3 text-xs font-black text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-[14px] transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer shrink-0 active:scale-95"
+              className="h-9 px-2.5 text-xs font-black text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-lg transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer shrink-0 active:scale-95"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
               <span>Reset</span>
             </button>
           )}
@@ -499,15 +480,15 @@ export default function AIAgents() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
           {sortedAgents.map(agent => (
             <motion.div
               key={agent.id || agent.agent_id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -6 }}
-              transition={{ duration: 0.25 }}
-              className={`group bg-white dark:bg-[#151F32] border border-slate-200/90 dark:border-white/10 rounded-[20px] p-5 shadow-sm hover:shadow-xl dark:hover:shadow-blue-500/10 hover:border-blue-500/40 dark:hover:border-blue-500/40 transition-all duration-250 flex flex-col justify-between space-y-3.5 relative overflow-hidden ${
+              whileHover={{ y: -3 }}
+              transition={{ duration: 0.2 }}
+              className={`group bg-white dark:bg-[#151F32] border border-slate-200/90 dark:border-white/10 rounded-[10px] p-3.5 shadow-2xs hover:shadow-md dark:hover:shadow-blue-500/10 hover:border-blue-500/40 dark:hover:border-blue-500/40 transition-all duration-200 flex flex-col justify-between space-y-2.5 relative overflow-hidden ${
                 agent.is_active ? "" : "opacity-75 bg-slate-50/60 dark:bg-[#111827]"
               }`}
             >
@@ -520,24 +501,21 @@ export default function AIAgents() {
                   : "bg-slate-400 dark:bg-slate-700"
               }`} />
 
-              <div className="space-y-3">
-                {/* ── CARD HEADER (72px Avatar + Name + Pulse Dot Badge) ── */}
-                <div className="flex justify-between items-start gap-3 pt-1">
-                  <div className="flex items-center gap-5 min-w-0">
+              <div className="space-y-2.5">
+                {/* ── CARD HEADER (40px Avatar + Name + Pulse Dot Badge) ── */}
+                <div className="flex justify-between items-start gap-2 pt-0.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div className="relative shrink-0">
-                      {/* 72x72 Enterprise Avatar with 135° Blue -> Yellow Gradient Border */}
-                      <div className="h-[72px] w-[72px] rounded-[24px] p-[3px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-[0_8px_20px_-4px_rgba(37,99,235,0.35),0_8px_20px_-4px_rgba(250,204,21,0.25)] group-hover:shadow-[0_12px_28px_-2px_rgba(37,99,235,0.5),0_12px_28px_-2px_rgba(250,204,21,0.4)] group-hover:scale-[1.05] group-hover:-translate-y-1 transition-all duration-250 shrink-0 cursor-pointer relative">
-                        {/* Inner Glass Container */}
-                        <div className="w-full h-full rounded-[21px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center relative overflow-hidden">
-                          {/* Top-left glass reflection highlight */}
-                          <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-[21px]" />
-                          <Bot className="h-[30px] w-[30px] text-white relative z-10 drop-shadow-xs" />
+                      {/* 40x40 Avatar */}
+                      <div className="h-10 w-10 rounded-lg p-[2px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-xs group-hover:scale-105 transition-all duration-200 shrink-0 cursor-pointer relative">
+                        <div className="w-full h-full rounded-[6px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center relative overflow-hidden">
+                          <Bot className="h-5 w-5 text-white relative z-10 drop-shadow-xs" />
                         </div>
                       </div>
                       
-                      {/* Status indicator dot at bottom-right of avatar with white outline */}
+                      {/* Status indicator dot */}
                       <span
-                        className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white dark:border-[#151F32] shadow-sm z-20 ${
+                        className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-[#151F32] shadow-2xs z-20 ${
                           agent.status === "online" && agent.is_active
                             ? "bg-emerald-500 animate-pulse"
                             : agent.status === "in_call" || agent.status === "busy"
@@ -548,15 +526,15 @@ export default function AIAgents() {
                     </div>
 
                     <div className="min-w-0">
-                      <h3 className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-base truncate leading-tight group-hover:text-[#2563EB] dark:group-hover:text-[#60A5FA] transition-colors">
+                      <h3 className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-xs truncate leading-tight group-hover:text-[#2563EB] dark:group-hover:text-[#60A5FA] transition-colors">
                         {agent.name}
                       </h3>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="font-mono font-extrabold text-[10px] bg-slate-100 dark:bg-[#1B2740] text-slate-700 dark:text-[#94A3B8] px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/10">
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className="font-mono font-extrabold text-[9px] bg-slate-100 dark:bg-[#1B2740] text-slate-700 dark:text-[#94A3B8] px-1.5 py-0.5 rounded-full border border-slate-200 dark:border-white/10">
                           {agent.agent_id}
                         </span>
-                        <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-semibold flex items-center gap-1">
-                          <Globe className="h-3 w-3 text-[#2563EB] dark:text-[#60A5FA]" />
+                        <span className="text-[9px] text-slate-400 dark:text-[#64748B] font-semibold flex items-center gap-0.5">
+                          <Globe className="h-2.5 w-2.5 text-[#2563EB] dark:text-[#60A5FA]" />
                           <span>{agent.language}</span>
                         </span>
                       </div>
@@ -565,37 +543,37 @@ export default function AIAgents() {
 
                   {/* Status Badge with Dot Pulse */}
                   {agent.status === "online" && agent.is_active ? (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-[#34D399] dark:border-emerald-500/30 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shrink-0 bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-[#34D399] dark:border-emerald-500/30 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       <span>Online</span>
                     </span>
                   ) : agent.status === "in_call" || agent.status === "busy" ? (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-[#FCD34D] dark:border-amber-500/30 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shrink-0 bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-[#FCD34D] dark:border-amber-500/30 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                       <span>Busy</span>
                     </span>
                   ) : (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider shrink-0 bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-[#64748B] dark:border-slate-700 flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-slate-400 dark:bg-slate-600" />
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider shrink-0 bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-[#64748B] dark:border-slate-700 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-slate-600" />
                       <span>Offline</span>
                     </span>
                   )}
                 </div>
 
-                {/* ── VOICE MODEL COMPACT CONTAINER ── */}
-                <div className="flex items-center justify-between text-xs bg-slate-50 dark:bg-[#1B2740]/70 border border-slate-100 dark:border-white/5 p-2.5 rounded-xl">
-                  <span className="text-slate-500 dark:text-[#94A3B8] font-semibold flex items-center gap-1.5">
-                    <Volume2 className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" />
+                {/* ── VOICE MODEL CONTAINER ── */}
+                <div className="flex items-center justify-between text-[11px] bg-slate-50 dark:bg-[#1B2740]/70 border border-slate-100 dark:border-white/5 p-2 rounded-lg">
+                  <span className="text-slate-500 dark:text-[#94A3B8] font-semibold flex items-center gap-1">
+                    <Volume2 className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#60A5FA]" />
                     <span>Voice Model:</span>
                   </span>
-                  <span className="font-bold text-slate-900 dark:text-[#F8FAFC] font-mono text-[11px] truncate max-w-[140px]" title={agent.voice_model}>
+                  <span className="font-bold text-slate-900 dark:text-[#F8FAFC] font-mono text-[10px] truncate max-w-[120px]" title={agent.voice_model}>
                     {agent.voice_model}
                   </span>
                 </div>
 
-                {/* ── SYSTEM PERSONA (72px max height + fade + View Prompt) ── */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center text-[10px] text-slate-400 dark:text-[#64748B] font-extrabold uppercase tracking-wider">
+                {/* ── SYSTEM PERSONA (48px max height + line-clamp-2) ── */}
+                <div className="space-y-0.5">
+                  <div className="flex justify-between items-center text-[9px] text-slate-400 dark:text-[#64748B] font-extrabold uppercase tracking-wider">
                     <span>System Persona</span>
                     <button
                       onClick={() => setPreviewPromptAgent(agent)}
@@ -604,51 +582,49 @@ export default function AIAgents() {
                       View Prompt
                     </button>
                   </div>
-                  <div className="max-h-[72px] overflow-hidden relative bg-slate-50/80 dark:bg-[#1B2740]/40 p-2.5 rounded-xl border border-slate-100 dark:border-white/5">
-                    <p className="text-xs text-slate-600 dark:text-[#CBD5E1] font-medium line-clamp-3 italic">
+                  <div className="max-h-[48px] overflow-hidden relative bg-slate-50/80 dark:bg-[#1B2740]/40 p-2 rounded-lg border border-slate-100 dark:border-white/5">
+                    <p className="text-[11px] text-slate-600 dark:text-[#CBD5E1] font-medium line-clamp-2 italic">
                       "{agent.system_prompt || "No prompt configured"}"
                     </p>
                   </div>
                 </div>
 
-                {/* ── TELEMETRY KPI CARDS (3-col compact glass containers) ── */}
-                <div className="grid grid-cols-3 gap-2 text-center text-xs pt-0.5">
-                  <div className="p-2 bg-slate-50 dark:bg-[#1B2740]/80 rounded-xl border border-slate-100 dark:border-white/5 transition hover:border-blue-500/30">
-                    <span className="block text-[9px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">Channels</span>
-                    <span className="font-black text-slate-900 dark:text-[#F8FAFC] font-mono text-sm">{agent.concurrency_limit}</span>
+                {/* ── TELEMETRY KPI CARDS ── */}
+                <div className="grid grid-cols-3 gap-1.5 text-center text-xs pt-0.5">
+                  <div className="p-1.5 bg-slate-50 dark:bg-[#1B2740]/80 rounded-lg border border-slate-100 dark:border-white/5">
+                    <span className="block text-[8px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">Channels</span>
+                    <span className="font-black text-slate-900 dark:text-[#F8FAFC] font-mono text-xs">{agent.concurrency_limit}</span>
                   </div>
-                  <div className="p-2 bg-slate-50 dark:bg-[#1B2740]/80 rounded-xl border border-slate-100 dark:border-white/5 transition hover:border-blue-500/30">
-                    <span className="block text-[9px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">Temp</span>
-                    <span className="font-black text-slate-900 dark:text-[#F8FAFC] font-mono text-sm">{agent.temperature}</span>
+                  <div className="p-1.5 bg-slate-50 dark:bg-[#1B2740]/80 rounded-lg border border-slate-100 dark:border-white/5">
+                    <span className="block text-[8px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">Temp</span>
+                    <span className="font-black text-slate-900 dark:text-[#F8FAFC] font-mono text-xs">{agent.temperature}</span>
                   </div>
-                  <div className="p-2 bg-slate-50 dark:bg-[#1B2740]/80 rounded-xl border border-slate-100 dark:border-white/5 transition hover:border-blue-500/30">
-                    <span className="block text-[9px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">Max Time</span>
-                    <span className="font-black text-slate-900 dark:text-[#F8FAFC] font-mono text-sm">{agent.max_call_duration_seconds}s</span>
+                  <div className="p-1.5 bg-slate-50 dark:bg-[#1B2740]/80 rounded-lg border border-slate-100 dark:border-white/5">
+                    <span className="block text-[8px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider">Max Time</span>
+                    <span className="font-black text-slate-900 dark:text-[#F8FAFC] font-mono text-xs">{agent.max_call_duration_seconds}s</span>
                   </div>
                 </div>
               </div>
 
-              {/* ── BOTTOM ACTIONS TOOLBAR (5 Icon Buttons) ── */}
-              <div className="pt-3 border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-1.5">
-                {/* 1. Toggle Active Icon Button */}
+              {/* ── BOTTOM ACTIONS TOOLBAR ── */}
+              <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-1">
                 <button
                   onClick={() => handleToggleActive(agent)}
-                  className={`h-9 px-3 rounded-[12px] text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                  className={`h-7.5 px-2.5 rounded-lg text-[11px] font-extrabold flex items-center gap-1 transition cursor-pointer active:scale-95 ${
                     agent.is_active
                       ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/15 dark:text-[#34D399] dark:border-emerald-500/30"
                       : "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-[#64748B] dark:border-slate-700"
                   }`}
                   title={agent.is_active ? "Deactivate Bot" : "Activate Bot"}
                 >
-                  <Power className="h-3.5 w-3.5" />
+                  <Power className="h-3 w-3" />
                   <span>{agent.is_active ? "Active" : "Inactive"}</span>
                 </button>
 
                 <div className="flex items-center gap-1">
-                  {/* 2. Edit Button */}
                   <button
                     onClick={() => handleOpenEditModal(agent)}
-                    className="h-9 w-9 flex items-center justify-center rounded-[12px] bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-[#2563EB] dark:bg-[#1B2740] dark:hover:bg-blue-500/20 dark:text-[#94A3B8] dark:hover:text-[#60A5FA] border border-slate-200 dark:border-white/10 transition cursor-pointer active:scale-95"
+                    className="h-7.5 w-7.5 flex items-center justify-center rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-[#2563EB] dark:bg-[#1B2740] dark:hover:bg-blue-500/20 dark:text-[#94A3B8] dark:hover:text-[#60A5FA] border border-slate-200 dark:border-white/10 transition cursor-pointer active:scale-95"
                     title="Edit Agent Parameters"
                   >
                     <Edit className="h-3.5 w-3.5" />

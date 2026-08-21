@@ -593,37 +593,35 @@ export default function Users() {
         transition={{ duration: 0.4 }}
         className="space-y-6 max-w-7xl mx-auto font-sans"
       >
-        {/* Hero Section Container (24px Radius, Gradient Fill, Premium Glass Overlay) */}
-        <div className="bg-gradient-to-r from-white via-slate-50 to-blue-50/20 dark:from-[#111827] dark:via-[#172033] dark:to-[#1B2740] rounded-[24px] p-7 shadow-lg border border-slate-200/80 dark:border-white/10 relative overflow-hidden transition-all duration-250">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
-            <div className="flex items-center gap-6">
-              {/* 72x72 Enterprise Avatar Container */}
+        {/* Hero Section Container (12px Radius, Gradient Fill, Compact Padding) */}
+        <div className="bg-gradient-to-r from-white via-slate-50 to-blue-50/20 dark:from-[#111827] dark:via-[#172033] dark:to-[#1B2740] rounded-[12px] p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-white/10 relative overflow-hidden transition-all duration-200">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 relative z-10">
+            <div className="flex items-center gap-3">
+              {/* Avatar Container */}
               <div className="relative shrink-0 group/avatar">
-                <div className="h-[72px] w-[72px] rounded-[22px] p-[3px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-[0_8px_20px_-4px_rgba(37,99,235,0.35),0_8px_20px_-4px_rgba(250,204,21,0.25)] group-hover/avatar:shadow-[0_12px_28px_-2px_rgba(37,99,235,0.5),0_12px_28px_-2px_rgba(250,204,21,0.4)] group-hover/avatar:scale-[1.05] transition-all duration-250 shrink-0 cursor-pointer relative">
-                  <div className="w-full h-full rounded-[19px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center relative overflow-hidden">
-                    {/* Top-left glass reflection highlight */}
-                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-[19px]" />
-                    <User className="h-[32px] w-[32px] text-white relative z-10 drop-shadow-xs" />
+                <div className="h-10 w-10 rounded-[10px] p-[2px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-2xs shrink-0 cursor-pointer relative">
+                  <div className="w-full h-full rounded-[8px] bg-gradient-to-br from-[#2563EB] to-[#1E5EFF] dark:from-[#1E3A8A] dark:to-[#172554] flex items-center justify-center relative overflow-hidden">
+                    <User className="h-4 w-4 text-white relative z-10" />
                   </div>
                 </div>
-                {/* Green Status Indicator Dot */}
-                <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-[#10B981] border-2 border-white dark:border-[#111827] shadow-xs z-20 animate-pulse" />
+                {/* Status Indicator Dot */}
+                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#10B981] border border-white dark:border-[#111827] z-20 animate-pulse" />
               </div>
 
-              <div className="space-y-1 min-w-0">
-                <div className="flex items-center gap-3 flex-wrap min-w-0">
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
                   <div className="flex flex-col items-start">
-                    <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                    <h1 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-1.5">
                       <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Team Agent</span>
                       <span className="text-[#F4B400] font-extrabold">Directory</span>
                     </h1>
                   </div>
-                  <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                  <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1 shrink-0">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
                     {myAgents.length} MAPPED AGENTS
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">
+                <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium">
                   Monitor active workloads, agent status, and submit transfer requests
                 </p>
               </div>
@@ -631,29 +629,29 @@ export default function Users() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* My Team Members Table (2 columns) */}
-          <div className="bg-white dark:bg-[#111827] backdrop-blur-xl rounded-[20px] p-6 shadow-md border border-slate-200/80 dark:border-white/10 lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-4">
-              <h2 className="text-base font-black text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2.5">
-                <UsersIcon className="h-5 w-5 text-[#2563EB] dark:text-[#60A5FA]" />
+          <div className="bg-white dark:bg-[#111827] backdrop-blur-xl rounded-[12px] p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-white/10 lg:col-span-2 space-y-3.5">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-3">
+              <h2 className="text-sm font-black text-slate-900 dark:text-[#F8FAFC] flex items-center gap-2">
+                <UsersIcon className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" />
                 <span>Assigned Team Personnel</span>
               </h2>
-              <span className="text-xs font-mono font-extrabold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] px-3 py-1 rounded-full border border-blue-200 dark:border-blue-500/30">
+              <span className="text-[11px] font-mono font-bold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-500/30">
                 {myAgents.length} Agents
               </span>
             </div>
 
-            <div className="overflow-x-auto rounded-[16px] border border-slate-200/80 dark:border-white/10 shadow-xs">
-              <table className="w-full text-sm text-left border-collapse">
-                <thead className="bg-slate-50 dark:bg-[#172033] text-slate-500 dark:text-[#94A3B8] font-black uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-white/10 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-5 py-4">Employee ID</th>
-                    <th className="px-5 py-4">Personnel Name</th>
-                    <th className="px-5 py-4">Pool / Shift</th>
-                    <th className="px-5 py-4">Live Status</th>
-                    <th className="px-5 py-4">Workload</th>
-                    <th className="px-5 py-4 text-right">Actions</th>
+            <div className="overflow-x-auto rounded-[10px] border border-slate-200/80 dark:border-white/10 shadow-2xs">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-[#F8FAFC] dark:bg-[#172033] text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-white/10 sticky top-0 z-10">
+                  <tr className="h-10">
+                    <th className="px-3.5 py-2">Employee ID</th>
+                    <th className="px-3.5 py-2">Personnel Name</th>
+                    <th className="px-3.5 py-2">Pool / Shift</th>
+                    <th className="px-3.5 py-2">Live Status</th>
+                    <th className="px-3.5 py-2">Workload</th>
+                    <th className="px-3.5 py-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/10">
@@ -664,51 +662,47 @@ export default function Users() {
                     return (
                       <tr
                         key={a.id}
-                        className={`h-[90px] ${
+                        className={`h-[52px] ${
                           idx % 2 === 0
                             ? "bg-white dark:bg-[#111827]"
                             : "bg-slate-50/50 dark:bg-[#151F32]"
-                        } hover:bg-amber-50/40 dark:hover:bg-[#1C2740] hover:-translate-y-0.5 hover:border-l-4 hover:border-l-[#F4B400] transition-all duration-250 group`}
+                        } hover:bg-amber-50/40 dark:hover:bg-[#1C2740] transition-all duration-150 group`}
                       >
-                        <td className="px-5 py-4 font-mono font-bold text-xs">
-                          <span className="bg-slate-100 dark:bg-[#172033] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-[#94A3B8] px-3 py-1.5 rounded-full font-extrabold shadow-2xs">
+                        <td className="px-3.5 py-2 font-mono font-bold text-[11px]">
+                          <span className="bg-slate-100 dark:bg-[#172033] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-[#94A3B8] px-2 py-0.5 rounded-[6px] font-bold">
                             {a.employee_id}
                           </span>
                         </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-4">
+                        <td className="px-3.5 py-2">
+                          <div className="flex items-center gap-2.5">
                             <div className="relative shrink-0 group/avatar">
-                              {/* 56x56 Avatar with 2px Dual Blue -> Yellow Gradient Border & 18px Radius */}
-                              <div className="h-[56px] w-[56px] rounded-[18px] p-[2px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-[0_12px_30px_rgba(37,99,235,0.30)] group-hover/avatar:shadow-[0_16px_36px_rgba(37,99,235,0.45)] group-hover/avatar:scale-[1.06] group-hover/avatar:-translate-y-0.5 transition-all duration-250 shrink-0 cursor-pointer relative">
-                                <div className="w-full h-full rounded-[16px] bg-gradient-to-br from-[#3B82F6] via-[#2563EB] to-[#1D4ED8] flex items-center justify-center relative overflow-hidden">
-                                  {/* Top 30% Glossy Highlight */}
-                                  <div className="absolute top-0 left-0 right-0 h-[30%] bg-gradient-to-b from-white/35 to-transparent pointer-events-none rounded-t-[16px]" />
-                                  <span className="text-[20px] font-bold text-white relative z-10 leading-none drop-shadow-xs">
+                              <div className="h-8 w-8 rounded-[8px] p-[1.5px] bg-gradient-to-br from-[#2563EB] via-[#3B82F6] to-[#FACC15] shadow-2xs shrink-0 cursor-pointer relative">
+                                <div className="w-full h-full rounded-[6px] bg-gradient-to-br from-[#3B82F6] via-[#2563EB] to-[#1D4ED8] flex items-center justify-center relative overflow-hidden">
+                                  <span className="text-xs font-bold text-white relative z-10 leading-none">
                                     {initials}
                                   </span>
                                 </div>
                               </div>
-                              {/* 12px Online Indicator Dot with 2px White Border & Soft Green Glow */}
-                              <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-[#10B981] border-2 border-white dark:border-[#111827] shadow-[0_0_10px_rgba(16,185,129,0.6)] z-20 animate-pulse" />
+                              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#10B981] border border-white dark:border-[#111827] z-20 animate-pulse" />
                             </div>
                             <div className="flex flex-col">
-                              <span className="font-black text-slate-900 dark:text-[#F8FAFC] text-sm leading-tight group-hover:text-[#2563EB] dark:group-hover:text-[#60A5FA] transition-colors">{a.name}</span>
-                              <span className="text-xs font-medium text-slate-400 dark:text-[#64748B] mt-0.5">{a.email}</span>
+                              <span className="font-bold text-slate-900 dark:text-[#F8FAFC] text-xs leading-tight group-hover:text-[#2563EB] dark:group-hover:text-[#60A5FA] transition-colors">{a.name}</span>
+                              <span className="text-[10px] font-medium text-slate-400 dark:text-[#64748B]">{a.email}</span>
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4">
-                          <div className="flex flex-col gap-1">
-                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] font-extrabold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-[#818CF8] border border-indigo-200 dark:border-indigo-500/30 uppercase w-fit shadow-2xs">
-                              <Layers className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#60A5FA]" />
+                        <td className="px-3.5 py-2">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10.5px] font-bold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-[#818CF8] border border-indigo-200 dark:border-indigo-500/30 uppercase w-fit">
+                              <Layers className="h-3 w-3 text-[#2563EB] dark:text-[#60A5FA]" />
                               <span>{poolObj?.name.replace("_", " ").toUpperCase() || "GENERAL"}</span>
                             </span>
-                            <span className="text-[10px] text-slate-400 dark:text-[#64748B] font-mono font-semibold">{a.shift || "Day Shift"}</span>
+                            <span className="text-[9.5px] text-slate-400 dark:text-[#64748B] font-mono font-semibold">{a.shift || "Day Shift"}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-3.5 py-2">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border uppercase shadow-2xs ${
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10.5px] font-bold border uppercase ${
                               a.status === "online"
                                 ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30 text-[#047857] dark:text-[#34D399]"
                                 : a.status === "busy"
@@ -722,29 +716,23 @@ export default function Users() {
                             <span>{a.status || "offline"}</span>
                           </span>
                         </td>
-                        <td className="px-5 py-4">
-                          {/* 40px Height Premium KPI Chip with Dual Gradient Border */}
-                          <div className="p-[1px] bg-gradient-to-r from-[#2563EB] to-[#FACC15] rounded-full inline-block group/chip shadow-[0_8px_24px_rgba(37,99,235,0.18)] hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_12px_32px_rgba(37,99,235,0.35)] transition-all duration-250 cursor-pointer">
-                            <div className="h-10 min-w-[110px] px-4 rounded-full bg-gradient-to-r from-blue-900/15 via-blue-700/10 to-blue-600/15 dark:from-[#1E3A8A]/40 dark:to-[#2563EB]/30 bg-blue-50/80 backdrop-blur-md flex items-center justify-center gap-2.5 whitespace-nowrap">
-                              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#2563EB] to-[#3B82F6] flex items-center justify-center shrink-0 shadow-xs shadow-blue-500/30">
-                                <UsersIcon className="h-3.5 w-3.5 text-white" />
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[18px] font-bold text-slate-900 dark:text-white font-mono leading-none">{getAgentLeadsCount(a.id)}</span>
-                                <span className="text-[13px] font-medium text-slate-600 dark:text-[#94A3B8]/90 leading-none">Leads</span>
-                              </div>
+                        <td className="px-3.5 py-2">
+                          <div className="p-[1px] bg-gradient-to-r from-[#2563EB] to-[#FACC15] rounded-full inline-block group/chip shadow-2xs cursor-pointer">
+                            <div className="h-7 px-3 rounded-full bg-blue-50/80 dark:bg-[#1E3A8A]/40 backdrop-blur-md flex items-center justify-center gap-1.5 whitespace-nowrap">
+                              <span className="text-xs font-bold text-slate-900 dark:text-white font-mono leading-none">{getAgentLeadsCount(a.id)}</span>
+                              <span className="text-[10.5px] font-semibold text-slate-600 dark:text-[#94A3B8]/90 leading-none">Leads</span>
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-right">
+                        <td className="px-3.5 py-2 text-right">
                           <button
                             onClick={() => {
                               setTransferAgentId(a.id);
                               setIsTransferModalOpen(true);
                             }}
-                            className="h-[46px] px-5 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white text-xs rounded-[14px] font-extrabold transition-all duration-200 shadow-md shadow-blue-500/25 inline-flex items-center gap-2 cursor-pointer active:scale-95"
+                            className="h-[36px] px-3.5 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white text-xs rounded-[8px] font-semibold transition-all duration-150 shadow-xs inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
                           >
-                            <Send className="h-3.5 w-3.5" />
+                            <Send className="h-3 w-3" />
                             <span>Request Transfer</span>
                           </button>
                         </td>
@@ -753,7 +741,7 @@ export default function Users() {
                   })}
                   {myAgents.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-5 py-16 text-center text-slate-400 dark:text-[#64748B] font-medium">
+                      <td colSpan={6} className="px-3.5 py-8 text-center text-slate-400 dark:text-[#64748B] font-medium">
                         No agents assigned to your team portfolio.
                       </td>
                     </tr>
@@ -931,118 +919,118 @@ export default function Users() {
         onTabChange={(tabId) => setActiveTab(tabId as any)}
       />
 
-      {/* Modern KPI Chips Banner */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 dark:border-white/10 shadow-xs hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between">
+      {/* Modern KPI Chips Banner (Single row on desktop, 12px radius, 98px height) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-3 rounded-[12px] border border-slate-200/80 dark:border-white/10 shadow-2xs hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between h-[98px]">
           <div>
-            <span className="text-[10px] font-extrabold text-slate-400 dark:text-[#64748B] uppercase tracking-wider block">TOTAL PERSONNEL</span>
-            <span className="text-2xl font-black text-slate-900 dark:text-[#F8FAFC] font-mono leading-none mt-1 block">{users.length}</span>
+            <span className="text-[10.5px] font-bold text-slate-400 dark:text-[#64748B] uppercase tracking-wider block">TOTAL PERSONNEL</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-[#F8FAFC] font-mono leading-none mt-1.5 block">{users.length}</span>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center border border-blue-100 dark:border-blue-500/30 shadow-xs">
-            <UsersIcon className="h-5 w-5" />
+          <div className="h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center border border-blue-100 dark:border-blue-500/30 shadow-2xs">
+            <UsersIcon className="h-3.5 w-3.5" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 dark:border-white/10 shadow-xs hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between">
+        <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-3 rounded-[12px] border border-slate-200/80 dark:border-white/10 shadow-2xs hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between h-[98px]">
           <div>
-            <span className="text-[10px] font-extrabold text-[#047857] dark:text-[#34D399] uppercase tracking-wider block">ACTIVE ACCOUNTS</span>
-            <span className="text-2xl font-black text-[#047857] dark:text-[#34D399] font-mono leading-none mt-1 block">{users.filter(u => u.is_active).length}</span>
+            <span className="text-[10.5px] font-bold text-emerald-600 dark:text-[#34D399] uppercase tracking-wider block">ACTIVE ACCOUNTS</span>
+            <span className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-[#34D399] font-mono leading-none mt-1.5 block">{users.filter(u => u.is_active).length}</span>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-[#047857] dark:text-[#34D399] flex items-center justify-center border border-emerald-100 dark:border-emerald-500/30 shadow-xs">
-            <UserCheck className="h-5 w-5" />
+          <div className="h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 text-[#047857] dark:text-[#34D399] flex items-center justify-center border border-emerald-100 dark:border-emerald-500/30 shadow-2xs">
+            <UserCheck className="h-3.5 w-3.5" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 dark:border-white/10 shadow-xs hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between">
+        <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-3 rounded-[12px] border border-slate-200/80 dark:border-white/10 shadow-2xs hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between h-[98px]">
           <div>
-            <span className="text-[10px] font-extrabold text-purple-600 dark:text-[#A78BFA] uppercase tracking-wider block">TEAM LEADERS</span>
-            <span className="text-2xl font-black text-purple-700 dark:text-[#A78BFA] font-mono leading-none mt-1 block">{users.filter(u => u.role === "team_leader").length}</span>
+            <span className="text-[10.5px] font-bold text-purple-600 dark:text-[#A78BFA] uppercase tracking-wider block">TEAM LEADERS</span>
+            <span className="text-xl sm:text-2xl font-black text-purple-700 dark:text-[#A78BFA] font-mono leading-none mt-1.5 block">{users.filter(u => u.role === "team_leader").length}</span>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-[#A78BFA] flex items-center justify-center border border-purple-100 dark:border-purple-500/30 shadow-xs">
-            <Crown className="h-5 w-5" />
+          <div className="h-7 w-7 rounded-lg bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-[#A78BFA] flex items-center justify-center border border-purple-100 dark:border-purple-500/30 shadow-2xs">
+            <Crown className="h-3.5 w-3.5" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-4 rounded-[16px] border border-slate-200/80 dark:border-white/10 shadow-xs hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between">
+        <div className="bg-white dark:bg-[#111827] backdrop-blur-xl p-3 rounded-[12px] border border-slate-200/80 dark:border-white/10 shadow-2xs hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-between h-[98px]">
           <div>
-            <span className="text-[10px] font-extrabold text-amber-600 dark:text-[#FCD34D] uppercase tracking-wider block">ACTIVE AGENTS</span>
-            <span className="text-2xl font-black text-amber-700 dark:text-[#FCD34D] font-mono leading-none mt-1 block">{users.filter(u => u.role === "agent").length}</span>
+            <span className="text-[10.5px] font-bold text-amber-600 dark:text-[#FCD34D] uppercase tracking-wider block">ACTIVE AGENTS</span>
+            <span className="text-xl sm:text-2xl font-black text-amber-700 dark:text-[#FCD34D] font-mono leading-none mt-1.5 block">{users.filter(u => u.role === "agent").length}</span>
           </div>
-          <div className="h-10 w-10 rounded-xl bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-[#FCD34D] flex items-center justify-center border border-amber-100 dark:border-amber-500/30 shadow-xs">
-            <ShieldCheck className="h-5 w-5" />
+          <div className="h-7 w-7 rounded-lg bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-[#FCD34D] flex items-center justify-center border border-amber-100 dark:border-amber-500/30 shadow-2xs">
+            <ShieldCheck className="h-3.5 w-3.5" />
           </div>
         </div>
       </div>
 
       {/* Tab Contents: User Accounts */}
       {activeTab === "accounts" && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* User List Table (Full Width) */}
-          <div className="bg-white dark:bg-[#111827] backdrop-blur-xl rounded-[20px] p-6 shadow-md border border-slate-200/80 dark:border-white/10 space-y-5">
+          <div className="bg-white dark:bg-[#111827] backdrop-blur-xl rounded-[12px] p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-white/10 space-y-3.5">
             
             {/* Header Toolbar */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-5 border-b border-slate-100 dark:border-white/10">
-              <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 rounded-2xl bg-[#2563EB]/10 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center border border-[#2563EB]/20 shadow-xs">
-                  <UsersIcon className="h-6 w-6 text-[#2563EB] dark:text-[#60A5FA]" />
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-3 border-b border-slate-100 dark:border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-[10px] bg-[#2563EB]/10 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center border border-[#2563EB]/20 shadow-2xs">
+                  <UsersIcon className="h-4.5 w-4.5 text-[#2563EB] dark:text-[#60A5FA]" />
                 </div>
                 <div>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="flex flex-col items-start">
-                      <h2 className="text-lg sm:text-xl lg:text-[22px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                      <h2 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-1.5">
                         <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Registered</span>
                         <span className="text-[#F4B400] font-extrabold">Personnel</span>
                       </h2>
                     </div>
-                    <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                    <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1 shrink-0">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
                       {users.filter(u => u.is_active).length} ACTIVE PERSONNEL
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-[#94A3B8] font-semibold mt-1">Manage team directory, roles, pool assignments, and security accounts</p>
+                  <p className="text-[11px] text-slate-500 dark:text-[#94A3B8] font-medium mt-0.5">Manage team directory, roles, pool assignments, and security accounts</p>
                 </div>
               </div>
 
               <button
                 onClick={() => setIsCreateUserModalOpen(true)}
-                className="h-[52px] px-6 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white rounded-[14px] text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-blue-500/25 cursor-pointer shrink-0 active:scale-95"
+                className="h-[40px] px-4 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white rounded-[10px] text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0 active:scale-95"
               >
-                <UserPlus className="h-4 w-4" />
+                <UserPlus className="h-3.5 w-3.5" />
                 <span>+ Add User</span>
               </button>
             </div>
 
-            {/* Filter & Search Toolbar (52px Height Controls) */}
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-              {/* Search input (52px height) */}
+            {/* Filter & Search Toolbar (40px Height Controls) */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+              {/* Search input (40px height) */}
               <div className="relative flex-1 w-full">
-                <Search className="h-5 w-5 text-slate-400 dark:text-[#64748B] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="h-3.5 w-3.5 text-slate-400 dark:text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={userSearch}
                   onChange={e => setUserSearch(e.target.value)}
                   placeholder="Search by name, email, ID..."
-                  className="w-full h-[52px] pl-12 pr-10 border border-slate-200 dark:border-white/10 rounded-[14px] text-xs bg-slate-50 dark:bg-[#172033] font-semibold text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] transition-all duration-200 focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20 shadow-xs"
+                  className="w-full h-[40px] pl-9 pr-8 border border-slate-200 dark:border-white/10 rounded-[10px] text-xs bg-slate-50/80 dark:bg-[#172033] font-semibold text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] transition-all duration-200 focus:outline-none focus:border-[#2563EB] shadow-2xs"
                 />
                 {userSearch && (
                   <button
                     onClick={() => setUserSearch("")}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Role & Pool Filters (52px height) */}
-              <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-bold">
+              {/* Role & Pool Filters (40px height) */}
+              <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap lg:flex-nowrap justify-end text-xs font-semibold">
                 <CustomSelect
                   value={userRoleFilter}
                   onChange={setUserRoleFilter}
                   options={ROLE_FILTER_OPTIONS}
                   placeholder="All Roles"
-                  className="w-full sm:w-40 shrink-0"
-                  triggerClassName="h-[52px] rounded-[14px] text-xs dark:bg-[#172033] dark:text-[#F8FAFC] dark:border-white/10 hover:border-[#2563EB]"
+                  className="w-full sm:w-36 shrink-0"
+                  triggerClassName="h-[40px] rounded-[10px] text-xs font-semibold dark:bg-[#172033] dark:text-[#F8FAFC] dark:border-white/10 hover:border-[#2563EB]"
                 />
 
                 <CustomSelect
@@ -1050,23 +1038,23 @@ export default function Users() {
                   onChange={setUserPoolFilter}
                   options={userPoolFilterOptions}
                   placeholder="All Pools"
-                  className="w-full sm:w-40 shrink-0"
-                  triggerClassName="h-[52px] rounded-[14px] text-xs dark:bg-[#172033] dark:text-[#F8FAFC] dark:border-white/10 hover:border-[#2563EB]"
+                  className="w-full sm:w-36 shrink-0"
+                  triggerClassName="h-[40px] rounded-[10px] text-xs font-semibold dark:bg-[#172033] dark:text-[#F8FAFC] dark:border-white/10 hover:border-[#2563EB]"
                 />
               </div>
             </div>
 
             {/* Table Container */}
-            <div className="overflow-x-auto rounded-[16px] border border-slate-200/80 dark:border-white/10 shadow-xs">
-              <table className="w-full text-sm text-left border-collapse">
-                <thead className="bg-slate-50 dark:bg-[#172033] text-slate-500 dark:text-[#94A3B8] font-black uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-white/10 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-5 py-4">Employee ID</th>
-                    <th className="px-5 py-4">Personnel Name</th>
-                    <th className="px-5 py-4">System Role</th>
-                    <th className="px-5 py-4">Assigned Pool</th>
-                    <th className="px-5 py-4">Account Status</th>
-                    <th className="px-5 py-4 text-right">Actions</th>
+            <div className="overflow-x-auto rounded-[10px] border border-slate-200/80 dark:border-white/10 shadow-2xs">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-[#F8FAFC] dark:bg-[#172033] text-slate-500 dark:text-[#94A3B8] font-bold uppercase tracking-wider text-[11px] border-b border-slate-200/80 dark:border-white/10 sticky top-0 z-10">
+                  <tr className="h-10">
+                    <th className="px-3.5 py-2">Employee ID</th>
+                    <th className="px-3.5 py-2">Personnel Name</th>
+                    <th className="px-3.5 py-2">System Role</th>
+                    <th className="px-3.5 py-2">Assigned Pool</th>
+                    <th className="px-3.5 py-2">Account Status</th>
+                    <th className="px-3.5 py-2 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/10">
@@ -1084,7 +1072,7 @@ export default function Users() {
                         (userPoolFilter === "none" ? !u.pool_id : u.pool_id === userPoolFilter);
                       return matchesSearch && matchesRole && matchesPool;
                     })
-                    .map((u) => {
+                    .map((u, idx) => {
                       const isNewlyCreated = newlyCreatedUserId === u.id || newlyCreatedUserId === (u as any)._id;
                       const poolObj = pools.find(p => p.id === u.pool_id);
                       const initials = u.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
@@ -1092,28 +1080,28 @@ export default function Users() {
                       return (
                         <tr
                           key={u.id}
-                          className={`h-[72px] transition-all duration-200 ${
+                          className={`h-[52px] transition-all duration-150 cursor-pointer ${
                             isNewlyCreated
                               ? "bg-emerald-50/90 dark:bg-emerald-500/20 font-semibold"
-                              : "bg-white dark:bg-[#111827]"
-                          } hover:bg-amber-50/40 dark:hover:bg-[#1C2740] hover:border-l-4 hover:border-l-[#F4B400] group`}
+                              : idx % 2 === 0 ? "bg-white dark:bg-[#111827]" : "bg-slate-50/50 dark:bg-[#151F32]"
+                          } hover:bg-blue-50/60 dark:hover:bg-[#1C2740] group`}
                         >
                           {/* Employee ID */}
-                          <td className="px-5 py-4">
-                            <span className="inline-flex items-center gap-1 font-mono font-bold text-xs bg-slate-100 dark:bg-[#172033] text-slate-700 dark:text-[#94A3B8] px-3 py-1.5 rounded-full border border-slate-200/80 dark:border-white/10">
+                          <td className="px-3.5 py-2">
+                            <span className="inline-flex items-center gap-1 font-mono font-bold text-[11px] bg-slate-100 dark:bg-[#172033] text-slate-600 dark:text-[#94A3B8] px-2 py-0.5 rounded-[6px] border border-slate-200/80 dark:border-white/10">
                               {u.employee_id || "N/A"}
                             </span>
                           </td>
 
                           {/* Name & Email with Avatar */}
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white flex items-center justify-center font-black text-xs shadow-md shadow-blue-500/20 shrink-0 border border-blue-400/30 relative">
+                          <td className="px-3.5 py-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-[8px] bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0 border border-blue-400/30 relative">
                                 {initials}
-                                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-white dark:border-[#111827]" />
+                                <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 border border-white dark:border-[#111827]" />
                               </div>
                               <div className="flex flex-col">
-                                <span className="font-black text-sm leading-tight flex items-center gap-1.5">
+                                <span className="font-bold text-xs leading-tight flex items-center gap-1">
                                   <span className="text-[#1D4ED8] dark:text-[#3B82F6]">
                                     {u.role === "team_leader" ? "Supervisor" : u.role === "admin" ? "Admin" : "Agent"}
                                   </span>
@@ -1121,15 +1109,15 @@ export default function Users() {
                                     {u.name}
                                   </span>
                                 </span>
-                                <span className="text-[11px] font-semibold text-slate-400 dark:text-[#64748B]">{u.email}</span>
+                                <span className="text-[10px] font-medium text-slate-400 dark:text-[#64748B]">{u.email}</span>
                               </div>
                             </div>
                           </td>
 
                           {/* Role Badge */}
-                          <td className="px-5 py-4">
+                          <td className="px-3.5 py-2">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold uppercase border ${
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10.5px] font-semibold uppercase border ${
                                 u.role === "admin"
                                   ? "bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-[#A78BFA] border-purple-200 dark:border-purple-500/30"
                                   : u.role === "team_leader"
@@ -1137,27 +1125,27 @@ export default function Users() {
                                   : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-[#94A3B8] border-slate-200 dark:border-slate-700"
                               }`}
                             >
-                              {u.role === "team_leader" ? <Crown className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#60A5FA]" /> : <Shield className="h-3.5 w-3.5" />}
+                              {u.role === "team_leader" ? <Crown className="h-3 w-3 text-[#2563EB] dark:text-[#60A5FA]" /> : <Shield className="h-3 w-3" />}
                               <span>{u.role === "team_leader" ? "TL" : (u.role || "agent").replace(/_/g, " ")}</span>
                             </span>
                           </td>
 
                           {/* Pool Pill */}
-                          <td className="px-5 py-4">
+                          <td className="px-3.5 py-2">
                             {poolObj ? (
-                              <span className="inline-flex items-center gap-2 px-[14px] py-[6px] rounded-[12px] text-xs font-semibold bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/15 dark:to-indigo-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200/80 dark:border-blue-500/30 shadow-2xs">
-                                <Layers className="h-3.5 w-3.5 shrink-0 text-[#2563EB] dark:text-[#60A5FA]" />
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] text-[11px] font-semibold bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] border border-blue-200/80 dark:border-blue-500/30">
+                                <Layers className="h-3 w-3 shrink-0 text-[#2563EB] dark:text-[#60A5FA]" />
                                 <span>{poolObj.name === "credit_card_sales" ? "Sales Team" : poolObj.name.replace(/_/g, " ")}</span>
                               </span>
                             ) : (
-                              <span className="text-[11px] font-semibold text-slate-400 dark:text-[#64748B] italic">No Pool Assigned</span>
+                              <span className="text-[10.5px] font-medium text-slate-400 dark:text-[#64748B] italic">No Pool Assigned</span>
                             )}
                           </td>
 
                           {/* Status */}
-                          <td className="px-5 py-4">
+                          <td className="px-3.5 py-2">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border ${
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[6px] text-[10.5px] font-semibold border ${
                                 u.is_active
                                   ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30 text-[#047857] dark:text-[#34D399]"
                                   : "bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-[#94A3B8]"
@@ -1169,15 +1157,15 @@ export default function Users() {
                           </td>
 
                           {/* Actions */}
-                          <td className="px-5 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          <td className="px-3.5 py-2 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
                               {/* Edit Button */}
                               <button
                                 onClick={() => openEditModal(u)}
-                                className="h-9 px-3.5 bg-slate-100 dark:bg-[#172033] hover:bg-blue-50 dark:hover:bg-blue-500/20 text-slate-700 dark:text-[#F8FAFC] hover:text-[#2563EB] dark:hover:text-[#60A5FA] border border-slate-200 dark:border-white/10 text-xs rounded-xl font-extrabold transition cursor-pointer active:scale-95 flex items-center gap-1.5"
+                                className="h-8 px-3 bg-slate-100 dark:bg-[#172033] hover:bg-blue-50 dark:hover:bg-blue-500/20 text-slate-700 dark:text-[#F8FAFC] hover:text-[#2563EB] dark:hover:text-[#60A5FA] border border-slate-200 dark:border-white/10 text-xs rounded-[8px] font-semibold transition cursor-pointer active:scale-95 flex items-center gap-1"
                                 title="Edit User Account"
                               >
-                                <Edit className="h-3.5 w-3.5" />
+                                <Edit className="h-3 w-3" />
                                 <span>Edit</span>
                               </button>
 
@@ -1185,7 +1173,7 @@ export default function Users() {
                               {u.is_active && (
                                 <button
                                   onClick={() => handleDeactivateUser(u.id || (u as any)._id || "", u.name)}
-                                  className="h-9 px-3.5 bg-slate-100 dark:bg-[#172033] hover:bg-amber-50 dark:hover:bg-amber-500/20 text-slate-700 dark:text-[#F8FAFC] hover:text-amber-600 dark:hover:text-[#FCD34D] border border-slate-200 dark:border-white/10 text-xs rounded-xl font-extrabold transition cursor-pointer active:scale-95"
+                                  className="h-8 px-3 bg-slate-100 dark:bg-[#172033] hover:bg-amber-50 dark:hover:bg-amber-500/20 text-slate-700 dark:text-[#F8FAFC] hover:text-amber-600 dark:hover:text-[#FCD34D] border border-slate-200 dark:border-white/10 text-xs rounded-[8px] font-semibold transition cursor-pointer active:scale-95"
                                   title="Deactivate Account"
                                 >
                                   Deactivate
@@ -1195,10 +1183,10 @@ export default function Users() {
                               {/* Delete Button */}
                               <button
                                 onClick={() => handleDeleteUser(u.id || (u as any)._id || "", u.name)}
-                                className="h-9 w-9 bg-slate-100 dark:bg-[#172033] hover:bg-rose-50 dark:hover:bg-rose-500/20 text-rose-500 hover:text-rose-700 dark:hover:text-[#F87171] border border-slate-200 dark:border-white/10 text-xs rounded-xl font-extrabold transition cursor-pointer active:scale-95 flex items-center justify-center"
+                                className="h-8 w-8 bg-slate-100 dark:bg-[#172033] hover:bg-rose-50 dark:hover:bg-rose-500/20 text-rose-500 hover:text-rose-700 dark:hover:text-[#F87171] border border-slate-200 dark:border-white/10 text-xs rounded-[8px] font-semibold transition cursor-pointer active:scale-95 flex items-center justify-center"
                                 title="Delete User Account"
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 className="h-3 w-3" />
                               </button>
                             </div>
                           </td>
@@ -1207,7 +1195,7 @@ export default function Users() {
                     })}
                   {users.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400 font-medium">
+                      <td colSpan={6} className="px-3.5 py-8 text-center text-slate-400 font-medium">
                         No registered personnel accounts found. Click "+ Add User" to register team members.
                       </td>
                     </tr>

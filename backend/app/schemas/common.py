@@ -140,6 +140,16 @@ class CampaignCreate(BaseModel):
     name: str
     pool_id: str
     description: Optional[str] = None
+    industry: Optional[str] = "banking"  # banking, insurance, bpo, general
+    workflow_category: Optional[str] = "credit_cards"  # cards, loans, accounts, policy, claims, sales, support
+    dialer_mode: Optional[str] = "progressive"  # progressive, predictive, power, inbound_ivr, manual
+    routing_strategy: Optional[str] = "longest_idle"  # longest_idle, skill_matched, priority, round_robin
+    required_skills: Optional[list[str]] = Field(default_factory=list)
+    dnd_check_enabled: Optional[bool] = True
+    calling_hours_start: Optional[str] = "09:00"
+    calling_hours_end: Optional[str] = "20:00"
+    pacing_ratio: Optional[float] = 1.5
+    inbound_queue_priority: Optional[int] = 5
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     campaign_type: Optional[str] = "outbound"

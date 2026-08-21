@@ -279,22 +279,22 @@ function LiveCallsSkeleton() {
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function LiveCallsEmptyState({ onReset }: { onReset: () => void }) {
   return (
-    <div className="bg-white dark:bg-[#111827] backdrop-blur-md rounded-[24px] border border-slate-200/80 dark:border-white/10 p-16 text-center space-y-5 shadow-sm my-4 col-span-2">
-      <div className="h-20 w-20 rounded-3xl bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center mx-auto border border-blue-100 dark:border-blue-500/30 shadow-sm">
-        <Radio className="h-10 w-10 text-[#2563EB] dark:text-[#60A5FA] animate-pulse" />
+    <div className="bg-white dark:bg-[#111827] backdrop-blur-md rounded-[12px] border border-slate-200/80 dark:border-white/10 p-8 sm:p-10 text-center space-y-3.5 shadow-2xs my-2 col-span-2">
+      <div className="h-12 w-12 rounded-[12px] bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#60A5FA] flex items-center justify-center mx-auto border border-blue-100 dark:border-blue-500/30 shadow-2xs">
+        <Radio className="h-6 w-6 text-[#2563EB] dark:text-[#60A5FA] animate-pulse" />
       </div>
       <div>
-        <h3 className="text-xl font-black text-slate-900 dark:text-[#F8FAFC]">No Active Live Calls</h3>
-        <p className="text-sm text-slate-500 dark:text-[#94A3B8] font-semibold mt-1.5 max-w-sm mx-auto">
+        <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-[#F8FAFC] tracking-tight">No Active Live Calls</h3>
+        <p className="text-xs text-slate-500 dark:text-[#94A3B8] font-medium mt-1 max-w-xs mx-auto">
           No live channels match your search query or filter criteria.
         </p>
       </div>
       <button
         onClick={onReset}
-        className="px-5 py-2.5 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white rounded-xl text-sm font-extrabold transition shadow-md active:scale-95 cursor-pointer inline-flex items-center gap-2"
+        className="h-[40px] px-4 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white rounded-[10px] text-xs font-semibold transition shadow-2xs active:scale-95 cursor-pointer inline-flex items-center gap-1.5"
       >
-        <RotateCcw className="h-4 w-4" />
-        Reset Filters
+        <RotateCcw className="h-3.5 w-3.5" />
+        <span>Reset Filters</span>
       </button>
     </div>
   );
@@ -931,76 +931,76 @@ export default function LiveCalls() {
 
       <div className="space-y-5 max-w-[1600px] mx-auto w-full font-sans pb-16">
 
-        {/* ─── 1. HEADER (96px Min Height, #131C2F -> #18243A Gradient, 24px Radius) ─── */}
-        <div className="bg-gradient-to-r from-white via-slate-50 to-blue-50/20 dark:from-[#131C2F] dark:to-[#18243A] backdrop-blur-xl rounded-[24px] p-6 min-h-[96px] border border-slate-200/80 dark:border-white/10 shadow-2xl shadow-slate-950/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-5 relative overflow-hidden">
-          <div className="flex items-center gap-5 relative z-10">
-            {/* 60px Rounded Square Icon Container */}
-            <div className="h-[60px] w-[60px] rounded-[18px] bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/30 border border-blue-400/30 relative">
-              <Radio className="h-7 w-7 animate-pulse text-white drop-shadow-xs" />
+        {/* ─── 1. HEADER (60px Min Height, 12px Radius) ─── */}
+        <div className="bg-gradient-to-r from-white via-slate-50 to-blue-50/20 dark:from-[#131C2F] dark:to-[#18243A] backdrop-blur-xl rounded-[12px] p-3.5 sm:p-4 min-h-[60px] border border-slate-200/80 dark:border-white/10 shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-3 relative overflow-hidden">
+          <div className="flex items-center gap-3.5 relative z-10">
+            {/* Rounded Square Icon Container */}
+            <div className="h-9 w-9 rounded-lg bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white flex items-center justify-center shrink-0 shadow-sm border border-blue-400/30 relative">
+              <Radio className="h-4.5 w-4.5 animate-pulse text-white drop-shadow-xs" />
             </div>
             <div>
-              <div className="flex items-center gap-3 flex-wrap min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap min-w-0">
                 <div className="flex flex-col items-start">
-                  <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                  <h1 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-1.5">
                     <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Live Call</span>
                     <span className="text-[#F4B400] font-extrabold">Console</span>
                   </h1>
                 </div>
-                <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+                <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1 shrink-0">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
                   LIVE TELEMETRY
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium">
                 Real-time contact center channels &amp; AI telemetry
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3.5 w-full md:w-auto justify-end relative z-10">
-            <span className="text-xs font-bold text-slate-600 dark:text-[#94A3B8] bg-slate-100 dark:bg-[#18243A] px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 shadow-2xs">
+          <div className="flex items-center gap-2.5 w-full md:w-auto justify-end relative z-10">
+            <span className="text-xs font-bold text-slate-600 dark:text-[#94A3B8] bg-slate-100 dark:bg-[#18243A] px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 shadow-2xs">
               Showing <strong className="text-slate-900 dark:text-[#F8FAFC] font-mono">{filteredCalls.length}</strong> of {calls.length} Active Calls
             </span>
             <button
               onClick={fetchLiveCalls}
-              className="h-11 px-4.5 bg-slate-100 dark:bg-[#18243A] hover:bg-slate-200 dark:hover:bg-[#202F4B] text-slate-700 dark:text-[#F8FAFC] rounded-xl text-xs font-extrabold transition flex items-center gap-2 border border-slate-200 dark:border-white/10 shadow-xs active:scale-95 cursor-pointer"
+              className="h-8 px-3 bg-slate-100 dark:bg-[#18243A] hover:bg-slate-200 dark:hover:bg-[#202F4B] text-slate-700 dark:text-[#F8FAFC] rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 border border-slate-200 dark:border-white/10 shadow-xs active:scale-95 cursor-pointer"
             >
-              <RotateCcw className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA] active:rotate-180 transition-transform duration-300" />
+              <RotateCcw className="h-3.5 w-3.5 text-[#2563EB] dark:text-[#60A5FA] active:rotate-180 transition-transform duration-300" />
               <span>Sync</span>
             </button>
           </div>
         </div>
 
-        {/* ─── 2. FILTER TOOLBAR (Search 56px & Filter Buttons 54px) ────────────────────────────────────── */}
-        <div className="bg-white dark:bg-[#131C2F] backdrop-blur-xl rounded-[22px] p-5 border border-slate-200/80 dark:border-white/10 shadow-md flex flex-col lg:flex-row items-center justify-between gap-5">
-          {/* Search Bar (56px Height & 18px Radius) */}
-          <div className="relative w-full lg:w-[420px] shrink-0">
-            <Search className="h-4.5 w-4.5 text-[#2563EB] dark:text-[#60A5FA] absolute left-4.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        {/* ─── 2. COMPACT FILTER TOOLBAR (Search 44px & Filter Buttons 44px with 12px Radius) ────────────────────────────────────── */}
+        <div className="bg-white dark:bg-[#131C2F] backdrop-blur-xl rounded-[12px] p-3 sm:p-3.5 border border-slate-200/80 dark:border-white/10 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-3">
+          {/* Search Bar (44px Height & 12px Radius) */}
+          <div className="relative w-full lg:w-[380px] shrink-0">
+            <Search className="h-3.5 w-3.5 text-slate-400 dark:text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Search leads, calls, phone, agent..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-[56px] pl-12 pr-10 border border-slate-200 dark:border-white/10 rounded-[18px] text-xs bg-slate-50/80 dark:bg-[#18243A] focus:bg-white dark:focus:bg-[#18243A] focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-blue-500/20 font-semibold text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B]/60 transition"
+              className="w-full h-[44px] pl-9 pr-9 border border-slate-200 dark:border-white/10 rounded-[12px] text-xs font-semibold bg-slate-50/80 dark:bg-[#18243A] focus:bg-white dark:focus:bg-[#18243A] focus:outline-none focus:border-[#2563EB] text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B]/60 transition-all duration-200"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer transition-colors"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
-          {/* Filter Chips (54px Height Segmented Controls & 18px Radius) */}
-          <div className="relative flex-1 min-w-0 flex items-center gap-2.5 w-full lg:w-auto">
+          {/* Filter Chips (44px Height Controls & 12px Radius) */}
+          <div className="relative flex-1 min-w-0 flex items-center gap-2 w-full lg:w-auto">
             {showScrollLeft && (
               <button
                 onClick={() => handleScrollTabs("left")}
-                className="h-[54px] w-[54px] rounded-[18px] bg-white dark:bg-[#18243A] hover:bg-[#2563EB] hover:text-white text-slate-700 dark:text-[#F8FAFC] transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 dark:border-white/10 active:scale-95 z-20"
+                className="h-[44px] w-[44px] rounded-[12px] bg-white dark:bg-[#18243A] hover:bg-[#2563EB] hover:text-white text-slate-700 dark:text-[#F8FAFC] transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-2xs border border-slate-200 dark:border-white/10 active:scale-95 z-20"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
               </button>
             )}
 
@@ -1008,7 +1008,7 @@ export default function LiveCalls() {
               ref={tabsRef}
               onWheel={handleWheelTabs}
               onScroll={checkScrollability}
-              className="flex items-center gap-3 overflow-x-auto scroll-smooth w-full py-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-nowrap"
+              className="flex items-center gap-2 overflow-x-auto scroll-smooth w-full py-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] flex-nowrap"
             >
               {chipOptions.map((chip) => {
                 const count = chip.id === "all" 
@@ -1019,16 +1019,16 @@ export default function LiveCalls() {
                   <button
                     key={chip.id}
                     onClick={() => setChipFilter(chip.id)}
-                    className={`h-[48px] px-6 rounded-[16px] text-[13.5px] font-semibold whitespace-nowrap transition-all duration-200 ease-in-out cursor-pointer shrink-0 flex items-center justify-center gap-3 active:scale-95 ${
+                    className={`h-[44px] px-4 rounded-[12px] text-xs font-semibold whitespace-nowrap transition-all duration-200 ease-in-out cursor-pointer shrink-0 flex items-center justify-center gap-2 active:scale-95 ${
                       chipFilter === chip.id
-                        ? "bg-gradient-to-r from-[#FACC15] to-[#EAB308] text-slate-950 font-semibold shadow-[0_4px_16px_rgba(234,179,8,0.3)] border border-amber-300/40 scale-[1.01]"
-                        : "bg-white dark:bg-[#182233] text-slate-700 dark:text-[#F8FAFC] border border-amber-200/80 dark:border-amber-500/20 hover:bg-amber-50/70 dark:hover:bg-amber-500/10 hover:border-amber-300 dark:hover:border-amber-500/40 hover:-translate-y-0.5 shadow-xs"
+                        ? "bg-gradient-to-r from-[#FACC15] to-[#EAB308] text-slate-950 font-bold shadow-xs border border-amber-300/40"
+                        : "bg-white dark:bg-[#182233] text-slate-700 dark:text-[#F8FAFC] border border-amber-200/80 dark:border-amber-500/20 hover:bg-amber-50/70 dark:hover:bg-amber-500/10 hover:border-amber-300 dark:hover:border-amber-500/40 shadow-2xs"
                     }`}
                   >
                     <span>{chip.label}</span>
                     {count > 0 && (
                       <span
-                        className={`h-6.5 min-w-[26px] px-2 rounded-full font-bold text-[11px] flex items-center justify-center ${
+                        className={`h-5 min-w-[20px] px-1.5 rounded-full font-bold text-[10px] flex items-center justify-center ${
                           chipFilter === chip.id
                             ? "bg-amber-700/20 text-slate-950 shadow-2xs"
                             : "bg-amber-100/90 dark:bg-amber-500/15 text-amber-900 dark:text-[#FDE047]"
@@ -1045,19 +1045,19 @@ export default function LiveCalls() {
             {showScrollRight && (
               <button
                 onClick={() => handleScrollTabs("right")}
-                className="h-[54px] w-[54px] rounded-[18px] bg-white dark:bg-[#18243A] hover:bg-[#2563EB] hover:text-white text-slate-700 dark:text-[#F8FAFC] transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-md border border-slate-200 dark:border-white/10 active:scale-95 z-20"
+                className="h-[44px] w-[44px] rounded-[12px] bg-white dark:bg-[#18243A] hover:bg-[#2563EB] hover:text-white text-slate-700 dark:text-[#F8FAFC] transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-2xs border border-slate-200 dark:border-white/10 active:scale-95 z-20"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             )}
 
             {(searchQuery || chipFilter !== "all") && (
               <button
                 onClick={() => { setSearchQuery(""); setChipFilter("all"); }}
-                className="h-[52px] px-4 bg-rose-50 dark:bg-rose-500/10 text-rose-600 border border-rose-200 dark:border-rose-500/20 rounded-[14px] text-xs font-extrabold transition hover:bg-rose-100 shrink-0 cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+                className="h-[44px] px-3.5 bg-rose-50 dark:bg-rose-500/10 text-rose-600 border border-rose-200 dark:border-rose-500/20 rounded-[12px] text-xs font-bold transition hover:bg-rose-100 shrink-0 cursor-pointer flex items-center justify-center gap-1 active:scale-95"
               >
-                <X className="h-4 w-4" />
-                Clear
+                <X className="h-3.5 w-3.5" />
+                <span>Clear</span>
               </button>
             )}
           </div>

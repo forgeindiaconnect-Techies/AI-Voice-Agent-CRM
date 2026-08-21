@@ -242,180 +242,181 @@ export default function Reports() {
       className="space-y-6 max-w-7xl mx-auto font-sans"
     >
       {/* 1. TOP GLASSMORPHISM PAGE HEADER & EXPORT TOOLBAR */}
-      <div className="bg-white dark:bg-[#1E293B] backdrop-blur-xl rounded-[16px] p-6 shadow-sm border border-slate-200/80 dark:border-white/10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200/80 dark:from-amber-500/20 dark:to-amber-500/10 text-[#1D4ED8] dark:text-[#FDE047] flex items-center justify-center font-bold shrink-0 shadow-2xs border border-amber-300/60 dark:border-amber-500/30">
-            <BarChart3 className="h-6 w-6 text-[#1D4ED8] dark:text-[#FDE047]" />
+      <div className="bg-white dark:bg-[#1E293B] backdrop-blur-xl rounded-[12px] p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-white/10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-[10px] bg-gradient-to-br from-amber-100 to-amber-200/80 dark:from-amber-500/20 dark:to-amber-500/10 text-[#1D4ED8] dark:text-[#FDE047] flex items-center justify-center font-bold shrink-0 shadow-2xs border border-amber-300/60 dark:border-amber-500/30">
+            <BarChart3 className="h-4.5 w-4.5 text-[#1D4ED8] dark:text-[#FDE047]" />
           </div>
           <div>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className="flex flex-col items-start">
-                <h1 className="text-xl sm:text-2xl lg:text-[26px] font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                <h1 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-1.5">
                   <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Reports &</span>
                   <span className="text-[#F4B400] font-extrabold">Analytics Engine</span>
                 </h1>
               </div>
-              <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1.5 shrink-0">
+              <span className="bg-white dark:bg-[#0F172A] border border-[#2563EB]/40 dark:border-blue-400/40 text-[#1D4ED8] dark:text-[#60A5FA] text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-2xs inline-flex items-center gap-1 shrink-0">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#F4B400] animate-pulse"></span>
                 ENTERPRISE V1.0
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">Export and inspect operational voice performance metrics and lead analytics</p>
+            <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium">Export and inspect operational voice performance metrics and lead analytics</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           {/* Report Type selector */}
           <CustomSelect
             value={reportType}
             onChange={val => setReportType(val as any)}
             options={REPORT_TYPE_OPTIONS}
             placeholder="Select Report"
-            className="w-56"
+            className="w-52 sm:w-56"
+            triggerClassName="h-[40px] rounded-[10px] text-xs font-semibold border-slate-200/80 dark:border-white/10 dark:bg-[#111827]"
           />
 
           {/* Export Actions */}
           <button
             onClick={() => triggerExport("csv")}
-            className="h-10 px-4 text-xs font-extrabold bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
+            className="h-[40px] px-3.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-200/80 text-slate-700 dark:bg-white/10 dark:hover:bg-white/20 dark:border-white/10 dark:text-slate-200 rounded-[10px] transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-2xs"
           >
-            <FileSpreadsheet className="h-4 w-4 text-[#0F4FA8]" />
+            <FileSpreadsheet className="h-3.5 w-3.5 text-[#0F4FA8] dark:text-[#60A5FA]" />
             <span>Export CSV</span>
           </button>
           <button
             onClick={() => triggerExport("excel")}
-            className="h-10 px-4 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-md shadow-emerald-600/15"
+            className="h-[40px] px-3.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-[10px] transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
           >
-            <FileSpreadsheet className="h-4 w-4 text-white" />
+            <FileSpreadsheet className="h-3.5 w-3.5 text-white" />
             <span>Export Excel</span>
           </button>
           <button
             onClick={() => triggerExport("pdf")}
-            className="h-10 px-4 text-xs font-extrabold bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white rounded-xl transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-md shadow-blue-500/20"
+            className="h-[40px] px-3.5 text-xs font-semibold bg-gradient-to-r from-[#0F4FA8] to-[#1E6AD7] hover:from-[#0B3C80] hover:to-[#1656B3] text-white rounded-[10px] transition flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
           >
-            <Printer className="h-4 w-4 text-white" />
+            <Printer className="h-3.5 w-3.5 text-white" />
             <span>Print PDF</span>
           </button>
         </div>
       </div>
 
-      {/* 2. MODERN KPI SUMMARY CARDS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 2. MODERN KPI SUMMARY CARDS GRID (Single row on desktop, 12px radius, 98px height) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {/* KPI 1: Total Calls */}
         <motion.div
-          whileHover={{ y: -3, scale: 1.01 }}
+          whileHover={{ y: -3 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="bg-white/95 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-32 border-t-4 border-t-[#0F4FA8]"
+          className="bg-white/95 dark:bg-[#131C2F] p-3 rounded-[12px] border border-slate-200/80 dark:border-white/10 shadow-2xs flex flex-col justify-between h-[98px] border-t-4 border-t-[#0F4FA8]"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">TOTAL DIALED CALLS</span>
-            <div className="h-8 w-8 rounded-xl bg-blue-50 text-[#0F4FA8] flex items-center justify-center border border-blue-100">
-              <PhoneCall className="h-4 w-4" />
+            <span className="text-[10.5px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider">TOTAL DIALED CALLS</span>
+            <div className="h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-500/15 text-[#0F4FA8] dark:text-[#60A5FA] flex items-center justify-center border border-blue-100 dark:border-blue-500/20">
+              <PhoneCall className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">{totalCallsCount || (reportType === "agent_performance" ? 38 : summaryCount(perfData, importData, campaignData))}</span>
+            <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono tracking-tight">{totalCallsCount || (reportType === "agent_performance" ? 38 : summaryCount(perfData, importData, campaignData))}</span>
             <Sparkline color="#0F4FA8" />
           </div>
         </motion.div>
 
         {/* KPI 2: Answer Rate */}
         <motion.div
-          whileHover={{ y: -3, scale: 1.01 }}
+          whileHover={{ y: -3 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="bg-white/95 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-32 border-t-4 border-t-emerald-500"
+          className="bg-white/95 dark:bg-[#131C2F] p-3 rounded-[12px] border border-slate-200/80 dark:border-white/10 shadow-2xs flex flex-col justify-between h-[98px] border-t-4 border-t-emerald-500"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[11px] font-extrabold text-emerald-600 uppercase tracking-wider">CALL ANSWER RATE</span>
-            <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-              <CheckCircle2 className="h-4 w-4" />
+            <span className="text-[10.5px] font-bold text-emerald-600 dark:text-[#34D399] uppercase tracking-wider">CALL ANSWER RATE</span>
+            <div className="h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-[#34D399] flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20">
+              <CheckCircle2 className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-emerald-700 font-mono tracking-tight">{answerRatePercent || 47}%</span>
+            <span className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-[#34D399] font-mono tracking-tight">{answerRatePercent || 47}%</span>
             <Sparkline color="#10B981" />
           </div>
         </motion.div>
 
         {/* KPI 3: Qualified Leads */}
         <motion.div
-          whileHover={{ y: -3, scale: 1.01 }}
+          whileHover={{ y: -3 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="bg-white/95 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-32 border-t-4 border-t-purple-600"
+          className="bg-white/95 dark:bg-[#131C2F] p-3 rounded-[12px] border border-slate-200/80 dark:border-white/10 shadow-2xs flex flex-col justify-between h-[98px] border-t-4 border-t-purple-600"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[11px] font-extrabold text-purple-600 uppercase tracking-wider">QUALIFIED OUTCOMES</span>
-            <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
-              <Sparkles className="h-4 w-4" />
+            <span className="text-[10.5px] font-bold text-purple-600 dark:text-[#C084FC] uppercase tracking-wider">QUALIFIED OUTCOMES</span>
+            <div className="h-7 w-7 rounded-lg bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-[#C084FC] flex items-center justify-center border border-purple-100 dark:border-purple-500/20">
+              <Sparkles className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-purple-700 font-mono tracking-tight">{totalQualifiedCount || 0}</span>
+            <span className="text-xl sm:text-2xl font-black text-purple-700 dark:text-[#C084FC] font-mono tracking-tight">{totalQualifiedCount || 0}</span>
             <Sparkline color="#7C3AED" />
           </div>
         </motion.div>
 
         {/* KPI 4: Avg Call Duration */}
         <motion.div
-          whileHover={{ y: -3, scale: 1.01 }}
+          whileHover={{ y: -3 }}
           transition={{ type: "spring", stiffness: 300, damping: 20 }}
-          className="bg-white/95 backdrop-blur-xl p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between h-32 border-t-4 border-t-amber-500"
+          className="bg-white/95 dark:bg-[#131C2F] p-3 rounded-[12px] border border-slate-200/80 dark:border-white/10 shadow-2xs flex flex-col justify-between h-[98px] border-t-4 border-t-amber-500"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[11px] font-extrabold text-amber-600 uppercase tracking-wider">AVG CALL DURATION</span>
-            <div className="h-8 w-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
-              <Clock className="h-4 w-4" />
+            <span className="text-[10.5px] font-bold text-amber-600 dark:text-[#FBBF24] uppercase tracking-wider">AVG CALL DURATION</span>
+            <div className="h-7 w-7 rounded-lg bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-[#FBBF24] flex items-center justify-center border border-amber-100 dark:border-amber-500/20">
+              <Clock className="h-3.5 w-3.5" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-black text-amber-700 font-mono tracking-tight">{avgDurationSec || 17}s</span>
+            <span className="text-xl sm:text-2xl font-black text-amber-700 dark:text-[#FBBF24] font-mono tracking-tight">{avgDurationSec || 17}s</span>
             <Sparkline color="#F59E0B" />
           </div>
         </motion.div>
       </div>
 
       {/* 3. REPORT DATA PREVIEW CARD WITH STICKY TABLE & TOOLBAR */}
-      <div className="bg-white dark:bg-[#131C2F] rounded-[22px] p-6 shadow-[0_10px_35px_rgba(15,23,42,0.08)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)] border border-[#E2E8F0] dark:border-white/[0.06] space-y-6 relative overflow-hidden">
+      <div className="bg-white dark:bg-[#131C2F] rounded-[12px] p-3.5 sm:p-4 shadow-2xs border border-slate-200/80 dark:border-white/10 space-y-3.5 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#2563EB] to-[#FACC15]" />
         
         {/* Header Toolbar */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 border-b border-[#E2E8F0] dark:border-white/[0.06] pb-6">
-          <div className="flex items-center gap-3.5">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-white/10 pb-3">
+          <div className="flex items-center gap-3">
             <div>
               <div className="flex flex-col items-start">
-                <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-tight flex items-center gap-2 -tracking-[0.5px]">
+                <h3 className="text-lg sm:text-xl font-extrabold tracking-tight leading-tight flex items-center gap-1.5">
                   <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">{reportType === "call_analytics" ? "Call" : reportType === "agent_performance" ? "Agent" : "Campaign"}</span>
                   <span className="text-[#F4B400] font-extrabold">Analytics Preview</span>
                 </h3>
               </div>
-              <p className="text-xs sm:text-sm text-[#64748B] dark:text-[#94A3B8] font-medium mt-1">Real-time aggregated analytics data table</p>
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-medium mt-0.5">Real-time aggregated analytics data table</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            {/* Search Input (48px height) */}
-            <div className="relative flex-1 sm:w-72">
-              <Search className="h-4 w-4 text-[#2563EB] dark:text-[#64748B] absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Search Input (40px height) */}
+            <div className="relative flex-1 sm:w-64">
+              <Search className="h-3.5 w-3.5 text-slate-400 dark:text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search report records..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full h-[48px] pl-11 pr-9 bg-[#F8FAFC] dark:bg-[#0B1220]/60 border border-[#CBD5E1] dark:border-white/[0.08] rounded-[14px] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-[#94A3B8] dark:placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10 transition-all duration-250"
+                className="w-full h-[40px] pl-9 pr-8 bg-slate-50/80 dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-[10px] text-xs font-semibold text-slate-900 dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-[#64748B] focus:outline-none focus:border-[#2563EB] transition-all duration-200"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white cursor-pointer transition duration-150">
-                  <X className="h-4 w-4" />
+                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer transition">
+                  <X className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Refresh Button (48px height) */}
+            {/* Refresh Button (40px height) */}
             <button
               onClick={loadReportData}
-              className="h-[48px] px-5 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white font-bold text-xs rounded-[14px] transition-all duration-250 flex items-center gap-2 shadow-md shadow-blue-500/10 hover:shadow-blue-500/25 shrink-0 cursor-pointer active:scale-95 hover:scale-[1.01]"
+              className="h-[40px] px-4 bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] text-white font-semibold text-xs rounded-[10px] transition-all duration-200 flex items-center gap-1.5 shadow-xs shrink-0 cursor-pointer active:scale-95"
             >
-              <RefreshCw className={`h-4 w-4 text-white ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`h-3.5 w-3.5 text-white ${loading ? "animate-spin" : ""}`} />
               <span>Refresh</span>
             </button>
           </div>
@@ -445,22 +446,22 @@ export default function Reports() {
             <p className="text-slate-400 dark:text-[#64748B] font-extrabold text-xs uppercase tracking-widest">Aggregating report data...</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-[16px] border border-[#E2E8F0] dark:border-white/[0.08] shadow-xs">
+          <div className="overflow-x-auto rounded-[10px] border border-slate-200/80 dark:border-white/[0.08] shadow-2xs">
             {/* 1. AGENT PERFORMANCE REPORT TABLE */}
             {reportType === "agent_performance" && (
               <table className="w-full text-xs text-left border-collapse">
                 <thead className="bg-[#F8FAFC] dark:bg-[#1A2740] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider text-[11px] sticky top-0 z-10">
-                  <tr className="h-12 border-b border-[#E2E8F0] dark:border-white/[0.06]">
-                    <th className="px-5 py-3">Employee ID</th>
-                    <th className="px-5 py-3">Agent Name</th>
-                    <th className="px-5 py-3 text-center">Total Calls</th>
-                    <th className="px-5 py-3 text-center">Answered</th>
-                    <th className="px-5 py-3 text-center">Qualified</th>
-                    <th className="px-5 py-3 text-center">Avg Duration</th>
-                    <th className="px-5 py-3 text-center">Conversion Rate</th>
+                  <tr className="h-10 border-b border-slate-200/80 dark:border-white/[0.06]">
+                    <th className="px-3.5 py-2">Employee ID</th>
+                    <th className="px-3.5 py-2">Agent Name</th>
+                    <th className="px-3.5 py-2 text-center">Total Calls</th>
+                    <th className="px-3.5 py-2 text-center">Answered</th>
+                    <th className="px-3.5 py-2 text-center">Qualified</th>
+                    <th className="px-3.5 py-2 text-center">Avg Duration</th>
+                    <th className="px-3.5 py-2 text-center">Conversion Rate</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E2E8F0]/60 dark:divide-white/[0.04]">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {perfData
                     .filter(p => {
                       const q = searchQuery.toLowerCase();
@@ -469,40 +470,40 @@ export default function Reports() {
                     .map((p, idx) => (
                       <tr
                         key={p.agent_id}
-                        className={`h-[68px] transition-all duration-250 cursor-pointer ${
-                          idx % 2 === 0 ? "bg-white dark:bg-[#131C2F]" : "bg-[#F8FAFC] dark:bg-[#172338]"
-                        } hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/5 hover:-translate-y-0.5 hover:shadow-[inset_4px_0_0_#2563EB,0_4px_12px_rgba(37,99,235,0.08)] dark:hover:shadow-[inset_4px_0_0_#2563EB,0_4px_12px_rgba(0,0,0,0.15)]`}
+                        className={`h-[52px] transition-all duration-150 cursor-pointer ${
+                          idx % 2 === 0 ? "bg-white dark:bg-[#131C2F]" : "bg-slate-50/50 dark:bg-[#172338]"
+                        } hover:bg-blue-50/60 dark:hover:bg-[#2563EB]/10`}
                       >
-                        <td className="px-5 py-4 font-mono font-bold">
-                          <span className="bg-white dark:bg-[#0B1220]/60 border border-[#E2E8F0] dark:border-white/10 text-[#64748B] dark:text-[#94A3B8] px-3 py-1.5 rounded-full font-extrabold">
+                        <td className="px-3.5 py-2 font-mono font-bold">
+                          <span className="bg-slate-100 dark:bg-[#0B1220]/60 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-[#94A3B8] px-2 py-0.5 rounded-[6px] font-bold text-[11px]">
                             {p.employee_id || "N/A"}
                           </span>
                         </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white flex items-center justify-center font-black text-xs shadow-md shadow-blue-500/20 shrink-0 border border-blue-400/30 relative">
+                        <td className="px-3.5 py-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-8 w-8 rounded-[8px] bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0 border border-blue-400/30 relative">
                               {p.agent_name[0]?.toUpperCase() || "A"}
-                              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border border-white dark:border-[#131C2F]" />
+                              <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 border border-white dark:border-[#131C2F]" />
                             </div>
                             <div className="flex flex-col">
-                              <span className="font-extrabold text-[#0F172A] dark:text-[#F8FAFC] text-xs leading-tight">{p.agent_name}</span>
-                              <span className="text-[10px] font-semibold text-[#64748B]">Voice Specialist</span>
+                              <span className="font-bold text-slate-900 dark:text-[#F8FAFC] text-xs leading-tight">{p.agent_name}</span>
+                              <span className="text-[10px] font-medium text-slate-400 dark:text-[#64748B]">Voice Specialist</span>
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-[#0F172A] dark:text-[#F8FAFC]">{p.total_calls}</td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-[#10B981] dark:text-[#34D399]">{p.answered}</td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-[#2563EB] dark:text-[#60A5FA]">{p.qualified}</td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-[#64748B] dark:text-[#94A3B8]">{p.avg_duration_seconds}s</td>
-                        <td className="px-5 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2.5">
-                            <div className="w-16 bg-slate-100 dark:bg-[#0B1220] rounded-full h-1.5 overflow-hidden border border-[#E2E8F0] dark:border-white/5">
+                        <td className="px-3.5 py-2 text-center font-mono font-black text-slate-900 dark:text-[#F8FAFC]">{p.total_calls}</td>
+                        <td className="px-3.5 py-2 text-center font-mono font-black text-emerald-600 dark:text-[#34D399]">{p.answered}</td>
+                        <td className="px-3.5 py-2 text-center font-mono font-black text-[#2563EB] dark:text-[#60A5FA]">{p.qualified}</td>
+                        <td className="px-3.5 py-2 text-center font-mono font-bold text-slate-500 dark:text-[#94A3B8]">{p.avg_duration_seconds}s</td>
+                        <td className="px-3.5 py-2 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-14 bg-slate-100 dark:bg-[#0B1220] rounded-full h-1.5 overflow-hidden border border-slate-200/80 dark:border-white/5">
                               <div
-                                className="bg-[#10B981] h-full rounded-full transition-all duration-500"
+                                className="bg-[#10B981] h-full rounded-full transition-all duration-300"
                                 style={{ width: `${Math.min(p.conversion_rate, 100)}%` }}
                               />
                             </div>
-                            <span className="bg-[#10B981]/10 border border-[#10B981]/20 text-[#10B981] dark:bg-[#10B981]/15 dark:border-[#10B981]/30 dark:text-[#34D399] px-2.5 py-0.5 rounded-full font-black text-[10px] font-mono">
+                            <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-[#34D399] border border-emerald-200/80 dark:border-emerald-500/30 px-2 py-0.5 rounded-[6px] font-bold text-[10px] font-mono">
                               {p.conversion_rate}%
                             </span>
                           </div>
@@ -511,7 +512,7 @@ export default function Reports() {
                     ))}
                   {perfData.length === 0 && !error && (
                     <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center text-[#64748B] dark:text-[#94A3B8] font-medium">
+                      <td colSpan={7} className="px-3.5 py-8 text-center text-slate-400 dark:text-[#94A3B8] font-medium">
                         No agent performance logs recorded.
                       </td>
                     </tr>
@@ -524,16 +525,16 @@ export default function Reports() {
             {reportType === "lead_import" && (
               <table className="w-full text-xs text-left border-collapse">
                 <thead className="bg-[#F8FAFC] dark:bg-[#1A2740] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider text-[11px] sticky top-0 z-10">
-                  <tr className="h-12 border-b border-[#E2E8F0] dark:border-white/[0.06]">
-                    <th className="px-5 py-3">Import ID</th>
-                    <th className="px-5 py-3">Timestamp</th>
-                    <th className="px-5 py-3 text-center">Total Processed</th>
-                    <th className="px-5 py-3 text-center">Success Stored</th>
-                    <th className="px-5 py-3 text-center">Duplicate Skipped</th>
-                    <th className="px-5 py-3 text-center">Invalid Skipped</th>
+                  <tr className="h-10 border-b border-slate-200/80 dark:border-white/[0.06]">
+                    <th className="px-3.5 py-2">Import ID</th>
+                    <th className="px-3.5 py-2">Timestamp</th>
+                    <th className="px-3.5 py-2 text-center">Total Processed</th>
+                    <th className="px-3.5 py-2 text-center">Success Stored</th>
+                    <th className="px-3.5 py-2 text-center">Duplicate Skipped</th>
+                    <th className="px-3.5 py-2 text-center">Invalid Skipped</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E2E8F0]/60 dark:divide-white/[0.04]">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {importData
                     .filter(imp => {
                       const q = searchQuery.toLowerCase();
@@ -542,25 +543,25 @@ export default function Reports() {
                     .map((imp, idx) => (
                       <tr 
                         key={imp.import_id} 
-                        className={`h-[68px] transition-all duration-250 cursor-pointer ${
-                          idx % 2 === 0 ? "bg-white dark:bg-[#131C2F]" : "bg-[#F8FAFC] dark:bg-[#172338]"
-                        } hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/5 hover:-translate-y-0.5 hover:shadow-[inset_4px_0_0_#2563EB,0_4px_12px_rgba(37,99,235,0.08)] dark:hover:shadow-[inset_4px_0_0_#2563EB,0_4px_12px_rgba(0,0,0,0.15)]`}
+                        className={`h-[52px] transition-all duration-150 cursor-pointer ${
+                          idx % 2 === 0 ? "bg-white dark:bg-[#131C2F]" : "bg-slate-50/50 dark:bg-[#172338]"
+                        } hover:bg-blue-50/60 dark:hover:bg-[#2563EB]/10`}
                       >
-                        <td className="px-5 py-4 font-mono font-bold text-[#2563EB] dark:text-[#60A5FA]">
-                          <span className="bg-blue-50 dark:bg-[#2563EB]/10 border border-blue-200 dark:border-[#2563EB]/20 px-2.5 py-1 rounded-md">
+                        <td className="px-3.5 py-2 font-mono font-bold text-[#2563EB] dark:text-[#60A5FA]">
+                          <span className="bg-blue-50 dark:bg-[#2563EB]/10 border border-blue-200 dark:border-[#2563EB]/20 px-2 py-0.5 rounded-[6px]">
                             {imp.import_id}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-[#0F172A] dark:text-[#F8FAFC] font-semibold">{new Date(imp.created_at).toLocaleString()}</td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">{imp.total_processed}</td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-[#10B981] dark:text-[#34D399]">+{imp.inserted}</td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-[#F59E0B] dark:text-[#FBBF24]">{imp.skipped_duplicates}</td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-[#EF4444] dark:text-[#F87171]">{imp.skipped_invalid}</td>
+                        <td className="px-3.5 py-2 text-slate-900 dark:text-[#F8FAFC] font-semibold">{new Date(imp.created_at).toLocaleString()}</td>
+                        <td className="px-3.5 py-2 text-center font-mono font-bold text-slate-900 dark:text-[#F8FAFC]">{imp.total_processed}</td>
+                        <td className="px-3.5 py-2 text-center font-mono font-black text-emerald-600 dark:text-[#34D399]">+{imp.inserted}</td>
+                        <td className="px-3.5 py-2 text-center font-mono font-bold text-amber-600 dark:text-[#FBBF24]">{imp.skipped_duplicates}</td>
+                        <td className="px-3.5 py-2 text-center font-mono font-bold text-rose-600 dark:text-[#F87171]">{imp.skipped_invalid}</td>
                       </tr>
                     ))}
                   {importData.length === 0 && !error && (
                     <tr>
-                      <td colSpan={6} className="px-5 py-12 text-center text-[#64748B] dark:text-[#94A3B8] font-medium">
+                      <td colSpan={6} className="px-3.5 py-8 text-center text-slate-400 dark:text-[#94A3B8] font-medium">
                         No lead imports recorded in CRM.
                       </td>
                     </tr>
@@ -573,15 +574,15 @@ export default function Reports() {
             {reportType === "campaign" && (
               <table className="w-full text-xs text-left border-collapse">
                 <thead className="bg-[#F8FAFC] dark:bg-[#1A2740] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider text-[11px] sticky top-0 z-10">
-                  <tr className="h-12 border-b border-[#E2E8F0] dark:border-white/[0.06]">
-                    <th className="px-5 py-3">Campaign ID</th>
-                    <th className="px-5 py-3">Name</th>
-                    <th className="px-5 py-3">Type</th>
-                    <th className="px-5 py-3">Calling Hours</th>
-                    <th className="px-5 py-3">Status</th>
+                  <tr className="h-10 border-b border-slate-200/80 dark:border-white/[0.06]">
+                    <th className="px-3.5 py-2">Campaign ID</th>
+                    <th className="px-3.5 py-2">Name</th>
+                    <th className="px-3.5 py-2">Type</th>
+                    <th className="px-3.5 py-2">Calling Hours</th>
+                    <th className="px-3.5 py-2">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E2E8F0]/60 dark:divide-white/[0.04]">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {campaignData
                     .filter(c => {
                       const q = searchQuery.toLowerCase();
@@ -590,16 +591,16 @@ export default function Reports() {
                     .map((c, idx) => (
                       <tr 
                         key={c.id} 
-                        className={`h-[68px] transition-all duration-250 cursor-pointer ${
-                          idx % 2 === 0 ? "bg-white dark:bg-[#131C2F]" : "bg-[#F8FAFC] dark:bg-[#172338]"
-                        } hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/5 hover:-translate-y-0.5 hover:shadow-[inset_4px_0_0_#2563EB,0_4px_12px_rgba(37,99,235,0.08)] dark:hover:shadow-[inset_4px_0_0_#2563EB,0_4px_12px_rgba(0,0,0,0.15)]`}
+                        className={`h-[52px] transition-all duration-150 cursor-pointer ${
+                          idx % 2 === 0 ? "bg-white dark:bg-[#131C2F]" : "bg-slate-50/50 dark:bg-[#172338]"
+                        } hover:bg-blue-50/60 dark:hover:bg-[#2563EB]/10`}
                       >
-                        <td className="px-5 py-4 font-mono font-semibold text-[#64748B] dark:text-[#94A3B8]">{c.campaign_id}</td>
-                        <td className="px-5 py-4 font-extrabold text-[#0F172A] dark:text-[#F8FAFC]">{c.name}</td>
-                        <td className="px-5 py-4 capitalize text-[#334155] dark:text-[#CBD5E1] font-medium">{c.campaign_type}</td>
-                        <td className="px-5 py-4 text-[#334155] dark:text-[#CBD5E1] font-mono">{c.calling_hours || "N/A"}</td>
-                        <td className="px-5 py-4">
-                          <span className="bg-[#10B981]/10 border border-[#10B981]/20 text-[#10B981] dark:text-[#34D399] px-2.5 py-0.5 rounded-full font-bold uppercase">
+                        <td className="px-3.5 py-2 font-mono font-semibold text-slate-500 dark:text-[#94A3B8]">{c.campaign_id}</td>
+                        <td className="px-3.5 py-2 font-extrabold text-slate-900 dark:text-[#F8FAFC]">{c.name}</td>
+                        <td className="px-3.5 py-2 capitalize text-slate-600 dark:text-[#CBD5E1] font-medium">{c.campaign_type}</td>
+                        <td className="px-3.5 py-2 text-slate-600 dark:text-[#CBD5E1] font-mono">{c.calling_hours || "N/A"}</td>
+                        <td className="px-3.5 py-2">
+                          <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-[#34D399] border border-emerald-200/80 dark:border-emerald-500/30 px-2 py-0.5 rounded-[6px] font-bold text-[10.5px] uppercase">
                             {c.status}
                           </span>
                         </td>
@@ -607,7 +608,7 @@ export default function Reports() {
                     ))}
                   {campaignData.length === 0 && !error && (
                     <tr>
-                      <td colSpan={5} className="px-5 py-12 text-center text-[#64748B] dark:text-[#94A3B8] font-medium">
+                      <td colSpan={5} className="px-3.5 py-8 text-center text-slate-400 dark:text-[#94A3B8] font-medium">
                         No campaigns recorded in CRM.
                       </td>
                     </tr>
@@ -620,17 +621,17 @@ export default function Reports() {
             {reportType === "call_analytics" && (
               <table className="w-full text-xs text-left border-collapse">
                 <thead className="bg-[#F8FAFC] dark:bg-[#1A2740] text-[#64748B] dark:text-[#94A3B8] font-bold uppercase tracking-wider text-[11px] sticky top-0 z-10">
-                  <tr className="h-12 border-b border-[#E2E8F0] dark:border-white/[0.06]">
-                    <th className="px-5 py-3">Call ID</th>
-                    <th className="px-5 py-3">Lead / Channel</th>
-                    <th className="px-5 py-3 text-center">Direction</th>
-                    <th className="px-5 py-3 text-center">Duration</th>
-                    <th className="px-5 py-3 text-center">Outcome Status</th>
-                    <th className="px-5 py-3">Started At</th>
-                    <th className="px-5 py-3">Notes & Disposition</th>
+                  <tr className="h-10 border-b border-slate-200/80 dark:border-white/[0.06]">
+                    <th className="px-3.5 py-2">Call ID</th>
+                    <th className="px-3.5 py-2">Lead / Channel</th>
+                    <th className="px-3.5 py-2 text-center">Direction</th>
+                    <th className="px-3.5 py-2 text-center">Duration</th>
+                    <th className="px-3.5 py-2 text-center">Outcome Status</th>
+                    <th className="px-3.5 py-2">Started At</th>
+                    <th className="px-3.5 py-2">Notes &amp; Disposition</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E2E8F0]/60 dark:divide-white/[0.04]">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                   {callsData
                     .filter(c => {
                       const q = searchQuery.toLowerCase();
@@ -648,49 +649,49 @@ export default function Reports() {
                       return (
                         <tr 
                           key={c.id} 
-                          className={`h-[68px] transition-all duration-250 cursor-pointer ${
-                            idx % 2 === 0 ? "bg-white dark:bg-[#131C2F]" : "bg-[#F8FAFC] dark:bg-[#172338]"
-                          } hover:bg-[#EFF6FF] dark:hover:bg-[#2563EB]/5 hover:-translate-y-0.5 hover:shadow-[inset_4px_0_0_#2563EB,0_4px_12px_rgba(37,99,235,0.08)] dark:hover:shadow-[inset_4px_0_0_#2563EB,0_4px_12px_rgba(0,0,0,0.15)]`}
+                          className={`h-[52px] transition-all duration-150 cursor-pointer ${
+                            idx % 2 === 0 ? "bg-white dark:bg-[#131C2F]" : "bg-slate-50/50 dark:bg-[#172338]"
+                          } hover:bg-blue-50/60 dark:hover:bg-[#2563EB]/10`}
                         >
-                          <td className="px-5 py-4 font-mono font-bold">
-                            <span className="bg-white dark:bg-[#0B1220]/60 border border-[#2563EB]/35 text-[#2563EB] dark:text-[#60A5FA] px-3 py-1.5 rounded-full shadow-2xs hover:shadow-[0_0_8px_rgba(37,99,235,0.12)] transition duration-200">
+                          <td className="px-3.5 py-2 font-mono font-bold">
+                            <span className="bg-blue-50 dark:bg-[#2563EB]/10 border border-blue-200 dark:border-[#2563EB]/20 text-[#2563EB] dark:text-[#60A5FA] px-2 py-0.5 rounded-[6px] text-[11px]">
                               Call #{c.id.slice(-6).toUpperCase()}
                             </span>
                           </td>
-                          <td className="px-5 py-4 font-mono font-extrabold text-[#0F172A] dark:text-[#F8FAFC]">
+                          <td className="px-3.5 py-2 font-mono font-bold text-slate-900 dark:text-[#F8FAFC]">
                             {c.lead_id || "N/A"}
                           </td>
-                          <td className="px-5 py-4 text-center">
-                            <span className={`text-[11px] font-bold uppercase px-3 py-1 rounded-full ${
+                          <td className="px-3.5 py-2 text-center">
+                            <span className={`text-[10.5px] font-semibold uppercase px-2 py-0.5 rounded-[6px] border ${
                               directionLower === "inbound" 
-                                ? "bg-blue-50 text-[#2563EB] border border-blue-200/60 dark:bg-[#2563EB]/12 dark:border-[#2563EB]/35 dark:text-[#60A5FA]" 
-                                : "bg-purple-50 text-purple-700 border border-purple-200/60 dark:bg-[#8B5CF6]/12 dark:border-[#8B5CF6]/35 dark:text-[#C084FC]"
+                                ? "bg-blue-50 text-[#2563EB] border-blue-200/80 dark:bg-[#2563EB]/15 dark:border-[#2563EB]/30 dark:text-[#60A5FA]" 
+                                : "bg-purple-50 text-purple-700 border-purple-200/80 dark:bg-[#8B5CF6]/15 dark:border-[#8B5CF6]/30 dark:text-[#C084FC]"
                             }`}>
                               {c.direction || "outbound"}
                             </span>
                           </td>
-                          <td className="px-5 py-4 text-center font-mono font-bold text-[#0F172A] dark:text-[#F8FAFC]">
+                          <td className="px-3.5 py-2 text-center font-mono font-bold text-slate-900 dark:text-[#F8FAFC]">
                             {Math.floor((c.duration_seconds || 0) / 60)}m {(c.duration_seconds || 0) % 60}s
                           </td>
-                          <td className="px-5 py-4 text-center">
-                            <span className={`text-[11px] font-bold uppercase px-3 py-1 rounded-full ${
+                          <td className="px-3.5 py-2 text-center">
+                            <span className={`text-[10.5px] font-semibold uppercase px-2 py-0.5 rounded-[6px] border ${
                               outcomeLower === "completed"
-                                ? "bg-green-50 text-green-700 border border-green-200/60 dark:bg-[#10B981]/12 dark:border-[#10B981]/30 dark:text-[#34D399]"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-[#10B981]/15 dark:border-[#10B981]/30 dark:text-[#34D399]"
                                 : outcomeLower === "answered"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-[#059669]/12 dark:border-[#059669]/30 dark:text-[#34D399]"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-[#059669]/15 dark:border-[#059669]/30 dark:text-[#34D399]"
                                 : outcomeLower === "missed" || outcomeLower === "failed" || outcomeLower === "no_answer"
-                                ? "bg-rose-50 text-rose-700 border border-rose-200/60 dark:bg-[#EF4444]/12 dark:border-[#EF4444]/30 dark:text-[#F87171]"
+                                ? "bg-rose-50 text-rose-700 border-rose-200/80 dark:bg-[#EF4444]/15 dark:border-[#EF4444]/30 dark:text-[#F87171]"
                                 : outcomeLower === "busy"
-                                ? "bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-[#F59E0B]/12 dark:border-[#F59E0B]/30 dark:text-[#FBBF24]"
-                                : "bg-[#F8FAFC] border border-[#E2E8F0] text-[#64748B] dark:bg-white/[0.04] dark:border-white/[0.08] dark:text-[#CBD5E1]"
+                                ? "bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-[#F59E0B]/15 dark:border-[#F59E0B]/30 dark:text-[#FBBF24]"
+                                : "bg-slate-100 border border-slate-200 text-slate-600 dark:bg-white/[0.04] dark:border-white/[0.08] dark:text-[#CBD5E1]"
                             }`}>
                               {c.outcome || "completed"}
                             </span>
                           </td>
-                          <td className="px-5 py-4 text-[#0F172A] dark:text-[#F8FAFC] font-semibold">
+                          <td className="px-3.5 py-2 text-slate-900 dark:text-[#F8FAFC] font-semibold text-xs">
                             {c.started_at ? new Date(c.started_at).toLocaleString() : "Recently"}
                           </td>
-                          <td className="px-5 py-4 text-[#334155] dark:text-[#CBD5E1] font-medium max-w-xs truncate">
+                          <td className="px-3.5 py-2 text-slate-600 dark:text-[#CBD5E1] font-medium text-xs max-w-xs truncate">
                             {c.notes || "No call notes recorded."}
                           </td>
                         </tr>
@@ -698,7 +699,7 @@ export default function Reports() {
                     })}
                   {callsData.length === 0 && !error && (
                     <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center text-[#64748B] dark:text-[#94A3B8] font-medium">
+                      <td colSpan={7} className="px-3.5 py-8 text-center text-slate-400 dark:text-[#94A3B8] font-medium">
                         No call logs recorded.
                       </td>
                     </tr>
