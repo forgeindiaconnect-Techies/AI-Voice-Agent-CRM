@@ -10,6 +10,9 @@ import { CustomSelect } from "../components/CustomSelect";
 import LeadFilterModal from "../components/LeadFilterModal";
 import LeadActionSlideOver, { ActiveSlideOverTab } from "../components/LeadActionSlideOver";
 import CallEventTimeline, { CallEventItem, CallEventType } from "../components/CallEventTimeline";
+import PauseBreakModal from "../components/PauseBreakModal";
+import ShiftSummaryModal from "../components/ShiftSummaryModal";
+import EarlyLogoutWarningModal from "../components/EarlyLogoutWarningModal";
 import {
   Phone,
   PhoneCall,
@@ -147,7 +150,52 @@ type CallHistoryItem = {
 export default function Dialer() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { myStatus, pauseReason, myPresence, wsConnected, setPresenceStatus } = usePresence();
+  const {
+    myStatus,
+    pauseReason,
+    myPresence,
+    wsConnected,
+    isSubmittingStatus,
+    setPresenceStatus,
+    netWorkingSeconds,
+    grossLoginSeconds,
+    totalBreakSeconds,
+    activeBreakSeconds,
+    readySeconds,
+    talkSeconds,
+    ringingSeconds,
+    setupSeconds,
+    disposeSeconds,
+    stopCount,
+    isShiftTargetReached,
+    shiftTargetSeconds,
+  } = usePresence();
+
+  const [showPauseModal, setShowPauseModal] = useState<boolean>(false);
+  const [showShiftSummaryModal, setShowShiftSummaryModal] = useState<boolean>(false);
+  const [showEarlyLogoutWarningModal, setShowEarlyLogoutWarningModal] = useState<boolean>(false);
+
+  const handleGoOfflineClick = () => {
+    if (myStatus === "offline") {
+      setShowShiftSummaryModal(true);
+      return;
+    }
+    if (!isShiftTargetReached) {
+      setShowEarlyLogoutWarningModal(true);
+    } else {
+      setShowShiftSummaryModal(true);
+    }
+  };
+
+  const handleConfirmOffline = async (forceOffline: boolean = false) => {
+    try {
+      await setPresenceStatus("offline", undefined, forceOffline);
+      showToast("Shift completed. Agent status set to Offline.", "info");
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail || err?.message || "Complete your 8-hour working period before going offline.";
+      showToast(msg, "error");
+    }
+  };
 
   const formatSecsToHMS = (totalSeconds: number) => {
     if (!totalSeconds || isNaN(totalSeconds)) return "00:00:00";
@@ -157,39 +205,17 @@ export default function Dialer() {
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const [nowTicker, setNowTicker] = useState(Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => setNowTicker(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const loginTimeStr = myPresence?.login_at && myPresence?.status !== "offline"
     ? new Date(myPresence.login_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
     : myPresence?.status === "offline" ? "Offline" : "09:00:00 AM";
 
-  const loginHoursVal = useMemo(() => {
-    if (!myPresence?.login_at || myPresence?.status === "offline") {
-      if (myPresence?.status === "offline" && myPresence?.login_at && myPresence?.logout_at) {
-        const startMs = new Date(myPresence.login_at).getTime();
-        const endMs = new Date(myPresence.logout_at).getTime();
-        const diffSec = Math.max(0, Math.floor((endMs - startMs) / 1000));
-        const hrs = (diffSec / 3600).toFixed(1);
-        return `${hrs} hrs`;
-      }
-      return "0.0 hrs";
-    }
-    try {
-      const loginDt = new Date(myPresence.login_at);
-      const diffMs = Math.max(0, nowTicker - loginDt.getTime());
-      const totalSecs = Math.floor(diffMs / 1000);
-      const hrsFloat = (totalSecs / 3600).toFixed(1);
-      const mins = Math.floor((totalSecs % 3600) / 60);
-      const secs = totalSecs % 60;
-      return `${hrsFloat} hrs (${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")})`;
-    } catch {
-      return "0.0 hrs";
-    }
-  }, [myPresence?.login_at, myPresence?.logout_at, myPresence?.status, nowTicker]);
+  const loginHoursVal = `${(netWorkingSeconds / 3600).toFixed(1)} hrs (${formatSecsToHMS(netWorkingSeconds)})`;
+  const readyTimeFormatted = formatSecsToHMS(readySeconds);
+  const pauseTimeFormatted = formatSecsToHMS(totalBreakSeconds);
+  const ringingTimeFormatted = formatSecsToHMS(ringingSeconds);
+  const callSetupTimeFormatted = formatSecsToHMS(setupSeconds);
+  const totalCallTimeFormatted = formatSecsToHMS(talkSeconds);
+  const disposeTimeFormatted = formatSecsToHMS(disposeSeconds);
 
   const maskPhoneNumber = (phoneStr?: string): string => {
     if (!phoneStr) return "N/A";
@@ -315,14 +341,6 @@ export default function Dialer() {
   const [historySearchQuery, setHistorySearchQuery] = useState("");
 
   // DERIVED TELEMETRY & METRICS (INITIALIZED AFTER ALL STATES)
-  const readyTimeFormatted = formatSecsToHMS(myPresence?.ready_seconds || 0);
-  const pauseTimeFormatted = formatSecsToHMS(myPresence?.paused_seconds || 0);
-  const stopCount = 0;
-  const ringingTimeFormatted = formatSecsToHMS(myPresence?.ringing_seconds || 0);
-  const callSetupTimeFormatted = formatSecsToHMS(myPresence?.setup_seconds || 0);
-  const totalCallTimeFormatted = formatSecsToHMS(myPresence?.talk_seconds || 0);
-  const disposeTimeFormatted = formatSecsToHMS(myPresence?.dispose_seconds || 0);
-
   const totalCallsHandled = (myPresence?.total_calls_handled !== undefined && myPresence?.total_calls_handled !== null)
     ? myPresence.total_calls_handled
     : (callHistory ? callHistory.length : 0);
@@ -1961,36 +1979,46 @@ export default function Dialer() {
                       {/* Real-time Agent Status Action Buttons */}
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <button
-                          onClick={() => setPresenceStatus("ready")}
+                          onClick={async () => {
+                            try {
+                              await setPresenceStatus("ready");
+                              showToast("Agent status set to READY.", "success");
+                            } catch (err: any) {
+                              showToast(err?.message || "Failed to set status to Ready", "error");
+                            }
+                          }}
+                          disabled={isSubmittingStatus}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
                             myStatus === "ready"
-                              ? "bg-emerald-600 text-white shadow-xs"
-                              : "bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 dark:bg-slate-800 dark:hover:bg-emerald-950/40 dark:text-slate-300 dark:hover:text-emerald-400"
-                          }`}
+                              ? "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30"
+                              : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white border border-emerald-500/30"
+                          } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : "active:scale-95 hover:scale-102"}`}
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Set Ready
                         </button>
 
                         <button
-                          onClick={() => setPresenceStatus("paused", pauseReason || "Tea Break")}
+                          onClick={() => setShowPauseModal(true)}
+                          disabled={isSubmittingStatus}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
                             myStatus === "paused"
                               ? "bg-amber-500 text-white shadow-xs"
                               : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 dark:bg-slate-800 dark:hover:bg-amber-950/40 dark:text-slate-300 dark:hover:text-amber-400"
-                          }`}
+                          } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <Clock className="h-3.5 w-3.5" />
                           Pause / Break
                         </button>
 
                         <button
-                          onClick={() => setPresenceStatus("offline")}
+                          onClick={handleGoOfflineClick}
+                          disabled={isSubmittingStatus}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
                             myStatus === "offline"
                               ? "bg-rose-600 text-white shadow-xs"
                               : "bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400"
-                          }`}
+                          } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : ""}`}
                         >
                           <PhoneOff className="h-3.5 w-3.5" />
                           Go Offline
@@ -3035,6 +3063,36 @@ export default function Dialer() {
         onApply={() => setIsFilterPanelOpen(false)}
         onClearAll={resetAllFilters}
         activeFilterCount={activeFilterCount}
+      />
+
+      {/* Categorized Pause / Break Selection Modal */}
+      <PauseBreakModal
+        isOpen={showPauseModal}
+        onClose={() => setShowPauseModal(false)}
+        onSelectBreak={(reason) => setPresenceStatus("paused", reason)}
+        onEndBreak={() => setPresenceStatus("ready")}
+        currentStatus={myStatus}
+        currentPauseReason={pauseReason}
+        pausedSeconds={myPresence?.paused_seconds || 0}
+        breakStats={myPresence?.break_stats}
+      />
+
+      {/* Early Logout Warning Modal */}
+      <EarlyLogoutWarningModal
+        isOpen={showEarlyLogoutWarningModal}
+        onClose={() => setShowEarlyLogoutWarningModal(false)}
+        onConfirmEarlyLogout={() => setShowShiftSummaryModal(true)}
+        netWorkingSeconds={netWorkingSeconds}
+        targetSeconds={shiftTargetSeconds}
+      />
+
+      {/* Final Shift Summary Modal */}
+      <ShiftSummaryModal
+        isOpen={showShiftSummaryModal}
+        onClose={() => setShowShiftSummaryModal(false)}
+        onConfirmOffline={handleConfirmOffline}
+        presenceData={myPresence}
+        agentName={user?.name || "Agent"}
       />
     </div>
   );
