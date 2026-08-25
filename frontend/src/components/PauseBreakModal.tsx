@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Coffee, Utensils, User, X, CheckCircle2, Play, Clock, Sparkles } from "lucide-react";
+import { Coffee, Utensils, User, X, Play, Clock, Sparkles, ChevronRight } from "lucide-react";
 import { BreakStats } from "../context/PresenceContext";
 
 type PauseBreakModalProps = {
@@ -24,6 +24,8 @@ export default function PauseBreakModal({
   pausedSeconds = 0,
   breakStats,
 }: PauseBreakModalProps) {
+  const [selectedReason, setSelectedReason] = useState<string>("Lunch Break");
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -54,91 +56,45 @@ export default function PauseBreakModal({
 
   const breakOptions = [
     {
+      id: "Lunch Break",
+      emoji: "🍱",
+      title: "Lunch Break",
+      recommended: "30-45 Mins",
+      description: "Meal & lunch duration tracking",
+      icon: Utensils,
+      color: "emerald",
+      bgGradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
+      borderColor: "border-emerald-500/40 hover:border-emerald-500",
+      accentBg: "bg-emerald-600 text-white",
+      stats: lunchStats,
+    },
+    {
       id: "Tea Break",
-      title: "Tea Break",
+      emoji: "☕",
+      title: "Refreshment / Tea Break",
       recommended: "15 Mins",
       description: "Quick refreshment, tea, coffee & rest break",
       icon: Coffee,
       color: "amber",
       bgGradient: "from-amber-500/10 via-amber-500/5 to-transparent",
-      borderColor: "border-amber-500/30 hover:border-amber-500",
+      borderColor: "border-amber-500/40 hover:border-amber-500",
       accentBg: "bg-amber-500 text-white",
       stats: teaStats,
     },
     {
-      id: "Lunch Break",
-      title: "Lunch Break",
-      recommended: "30-45 Mins",
-      description: "Meal & lunch break duration tracking",
-      icon: Utensils,
-      color: "emerald",
-      bgGradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
-      borderColor: "border-emerald-500/30 hover:border-emerald-500",
-      accentBg: "bg-emerald-600 text-white",
-      stats: lunchStats,
-    },
-    {
       id: "Personal Reason",
-      title: "Personal / Bio Break",
+      emoji: "👤",
+      title: "Personal Break",
       recommended: "Short Pause",
-      description: "Personal pause, bio break or urgent administrative task",
+      description: "Personal pause, bio break or urgent task",
       icon: User,
       color: "sky",
       bgGradient: "from-sky-500/10 via-sky-500/5 to-transparent",
-      borderColor: "border-sky-500/30 hover:border-sky-500",
+      borderColor: "border-sky-500/40 hover:border-sky-500",
       accentBg: "bg-sky-600 text-white",
       stats: personalStats,
     },
-    {
-      id: "Training",
-      title: "Training",
-      recommended: "Scheduled",
-      description: "Coaching session, skill development or team training",
-      icon: Clock,
-      color: "purple",
-      bgGradient: "from-purple-500/10 via-purple-500/5 to-transparent",
-      borderColor: "border-purple-500/30 hover:border-purple-500",
-      accentBg: "bg-purple-600 text-white",
-      stats: { count: 0, total_seconds: 0 },
-    },
-    {
-      id: "Meeting",
-      title: "Meeting",
-      recommended: "Scheduled",
-      description: "Team huddle, supervisor sync or one-on-one meeting",
-      icon: User,
-      color: "indigo",
-      bgGradient: "from-indigo-500/10 via-indigo-500/5 to-transparent",
-      borderColor: "border-indigo-500/30 hover:border-indigo-500",
-      accentBg: "bg-indigo-600 text-white",
-      stats: { count: 0, total_seconds: 0 },
-    },
-    {
-      id: "System Issue",
-      title: "System Issue",
-      recommended: "As Needed",
-      description: "IT support, network outage or softphone troubleshooting",
-      icon: Clock,
-      color: "rose",
-      bgGradient: "from-rose-500/10 via-rose-500/5 to-transparent",
-      borderColor: "border-rose-500/30 hover:border-rose-500",
-      accentBg: "bg-rose-600 text-white",
-      stats: { count: 0, total_seconds: 0 },
-    },
-    {
-      id: "Other",
-      title: "Other",
-      recommended: "General",
-      description: "Other unlisted operational or floor break reason",
-      icon: Coffee,
-      color: "slate",
-      bgGradient: "from-slate-500/10 via-slate-500/5 to-transparent",
-      borderColor: "border-slate-500/30 hover:border-slate-500",
-      accentBg: "bg-slate-600 text-white",
-      stats: { count: 0, total_seconds: 0 },
-    },
   ];
-
 
   return createPortal(
     <div
@@ -149,7 +105,7 @@ export default function PauseBreakModal({
       role="dialog"
       aria-modal="true"
     >
-      <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-2xl shadow-slate-950/40 border border-slate-200 dark:border-white/10 w-full max-w-xl p-6 sm:p-7 space-y-6 transition-all duration-200 animate-in fade-in zoom-in-95">
+      <div className="bg-white dark:bg-[#111827] rounded-3xl shadow-2xl shadow-slate-950/40 border border-slate-200 dark:border-white/10 w-full max-w-lg p-6 sm:p-7 space-y-6 transition-all duration-200 animate-in fade-in zoom-in-95">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/10">
@@ -159,12 +115,12 @@ export default function PauseBreakModal({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {isCurrentlyPaused ? "Active Pause / Break" : "Select Pause / Break Category"}
+                {isCurrentlyPaused ? "Active Break Session" : "Select Break Category"}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {isCurrentlyPaused
-                  ? "Track your break duration in real time or resume work anytime."
-                  : "Choose an option to log your break duration and notify the team."}
+                  ? "Track your break duration in real time or resume work."
+                  : "Select a break type below to start your pause session."}
               </p>
             </div>
           </div>
@@ -210,9 +166,9 @@ export default function PauseBreakModal({
         )}
 
         {/* BREAK OPTIONS CARDS */}
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3.5">
           {breakOptions.map((opt) => {
-            const Icon = opt.icon;
+            const isSelected = selectedReason === opt.id;
             const isCurrentReason = isCurrentlyPaused && currentPauseReason === opt.id;
 
             return (
@@ -224,47 +180,55 @@ export default function PauseBreakModal({
                 }}
                 className={`group relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden ${
                   isCurrentReason
-                    ? "bg-amber-50/80 dark:bg-amber-500/15 border-amber-500 shadow-md ring-2 ring-amber-500/20"
-                    : `bg-slate-50/70 dark:bg-slate-900/50 ${opt.borderColor} hover:shadow-lg hover:scale-[1.01]`
+                    ? "bg-amber-50/90 dark:bg-amber-500/15 border-amber-500 shadow-md ring-2 ring-amber-500/20"
+                    : isSelected
+                    ? "bg-slate-50 dark:bg-slate-900 border-amber-500/80 shadow-md ring-2 ring-amber-500/20"
+                    : `bg-slate-50/70 dark:bg-slate-900/50 ${opt.borderColor} hover:shadow-md hover:scale-[1.01]`
                 }`}
               >
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${opt.bgGradient} rounded-full blur-2xl pointer-events-none`} />
 
                 <div className="relative flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 ${opt.accentBg} shadow-sm group-hover:scale-110 transition-transform duration-200`}>
-                      <Icon className="h-6 w-6" />
+                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                    <div className="text-2xl shrink-0">
+                      {opt.emoji}
                     </div>
 
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white truncate">
                           {opt.title}
                         </h3>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                           {opt.recommended}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
                         {opt.description}
                       </p>
                     </div>
                   </div>
 
-                  {/* STATS BADGE */}
-                  <div className="text-right shrink-0">
-                    <span className="block text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                      Today's Log
-                    </span>
-                    <span className="text-xs font-black font-mono text-slate-800 dark:text-slate-200">
-                      {opt.stats.count} {opt.stats.count === 1 ? "break" : "breaks"}
-                    </span>
-                    <span className="block text-[11px] font-bold font-mono text-amber-600 dark:text-amber-400">
-                      {formatSecsToHMS(opt.stats.total_seconds)}
-                    </span>
-                  </div>
+                  {/* START BREAK ACTION BUTTON */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectBreak(opt.id);
+                      onClose();
+                    }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
+                      isCurrentReason
+                        ? "bg-amber-500 text-white"
+                        : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-amber-500/20"
+                    }`}
+                  >
+                    <span>Start Break</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
+
             );
           })}
         </div>
@@ -272,7 +236,7 @@ export default function PauseBreakModal({
         {/* FOOTER */}
         <div className="flex justify-between items-center pt-2">
           <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
-            <Sparkles className="h-3 w-3 text-amber-500" /> All break durations are tracked in real time &amp; synced with backend telemetry.
+            <Sparkles className="h-3 w-3 text-amber-500" /> Break time is included in your 8-hour daily shift session.
           </span>
 
           <button

@@ -6,39 +6,21 @@ import {
   X,
   User,
   Mail,
-  Phone,
   Lock,
   Eye,
   EyeOff,
   Shield,
   Briefcase,
   Layers,
-  Users,
-  Clock,
-  Globe,
-  Sparkles,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  KeyRound,
-  Send,
-  Mic,
   Hash,
   ChevronDown,
   ChevronUp,
-  Upload,
   UserPlus,
-  SlidersHorizontal,
   ArrowRight,
   ArrowLeft,
   Check,
-  Building2,
   ShieldCheck,
-  BadgeCheck,
-  FileCheck,
-  Info,
-  HelpCircle,
-  CheckCircle
+  RefreshCw,
 } from "lucide-react";
 import { api } from "../api/client";
 import { useToast } from "../context/ToastContext";
@@ -139,7 +121,7 @@ export default function RegisterUserModal({
 
   // Default Access Controls
   const [isActive, setIsActive] = useState(true);
-  const [selectedSkills, setSelectedSkills] = useState<string[]>(["Outbound Calling", "Sales Conversion"]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(["Outbound Calling"]);
   const [recordingPermission, setRecordingPermission] = useState(true);
   const [monitoringPermission, setMonitoringPermission] = useState(true);
   const [transferPermission, setTransferPermission] = useState(true);
@@ -277,52 +259,47 @@ export default function RegisterUserModal({
   if (!isOpen || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 font-sans">
+    <div className="fixed inset-0 z-[9999] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 font-sans animate-in fade-in">
       
-      {/* Enterprise SaaS CRM Dialog (Width ~1020-1060px / Height ~84vh) */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-[16px] shadow-2xl shadow-slate-900/20 border border-slate-200/90 w-full max-w-[1020px] lg:max-w-[1060px] flex flex-col h-full max-h-[84vh] overflow-hidden transition-all duration-300 animate-in fade-in zoom-in-95">
+      {/* Enterprise SaaS CRM Dialog - Compact Fit (Max Width 840px / Max Height 85vh) */}
+      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-2xl shadow-slate-950/30 border border-slate-200/90 w-full max-w-[840px] flex flex-col max-h-[85vh] overflow-hidden transition-all duration-300 animate-in fade-in zoom-in-95">
         
-        {/* Sticky Header with Title, Subtitle, Stepper & Close Action */}
-        <div className="px-5 sm:px-6 py-3 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 h-[52px] sm:h-[54px] min-h-[52px]">
+        {/* Sticky Header (Compact 46px Height) */}
+        <div className="px-4 py-2 border-b border-slate-100 bg-white flex items-center justify-between gap-3 shrink-0 h-[46px] min-h-[46px]">
           
           {/* Title & Subtitle */}
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold border border-blue-100 shrink-0">
-              <UserPlus className="h-4.5 w-4.5 text-[#0F4C9A]" />
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 rounded-lg bg-blue-50 text-[#0F4C9A] flex items-center justify-center font-bold border border-blue-100 shrink-0">
+              <UserPlus className="h-3.5 w-3.5 text-[#0F4C9A]" />
             </div>
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-base sm:text-lg font-extrabold tracking-tight leading-tight flex items-center gap-1.5">
-                  <span className="text-[#1D4ED8] dark:text-[#3B82F6] font-extrabold">Register</span>
-                  <span className="text-[#F4B400] font-extrabold">New User</span>
-                </h2>
-                <span className="text-[10px] font-extrabold bg-[#0F4C9A]/10 text-[#0F4C9A] border border-[#0F4C9A]/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Enterprise SaaS
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
-                Configure user profile credentials, system roles, department pools, and security policies
-              </p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-extrabold tracking-tight leading-tight flex items-center gap-1">
+                <span className="text-[#1D4ED8] font-extrabold">Register</span>
+                <span className="text-[#F4B400] font-extrabold">New User</span>
+              </h2>
+              <span className="text-[9px] font-extrabold bg-[#0F4C9A]/10 text-[#0F4C9A] border border-[#0F4C9A]/20 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Enterprise SaaS
+              </span>
             </div>
           </div>
 
           {/* Stepper Navigation & Close Button */}
-          <div className="flex items-center gap-3 justify-between sm:justify-end shrink-0">
+          <div className="flex items-center gap-2.5">
             
-            {/* Enhanced Stepper Badges */}
-            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 text-xs font-semibold">
+            {/* Compact Stepper Badges */}
+            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 gap-0.5 text-[11px] font-semibold">
               <button
                 type="button"
                 onClick={() => setCurrentStep(1)}
-                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2.5 py-0.5 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
                   currentStep === 1
                     ? "bg-[#0F4C9A] text-white shadow-xs font-bold"
                     : currentStep > 1
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-bold"
+                    ? "bg-emerald-50 text-emerald-700 font-bold"
                     : "text-slate-600 hover:bg-slate-200/60"
                 }`}
               >
-                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
                   currentStep === 1
                     ? "bg-white/20 text-white"
                     : currentStep > 1
@@ -331,26 +308,26 @@ export default function RegisterUserModal({
                 }`}>
                   {currentStep > 1 ? "✓" : "1"}
                 </span>
-                <span className="text-xs">1. Profile & Roles</span>
+                <span>1. Profile &amp; Roles</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2.5 py-0.5 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
                   currentStep === 2
                     ? "bg-[#0F4C9A] text-white shadow-xs font-bold"
                     : "text-slate-600 hover:bg-slate-200/60"
                 }`}
               >
-                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold ${
                   currentStep === 2
                     ? "bg-white/20 text-white"
                     : "bg-slate-200 text-slate-700"
                 }`}>
                   2
                 </span>
-                <span className="text-xs">2. Security & Policies</span>
+                <span>2. Security &amp; Policies</span>
               </button>
             </div>
 
@@ -358,124 +335,124 @@ export default function RegisterUserModal({
             <button
               type="button"
               onClick={handleClose}
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
               title="Close dialog"
             >
-              <X className="h-4.5 w-4.5" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* Scrollable Modal Body */}
-        <div className="flex-1 overflow-y-auto lm-scroll p-4 sm:p-5 space-y-4 bg-slate-50/40">
+        {/* Scrollable Modal Body (Internal Scroll Container) */}
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-3 bg-slate-50/50 max-h-[calc(85vh-94px)]">
           
           {/* STEP 1: PROFILE & OPERATIONAL ROLES */}
           {currentStep === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               
               {/* SECTION 1: Personal Information Card */}
-              <div className="bg-white border border-slate-200/90 rounded-[12px] overflow-hidden shadow-2xs transition">
+              <div className="bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-2xs">
                 <button
                   type="button"
                   onClick={() => toggleSection("personal")}
-                  className="w-full px-4.5 py-3 flex items-center justify-between bg-gradient-to-r from-blue-50/60 via-white to-amber-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-blue-50/80 hover:to-amber-50/60 transition-all duration-200"
+                  className="w-full px-3.5 py-2 flex items-center justify-between bg-gradient-to-r from-blue-50/60 via-white to-amber-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-blue-50/80 transition-all"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#1D4ED8] to-[#2563EB] flex items-center justify-center shadow-[0_2px_8px_rgba(37,99,235,0.35)]">
-                      <User className="h-3.5 w-3.5 text-white" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-md bg-gradient-to-br from-[#1D4ED8] to-[#2563EB] flex items-center justify-center shadow-xs">
+                      <User className="h-3 w-3 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider flex items-center gap-0">
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-0">
                         <span className="text-[#1D4ED8]">1. Personal&nbsp;</span>
                         <span className="text-[#F4B400]">Information</span>
                       </h3>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        Basic user credentials and identification numbers
-                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] font-bold text-[#1D4ED8] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-bold text-[#1D4ED8] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                       Required Fields
                     </span>
-                    {openSections.personal ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                    {openSections.personal ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
                   </div>
                 </button>
 
                 {openSections.personal && (
-                  <div className="p-4 sm:p-4.5 bg-white space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-3 sm:p-3.5 bg-white space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       
                       {/* Full Name */}
                       <div>
-                        <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                          Full Name <span className="text-rose-500">*</span>
+                        <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Full Name <span className="text-rose-500 font-normal">*</span>
                         </label>
-                        <div className="relative">
-                          <User className="h-4 w-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                        <div className="relative flex items-center">
+                          <User className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
                           <input
                             type="text"
                             required
                             value={fullName}
                             onChange={e => setFullName(e.target.value)}
                             placeholder="e.g. Rahul Sharma"
-                            className="w-full h-[40px] sm:h-[42px] pl-9 pr-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-[10px] text-[14px] font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
+                            className="w-full h-[36px] pl-10 pr-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                         </div>
-                        <p className="text-[11px] text-slate-400 font-normal mt-1">User's full legal name as per system logs</p>
+                        <p className="text-[10px] text-slate-400 font-normal mt-1">User's full legal name as per system logs</p>
                       </div>
 
                       {/* Email Address */}
                       <div>
-                        <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                          Email Address <span className="text-rose-500">*</span>
+                        <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Email Address <span className="text-rose-500 font-normal">*</span>
                         </label>
-                        <div className="relative">
-                          <Mail className="h-4 w-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                        <div className="relative flex items-center">
+                          <Mail className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
                           <input
                             type="email"
                             required
                             value={email}
                             onChange={e => setEmail(e.target.value)}
                             placeholder="rahul@forgeindia.com"
-                            className="w-full h-[40px] sm:h-[42px] pl-9 pr-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-[10px] text-[14px] font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
+                            className="w-full h-[36px] pl-10 pr-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                         </div>
-                        <p className="text-[11px] text-slate-400 font-normal mt-1">Used for system login & email notifications</p>
+                        <p className="text-[10px] text-slate-400 font-normal mt-1">Used for system login &amp; email notifications</p>
                       </div>
 
                       {/* Phone Number */}
-                      <PhoneInput
-                        value={phone}
-                        onChange={(fullVal) => setPhone(fullVal)}
-                        label="Phone Number"
-                        inputClassName="h-[40px] sm:h-[42px] rounded-[10px] text-[14px] font-semibold"
-                      />
+                      <div>
+                        <PhoneInput
+                          value={phone}
+                          onChange={(fullVal) => setPhone(fullVal)}
+                          label="Phone Number"
+                          inputClassName="h-[36px] rounded-lg text-xs font-semibold"
+                        />
+                      </div>
 
                       {/* Employee ID */}
                       <div>
                         <div className="flex justify-between items-center mb-1">
-                          <label className="text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider">Employee ID</label>
+                          <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Employee ID</label>
                           <button
                             type="button"
                             onClick={handleAutoGenerateEmpId}
-                            className="text-[11.5px] font-bold text-[#0F4C9A] hover:underline cursor-pointer"
+                            className="text-[11px] font-bold text-[#0F4C9A] hover:underline cursor-pointer"
                           >
                             Auto Generate
                           </button>
                         </div>
-                        <div className="relative">
-                          <Hash className="h-4 w-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                        <div className="relative flex items-center">
+                          <Hash className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
                           <input
                             type="text"
                             value={employeeId}
                             onChange={e => setEmployeeId(e.target.value)}
                             placeholder="e.g. AGT84920"
-                            className="w-full h-[40px] sm:h-[42px] pl-9 pr-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-[10px] text-[14px] font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs uppercase font-mono"
+                            className="w-full h-[36px] pl-10 pr-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs uppercase font-mono"
                           />
                         </div>
-                        <p className="text-[11px] text-slate-400 font-normal mt-1">Unique system code (e.g. AGT84920)</p>
+                        <p className="text-[10px] text-slate-400 font-normal mt-1">Unique system code (e.g. AGT84920)</p>
                       </div>
+
 
                     </div>
                   </div>
@@ -483,62 +460,59 @@ export default function RegisterUserModal({
               </div>
 
               {/* SECTION 2: Role & Operational Assignment Card */}
-              <div className="bg-white border border-slate-200/90 rounded-[12px] overflow-hidden shadow-2xs transition">
+              <div className="bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-2xs">
                 <button
                   type="button"
                   onClick={() => toggleSection("role")}
-                  className="w-full px-4.5 py-3 flex items-center justify-between bg-gradient-to-r from-amber-50/60 via-white to-blue-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-amber-50/80 hover:to-blue-50/60 transition-all duration-200"
+                  className="w-full px-3.5 py-2 flex items-center justify-between bg-gradient-to-r from-amber-50/60 via-white to-blue-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-amber-50/80 transition-all"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#F4B400] to-[#FFD54A] flex items-center justify-center shadow-[0_2px_8px_rgba(244,180,0,0.4)]">
-                      <Shield className="h-3.5 w-3.5 text-[#1E3A8A]" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-md bg-gradient-to-br from-[#F4B400] to-[#FFD54A] flex items-center justify-center shadow-xs">
+                      <Shield className="h-3 w-3 text-[#1E3A8A]" />
                     </div>
                     <div>
-                      <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider flex items-center gap-0">
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-0">
                         <span className="text-[#1D4ED8]">2. Role &amp;&nbsp;</span>
                         <span className="text-[#F4B400]">Operational Assignment</span>
                       </h3>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        Define RBAC roles, pool mappings, and shifts
-                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] font-bold text-[#92400E] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-bold text-[#92400E] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                       Role &amp; Mapping
                     </span>
-                    {openSections.role ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                    {openSections.role ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
                   </div>
                 </button>
 
                 {openSections.role && (
-                  <div className="p-4 sm:p-4.5 bg-white space-y-4">
-                    <div className="space-y-4">
+                  <div className="p-3 sm:p-3.5 bg-white space-y-3">
+                    <div className="space-y-3">
                       
                       {/* System Role Selection Cards */}
-                      <div className="space-y-1.5">
-                        <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider">Select System Role *</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">Select System Role *</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                           {/* Agent Card */}
                           <button
                             type="button"
                             onClick={() => setRole("agent")}
-                            className={`relative p-3 rounded-[10px] border transition-all duration-200 cursor-pointer text-left flex items-center gap-3 ${
+                            className={`relative p-2.5 rounded-lg border transition-all duration-200 cursor-pointer text-left flex items-center gap-2.5 ${
                               role === "agent"
-                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-xs"
                                 : "bg-white text-slate-900 border-slate-200 hover:border-[#0F4C9A] hover:bg-blue-50/50 shadow-xs"
                             }`}
                           >
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${role === "agent" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
-                              <User className="h-4 w-4" />
+                            <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${role === "agent" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                              <User className="h-3.5 w-3.5" />
                             </div>
                             <div>
-                              <span className="block font-bold text-xs sm:text-[13px] tracking-tight uppercase">Agent</span>
-                              <span className={`block text-[10.5px] font-medium ${role === "agent" ? "text-blue-100" : "text-slate-400"}`}>Telecaller & Outreach</span>
+                              <span className="block font-bold text-xs tracking-tight uppercase">Agent</span>
+                              <span className={`block text-[10px] font-medium ${role === "agent" ? "text-blue-100" : "text-slate-400"}`}>Telecaller &amp; Outreach</span>
                             </div>
                             {role === "agent" && (
-                              <span className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
-                                <Check className="h-3 w-3 text-white" />
+                              <span className="absolute top-2 right-2 h-3.5 w-3.5 rounded-full bg-white/20 flex items-center justify-center">
+                                <Check className="h-2.5 w-2.5 text-white" />
                               </span>
                             )}
                           </button>
@@ -547,22 +521,22 @@ export default function RegisterUserModal({
                           <button
                             type="button"
                             onClick={() => setRole("team_leader")}
-                            className={`relative p-3 rounded-[10px] border transition-all duration-200 cursor-pointer text-left flex items-center gap-3 ${
+                            className={`relative p-2.5 rounded-lg border transition-all duration-200 cursor-pointer text-left flex items-center gap-2.5 ${
                               role === "team_leader"
-                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-xs"
                                 : "bg-white text-slate-900 border-slate-200 hover:border-[#0F4C9A] hover:bg-blue-50/50 shadow-xs"
                             }`}
                           >
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${role === "team_leader" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
-                              <Shield className="h-4 w-4" />
+                            <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${role === "team_leader" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                              <Shield className="h-3.5 w-3.5" />
                             </div>
                             <div>
-                              <span className="block font-bold text-xs sm:text-[13px] tracking-tight uppercase">TL</span>
-                              <span className={`block text-[10.5px] font-medium ${role === "team_leader" ? "text-blue-100" : "text-slate-400"}`}>Team Leader</span>
+                              <span className="block font-bold text-xs tracking-tight uppercase">TL</span>
+                              <span className={`block text-[10px] font-medium ${role === "team_leader" ? "text-blue-100" : "text-slate-400"}`}>Team Leader</span>
                             </div>
                             {role === "team_leader" && (
-                              <span className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
-                                <Check className="h-3 w-3 text-white" />
+                              <span className="absolute top-2 right-2 h-3.5 w-3.5 rounded-full bg-white/20 flex items-center justify-center">
+                                <Check className="h-2.5 w-2.5 text-white" />
                               </span>
                             )}
                           </button>
@@ -571,22 +545,22 @@ export default function RegisterUserModal({
                           <button
                             type="button"
                             onClick={() => setRole("admin")}
-                            className={`relative p-3 rounded-[10px] border transition-all duration-200 cursor-pointer text-left flex items-center gap-3 ${
+                            className={`relative p-2.5 rounded-lg border transition-all duration-200 cursor-pointer text-left flex items-center gap-2.5 ${
                               role === "admin"
-                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-xs"
                                 : "bg-white text-slate-900 border-slate-200 hover:border-[#0F4C9A] hover:bg-blue-50/50 shadow-xs"
                             }`}
                           >
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${role === "admin" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
-                              <ShieldCheck className="h-4 w-4" />
+                            <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${role === "admin" ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                              <ShieldCheck className="h-3.5 w-3.5" />
                             </div>
                             <div>
-                              <span className="block font-bold text-xs sm:text-[13px] tracking-tight uppercase">Admin</span>
-                              <span className={`block text-[10.5px] font-medium ${role === "admin" ? "text-blue-100" : "text-slate-400"}`}>Full System Control</span>
+                              <span className="block font-bold text-xs tracking-tight uppercase">Admin</span>
+                              <span className={`block text-[10px] font-medium ${role === "admin" ? "text-blue-100" : "text-slate-400"}`}>Full System Control</span>
                             </div>
                             {role === "admin" && (
-                              <span className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
-                                <Check className="h-3 w-3 text-white" />
+                              <span className="absolute top-2 right-2 h-3.5 w-3.5 rounded-full bg-white/20 flex items-center justify-center">
+                                <Check className="h-2.5 w-2.5 text-white" />
                               </span>
                             )}
                           </button>
@@ -594,31 +568,26 @@ export default function RegisterUserModal({
                       </div>
 
                       {/* Pool Selection Cards */}
-                      <div className="space-y-1.5">
-                        <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider">Select Campaign Pool</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">Select Campaign Pool</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                           {/* No Pool */}
                           <button
                             type="button"
                             onClick={() => setPoolId("")}
-                            className={`relative p-3 rounded-[10px] border transition-all duration-200 cursor-pointer text-left flex items-center gap-3 ${
+                            className={`relative p-2 rounded-lg border transition-all duration-200 cursor-pointer text-left flex items-center gap-2 ${
                               !poolId
-                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-md"
+                                ? "bg-[#0F4C9A] text-white border-[#0F4C9A] shadow-xs"
                                 : "bg-white text-slate-900 border-slate-200 hover:border-[#0F4C9A] hover:bg-blue-50/50 shadow-xs"
                             }`}
                           >
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${!poolId ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
-                              <Layers className="h-4 w-4" />
+                            <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 ${!poolId ? "bg-white/20 text-white" : "bg-blue-50 text-[#0F4C9A]"}`}>
+                              <Layers className="h-3 w-3" />
                             </div>
                             <div>
-                              <span className="block font-bold text-xs tracking-tight uppercase">No Pool</span>
-                              <span className={`block text-[10px] font-medium ${!poolId ? "text-blue-100" : "text-slate-400"}`}>Unassigned</span>
+                              <span className="block font-bold text-[11px] tracking-tight uppercase">No Pool</span>
+                              <span className={`block text-[9px] font-medium ${!poolId ? "text-blue-100" : "text-slate-400"}`}>Unassigned</span>
                             </div>
-                            {!poolId && (
-                              <span className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-white/20 flex items-center justify-center">
-                                <Check className="h-3 w-3 text-white" />
-                              </span>
-                            )}
                           </button>
 
                           {pools.map(p => {
@@ -630,7 +599,7 @@ export default function RegisterUserModal({
                                 title={isCreditCard ? "Sales Team" : p.name.replace(/_/g, " ")}
                                 isActive={isSelected}
                                 onClick={() => setPoolId(p.id)}
-                                icon={isCreditCard ? <Briefcase className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+                                icon={isCreditCard ? <Briefcase className="h-3 w-3" /> : <Layers className="h-3 w-3" />}
                                 showCheck={true}
                               />
                             );
@@ -638,55 +607,55 @@ export default function RegisterUserModal({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {/* Department */}
                         <div>
-                          <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1">Department</label>
+                          <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Department</label>
                           <CustomSelect
                             value={department}
                             onChange={setDepartment}
                             options={DEPARTMENT_OPTIONS}
                             placeholder="Select Department"
-                            triggerClassName="h-[40px] sm:h-[42px] rounded-[10px] text-[14px] font-semibold"
+                            triggerClassName="h-[34px] sm:h-[36px] rounded-lg text-xs font-semibold"
                           />
                         </div>
 
                         {/* Supervisor Mapping */}
                         {role === "agent" && (
                           <div>
-                            <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1">Supervisor Mapping</label>
+                            <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Supervisor Mapping</label>
                             <CustomSelect
                               value={supervisorId}
                               onChange={setSupervisorId}
                               options={supervisorOptions}
                               placeholder="Select Supervisor"
-                              triggerClassName="h-[40px] sm:h-[42px] rounded-[10px] text-[14px] font-semibold"
+                              triggerClassName="h-[34px] sm:h-[36px] rounded-lg text-xs font-semibold"
                             />
                           </div>
                         )}
 
                         {/* Shift Schedule */}
                         <div>
-                          <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1">Shift Schedule</label>
+                          <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Shift Schedule</label>
                           <CustomSelect
                             value={shift}
                             onChange={setShift}
                             options={SHIFT_OPTIONS}
                             placeholder="Select Shift"
-                            triggerClassName="h-[40px] sm:h-[42px] rounded-[10px] text-[14px] font-semibold"
+                            triggerClassName="h-[34px] sm:h-[36px] rounded-lg text-xs font-semibold"
                           />
                         </div>
+
                         {/* Preferred Language */}
                         <div>
-                          <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1">Preferred Language</label>
+                          <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Preferred Language</label>
                           <CustomSelect
                             value={language}
                             onChange={setLanguage}
                             options={LANGUAGE_OPTIONS}
                             placeholder="Select Language"
-                            triggerClassName="h-[40px] sm:h-[42px] rounded-[10px] text-[14px] font-semibold"
+                            triggerClassName="h-[34px] sm:h-[36px] rounded-lg text-xs font-semibold"
                           />
-                          <p className="text-[11px] text-slate-400 font-normal mt-1">Default telephony interaction language</p>
                         </div>
 
                       </div>
@@ -700,70 +669,67 @@ export default function RegisterUserModal({
 
           {/* STEP 2: SECURITY CREDENTIALS & POLICIES */}
           {currentStep === 2 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               
               {/* SECTION 3: Security Credentials Card */}
-              <div className="bg-white border border-slate-200/90 rounded-[12px] overflow-hidden shadow-2xs transition">
+              <div className="bg-white border border-slate-200/90 rounded-xl overflow-hidden shadow-2xs">
                 <button
                   type="button"
                   onClick={() => toggleSection("security")}
-                  className="w-full px-4.5 py-3 flex items-center justify-between bg-gradient-to-r from-blue-50/60 via-white to-amber-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-blue-50/80 hover:to-amber-50/60 transition-all duration-200"
+                  className="w-full px-3.5 py-2 flex items-center justify-between bg-gradient-to-r from-blue-50/60 via-white to-amber-50/40 border-b border-slate-100 text-left cursor-pointer hover:from-blue-50/80 transition-all"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#1D4ED8] to-[#2563EB] flex items-center justify-center shadow-[0_2px_8px_rgba(37,99,235,0.35)]">
-                      <Lock className="h-3.5 w-3.5 text-white" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-md bg-gradient-to-br from-[#1D4ED8] to-[#2563EB] flex items-center justify-center shadow-xs">
+                      <Lock className="h-3 w-3 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider flex items-center gap-0">
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider flex items-center gap-0">
                         <span className="text-[#1D4ED8]">3. Security Credentials &amp;&nbsp;</span>
                         <span className="text-[#F4B400]">Password Policies</span>
                       </h3>
-                      <p className="text-[11px] text-slate-500 font-medium">
-                        Set account login credentials and security parameters
-                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] font-bold text-[#92400E] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-bold text-[#92400E] bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                       Security Policy
                     </span>
-                    {openSections.security ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                    {openSections.security ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
                   </div>
 
                 </button>
 
                 {openSections.security && (
-                  <div className="p-4 sm:p-4.5 bg-white space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-3 sm:p-3.5 bg-white space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       
                       {/* Password */}
                       <div>
                         <div className="flex justify-between items-center mb-1">
-                          <label className="text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider">
-                            Password <span className="text-rose-500">*</span>
+                          <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                            Password <span className="text-rose-500 font-normal">*</span>
                           </label>
                           <button
                             type="button"
                             onClick={handleGenerateStrongPassword}
-                            className="text-[11.5px] font-bold text-[#0F4C9A] hover:underline cursor-pointer"
+                            className="text-[11px] font-bold text-[#0F4C9A] hover:underline cursor-pointer"
                           >
                             Generate Password
                           </button>
                         </div>
-                        <div className="relative">
-                          <Lock className="h-4 w-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                        <div className="relative flex items-center">
+                          <Lock className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
                           <input
                             type={showPassword ? "text" : "password"}
                             required
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full h-[40px] sm:h-[42px] pl-9 pr-9 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-[10px] text-[14px] font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
+                            className="w-full h-[36px] pl-10 pr-9 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer z-10"
                           >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -771,14 +737,14 @@ export default function RegisterUserModal({
 
                         {/* Password Strength Meter */}
                         {password && (
-                          <div className="mt-2 space-y-1">
-                            <div className="flex justify-between items-center text-[10px] font-bold">
+                          <div className="mt-1.5 space-y-0.5">
+                            <div className="flex justify-between items-center text-[9px] font-bold">
                               <span className="text-slate-400 uppercase">Strength:</span>
                               <span className={strength.score > 50 ? "text-emerald-600" : "text-amber-600"}>
                                 {strength.label}
                               </span>
                             </div>
-                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
                               <div
                                 className={`h-full transition-all duration-300 ${strength.color}`}
                                 style={{ width: `${strength.score}%` }}
@@ -786,58 +752,59 @@ export default function RegisterUserModal({
                             </div>
                           </div>
                         )}
-                        <p className="text-[11px] text-slate-400 font-normal mt-1">At least 6 characters with uppercase & symbols</p>
+                        <p className="text-[10px] text-slate-400 font-normal mt-1">At least 6 characters with uppercase &amp; symbols</p>
                       </div>
 
                       {/* Confirm Password */}
                       <div>
-                        <label className="block text-[12px] sm:text-[13px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                          Confirm Password <span className="text-rose-500">*</span>
+                        <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                          Confirm Password <span className="text-rose-500 font-normal">*</span>
                         </label>
-                        <div className="relative">
-                          <Lock className="h-4 w-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                        <div className="relative flex items-center">
+                          <Lock className="h-4 w-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
                           <input
                             type="password"
                             required
                             value={confirmPassword}
                             onChange={e => setConfirmPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full h-[40px] sm:h-[42px] pl-9 pr-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-[10px] text-[14px] font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
+                            className="w-full h-[36px] pl-10 pr-3.5 bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F4C9A]/20 focus:border-[#0F4C9A] transition shadow-2xs"
                           />
                         </div>
                         {confirmPassword && password !== confirmPassword && (
-                          <span className="text-[11px] text-rose-500 font-semibold mt-1 block">Passwords do not match</span>
+                          <span className="text-[10px] text-rose-500 font-semibold mt-1 block">Passwords do not match</span>
                         )}
-                        <p className="text-[11px] text-slate-400 font-normal mt-1">Re-enter password for confirmation</p>
+                        <p className="text-[10px] text-slate-400 font-normal mt-1">Re-enter password for confirmation</p>
                       </div>
 
                     </div>
 
+
                     {/* Interactive Security Options Grid */}
-                    <div className="pt-1 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                      <label className="flex items-center gap-3 p-3.5 bg-slate-50/70 border border-slate-200/90 rounded-[10px] cursor-pointer hover:bg-slate-100/60 transition shadow-2xs">
+                    <div className="pt-1 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                      <label className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 border border-slate-200/90 rounded-lg cursor-pointer hover:bg-slate-100/60 transition shadow-2xs">
                         <input
                           type="checkbox"
                           checked={sendCredentials}
                           onChange={e => setSendCredentials(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] rounded border-slate-300 focus:ring-[#0F4C9A] accent-[#0F4C9A] cursor-pointer"
+                          className="h-3.5 w-3.5 text-[#0F4C9A] rounded border-slate-300 focus:ring-[#0F4C9A] accent-[#0F4C9A] cursor-pointer"
                         />
                         <div>
-                          <span className="block font-bold text-slate-800 text-[12.5px] sm:text-[13px]">Send Login Credentials via Email</span>
-                          <span className="block text-[11px] text-slate-400 font-normal mt-0.5">Automated welcome email with initial password</span>
+                          <span className="block font-bold text-slate-800 text-xs">Send Login Credentials via Email</span>
+                          <span className="block text-[10px] text-slate-400 font-normal">Automated welcome email with initial password</span>
                         </div>
                       </label>
 
-                      <label className="flex items-center gap-3 p-3.5 bg-slate-50/70 border border-slate-200/90 rounded-[10px] cursor-pointer hover:bg-slate-100/60 transition shadow-2xs">
+                      <label className="flex items-center gap-2.5 p-2.5 bg-slate-50/70 border border-slate-200/90 rounded-lg cursor-pointer hover:bg-slate-100/60 transition shadow-2xs">
                         <input
                           type="checkbox"
                           checked={requirePasswordChange}
                           onChange={e => setRequirePasswordChange(e.target.checked)}
-                          className="h-4 w-4 text-[#0F4C9A] rounded border-slate-300 focus:ring-[#0F4C9A] accent-[#0F4C9A] cursor-pointer"
+                          className="h-3.5 w-3.5 text-[#0F4C9A] rounded border-slate-300 focus:ring-[#0F4C9A] accent-[#0F4C9A] cursor-pointer"
                         />
                         <div>
-                          <span className="block font-bold text-slate-800 text-[12.5px] sm:text-[13px]">Require password change on first login</span>
-                          <span className="block text-[11px] text-slate-400 font-normal mt-0.5">Enforce security policy on first portal session</span>
+                          <span className="block font-bold text-slate-800 text-xs">Require password change on first login</span>
+                          <span className="block text-[10px] text-slate-400 font-normal">Enforce security policy on first portal session</span>
                         </div>
                       </label>
                     </div>
@@ -849,42 +816,42 @@ export default function RegisterUserModal({
           )}
         </div>
 
-        {/* Sticky Footer with Aligned Actions (60px) */}
-        <div className="px-5 sm:px-6 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0 h-[60px] min-h-[60px]">
+        {/* Sticky Footer (Compact 48px Height) */}
+        <div className="px-4 border-t border-slate-100 bg-slate-50/90 flex items-center justify-between shrink-0 h-[48px] min-h-[48px]">
           
           <button
             type="button"
             onClick={handleClose}
-            className="h-[40px] px-4.5 text-[13px] font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-white rounded-[10px] transition cursor-pointer"
+            className="h-[34px] px-3.5 text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-white rounded-lg transition cursor-pointer"
           >
             Cancel
           </button>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {currentStep === 1 ? (
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className="h-[40px] px-5 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white font-bold text-[13px] rounded-[10px] shadow-xs transition flex items-center gap-2 cursor-pointer"
+                className="h-[34px] px-4 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Continue to Security</span>
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </button>
             ) : (
               <>
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="h-[40px] px-4 text-[13px] font-semibold text-slate-700 hover:bg-slate-200/70 border border-slate-200 rounded-[10px] transition flex items-center gap-1.5 cursor-pointer"
+                  className="h-[34px] px-3 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 border border-slate-200 rounded-lg transition flex items-center gap-1 cursor-pointer"
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="h-3.5 w-3.5" />
                   <span>Back</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => showToast("Draft saved locally.", "info")}
-                  className="h-[40px] px-4 text-[13px] font-semibold text-slate-700 hover:bg-slate-200/70 border border-slate-200 rounded-[10px] transition cursor-pointer"
+                  className="h-[34px] px-3 text-xs font-semibold text-slate-700 hover:bg-slate-200/70 border border-slate-200 rounded-lg transition cursor-pointer"
                 >
                   Save Draft
                 </button>
@@ -892,16 +859,16 @@ export default function RegisterUserModal({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-[40px] px-5 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white font-bold text-[13px] rounded-[10px] shadow-xs transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                  className="h-[34px] px-4 bg-[#0F4C9A] hover:bg-[#0D3F80] text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
                 >
                   {isSubmitting ? (
                     <>
-                      <RefreshCw className="h-4 w-4 animate-spin" />
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                       <span>Creating User...</span>
                     </>
                   ) : (
                     <>
-                      <UserPlus className="h-4 w-4" />
+                      <UserPlus className="h-3.5 w-3.5" />
                       <span>Create User</span>
                     </>
                   )}

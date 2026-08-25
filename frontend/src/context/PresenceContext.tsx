@@ -110,12 +110,17 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [agents, setAgents] = useState<AgentPresence[]>([]);
   const [summary, setSummary] = useState<PresenceSummary>(defaultSummary);
   const [wsConnected, setWsConnected] = useState<boolean>(false);
+  const [myPresence, setMyPresence] = useState<AgentPresence | null>(null);
 
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const myPresence = agents.find((a) => a.id === user?.id || a.user_id === user?.id) || null;
+  const myPresenceMemo = useMemo(() => {
+    if (!user) return null;
+    const uid = user.id || (user as any)._id;
+    return agents.find((a) => a.id === uid || a.user_id === uid || (a as any).agentId === uid) || null;
+  }, [agents, user]);
 
   const [nowTicker, setNowTicker] = useState(Date.now());
   useEffect(() => {
@@ -135,9 +140,6 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       } catch {
         return myPresence?.gross_seconds || 0;
       }
-    }
-    if (myPresence?.status === "offline") {
-      return myPresence?.gross_seconds || 0;
     }
     try {
       const loginDt = new Date(myPresence.login_at).getTime();
@@ -203,22 +205,23 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ]);
 
       if (Array.isArray(agentList)) {
-        setAgents(agentList);
-        const meFromList = agentList.find((a: AgentPresence) => a.id === user.id || a.user_id === user.id);
+        const uid = user.id || (user as any)._id;
+        const meFromList = agentList.find((a: AgentPresence) => a.id === uid || a.user_id === uid || (a as any).agentId === uid);
         const me = meData || meFromList;
         if (me) {
           const rawStatus = me.status || "offline";
           const normalizedStatus = (rawStatus.toLowerCase().trim()) as "ready" | "paused" | "in_call" | "offline";
           setMyStatus(normalizedStatus);
           setPauseReason(me.pause_reason || null);
+          const fullMe = { ...me, id: uid, user_id: uid, status: normalizedStatus };
           setAgents((prev) => {
-            const idx = prev.findIndex((a) => a.id === user.id || a.user_id === user.id);
+            const idx = prev.findIndex((a) => a.id === uid || a.user_id === uid || (a as any).agentId === uid);
             if (idx !== -1) {
               const updated = [...prev];
-              updated[idx] = { ...updated[idx], ...me, status: normalizedStatus };
+              updated[idx] = { ...updated[idx], ...fullMe };
               return updated;
             }
-            return [...prev, { ...me, status: normalizedStatus }];
+            return [...prev, fullMe];
           });
         }
       }
@@ -263,21 +266,25 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       if ((payload.type === "agent_presence_updated" || payload.event === "agent.status.changed") && (payload.data || payload.presence)) {
         const updated = (payload.data || payload.presence) as AgentPresence;
+        const rawStatus = updated.status || payload.status || "offline";
+        const normalizedStatus = (rawStatus.toLowerCase().trim()) as "ready" | "paused" | "in_call" | "offline";
 
         setAgents((prevAgents) => {
           const index = prevAgents.findIndex((a) => a.id === updated.id || a.user_id === updated.user_id);
           if (index !== -1) {
             const next = [...prevAgents];
-            next[index] = { ...next[index], ...updated };
+            next[index] = { ...next[index], ...updated, status: normalizedStatus };
             return next;
           }
-          return [...prevAgents, updated];
+          return [...prevAgents, { ...updated, status: normalizedStatus }];
         });
 
         if (user && (updated.id === user.id || updated.user_id === user.id || payload.agentId === user.id)) {
-          if (updated.status) setMyStatus(updated.status);
+          setMyStatus(normalizedStatus);
           setPauseReason(updated.pause_reason || null);
+          setMyPresence((prev) => ({ ...prev, ...updated, status: normalizedStatus }));
         }
+
 
         setAgents((currentAgents) => {
           const total = currentAgents.length;
@@ -410,21 +417,30 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 
       if (response && (response.presence || response.status)) {
-        const updated = response.presence as AgentPresence;
+        const updated = (response.presence || response) as AgentPresence;
         if (updated) {
-          if (updated.status) setMyStatus(updated.status);
+          const rawSt = updated.status || newStatus;
+          const normSt = rawSt.toLowerCase().trim() as "ready" | "paused" | "in_call" | "offline";
+          setMyStatus(normSt);
           if (updated.pause_reason !== undefined) setPauseReason(updated.pause_reason);
+          setMyPresence((prev) => ({
+            ...prev,
+            ...updated,
+            status: normSt,
+            pause_reason: updated.pause_reason !== undefined ? updated.pause_reason : newPauseReason || null,
+          }));
           setAgents((prev) => {
-            const index = prev.findIndex((a) => a.id === updated.id || a.user_id === updated.user_id);
+            const index = prev.findIndex((a) => a.id === updated.id || a.user_id === (updated.user_id || updated.id));
             if (index !== -1) {
               const next = [...prev];
-              next[index] = { ...next[index], ...updated };
+              next[index] = { ...next[index], ...updated, status: normSt };
               return next;
             }
-            return [...prev, updated];
+            return [...prev, { ...updated, status: normSt }];
           });
         }
       }
+
       await fetchPresenceData();
     } catch (err: any) {
       console.warn("[PRESENCE] Status update server error/rejection:", err?.response?.data || err?.message || err);

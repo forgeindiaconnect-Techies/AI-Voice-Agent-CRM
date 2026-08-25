@@ -372,7 +372,9 @@ async def record_presence_change(
         "remaining_seconds": remaining_seconds,
         "shift_target_reached": gross_seconds >= 28800,
         "completed_8_hours": gross_seconds >= 28800,
+        "eightHourCompleted": gross_seconds >= 28800,
         "session_status": "COMPLETED" if gross_seconds >= 28800 else "INCOMPLETE",
+
         "last_status_change": now_iso,
         "status_since": now_iso,
         "last_activity": now_iso,
@@ -808,6 +810,7 @@ async def get_agent_presence_alias(current_user: dict = Depends(get_current_user
 
 
 @agent_router.post("/presence/ready")
+@agent_router.post("/presence/resume")
 @agent_router.post("/status/ready")
 @agent_router.post("/status/resume")
 async def set_agent_ready_endpoint(current_user: dict = Depends(get_current_user)):
@@ -821,6 +824,7 @@ async def set_agent_ready_endpoint(current_user: dict = Depends(get_current_user
         "statusSince": result.get("last_status_change") if result else None,
         "presence": result
     }
+
 
 
 @agent_router.post("/presence/pause")

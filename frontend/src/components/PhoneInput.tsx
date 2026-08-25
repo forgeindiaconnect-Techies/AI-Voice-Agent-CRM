@@ -113,7 +113,7 @@ export function PhoneInput({
       <div className="relative flex items-center">
         {/* Phone Icon */}
         <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none select-none z-10">
-          <Phone className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+          <Phone className="h-4 w-4 text-slate-400 dark:text-slate-500" />
         </div>
 
         {/* 10-Digit Mobile Number Input Field */}
@@ -127,9 +127,10 @@ export function PhoneInput({
           onPaste={handlePaste}
           onBlur={() => setTouched(true)}
           placeholder={placeholder}
-          className={`w-full pl-8.5 pr-8 bg-white dark:bg-[#09111E] border rounded-lg text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-colors duration-150 hover:border-[#2563EB] ${
+          className={`w-full pl-10 pr-8 bg-white dark:bg-[#09111E] border rounded-lg text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-colors duration-150 hover:border-[#2563EB] ${
             inputClassName || "h-[36px]"
           } ${
+
             showError
               ? "border-rose-500 focus:ring-2 focus:ring-rose-500/15 focus:border-rose-500"
               : isValid
