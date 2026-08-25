@@ -6,7 +6,7 @@ import { BreakStats } from "../context/PresenceContext";
 type PauseBreakModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSelectBreak: (reason: "Tea Break" | "Lunch Break" | "Personal Reason") => void;
+  onSelectBreak: (reason: string) => void;
   onEndBreak: () => void;
   currentStatus: string;
   currentPauseReason?: string | null;
@@ -54,7 +54,7 @@ export default function PauseBreakModal({
 
   const breakOptions = [
     {
-      id: "Tea Break" as const,
+      id: "Tea Break",
       title: "Tea Break",
       recommended: "15 Mins",
       description: "Quick refreshment, tea, coffee & rest break",
@@ -66,7 +66,7 @@ export default function PauseBreakModal({
       stats: teaStats,
     },
     {
-      id: "Lunch Break" as const,
+      id: "Lunch Break",
       title: "Lunch Break",
       recommended: "30-45 Mins",
       description: "Meal & lunch break duration tracking",
@@ -78,10 +78,10 @@ export default function PauseBreakModal({
       stats: lunchStats,
     },
     {
-      id: "Personal Reason" as const,
-      title: "Personal Reason",
+      id: "Personal Reason",
+      title: "Personal / Bio Break",
       recommended: "Short Pause",
-      description: "Personal pause, urgent administrative task or rest",
+      description: "Personal pause, bio break or urgent administrative task",
       icon: User,
       color: "sky",
       bgGradient: "from-sky-500/10 via-sky-500/5 to-transparent",
@@ -89,7 +89,56 @@ export default function PauseBreakModal({
       accentBg: "bg-sky-600 text-white",
       stats: personalStats,
     },
+    {
+      id: "Training",
+      title: "Training",
+      recommended: "Scheduled",
+      description: "Coaching session, skill development or team training",
+      icon: Clock,
+      color: "purple",
+      bgGradient: "from-purple-500/10 via-purple-500/5 to-transparent",
+      borderColor: "border-purple-500/30 hover:border-purple-500",
+      accentBg: "bg-purple-600 text-white",
+      stats: { count: 0, total_seconds: 0 },
+    },
+    {
+      id: "Meeting",
+      title: "Meeting",
+      recommended: "Scheduled",
+      description: "Team huddle, supervisor sync or one-on-one meeting",
+      icon: User,
+      color: "indigo",
+      bgGradient: "from-indigo-500/10 via-indigo-500/5 to-transparent",
+      borderColor: "border-indigo-500/30 hover:border-indigo-500",
+      accentBg: "bg-indigo-600 text-white",
+      stats: { count: 0, total_seconds: 0 },
+    },
+    {
+      id: "System Issue",
+      title: "System Issue",
+      recommended: "As Needed",
+      description: "IT support, network outage or softphone troubleshooting",
+      icon: Clock,
+      color: "rose",
+      bgGradient: "from-rose-500/10 via-rose-500/5 to-transparent",
+      borderColor: "border-rose-500/30 hover:border-rose-500",
+      accentBg: "bg-rose-600 text-white",
+      stats: { count: 0, total_seconds: 0 },
+    },
+    {
+      id: "Other",
+      title: "Other",
+      recommended: "General",
+      description: "Other unlisted operational or floor break reason",
+      icon: Coffee,
+      color: "slate",
+      bgGradient: "from-slate-500/10 via-slate-500/5 to-transparent",
+      borderColor: "border-slate-500/30 hover:border-slate-500",
+      accentBg: "bg-slate-600 text-white",
+      stats: { count: 0, total_seconds: 0 },
+    },
   ];
+
 
   return createPortal(
     <div

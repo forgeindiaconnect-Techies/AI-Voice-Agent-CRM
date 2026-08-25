@@ -102,6 +102,7 @@ app.include_router(reports.router)
 app.include_router(ws.router)
 app.include_router(ai_agents.router)
 app.include_router(presence.router)
+app.include_router(presence.agent_router)
 
 
 # ── Startup ──────────────────────────────────────────────────────────────────

@@ -38,6 +38,8 @@ notes_col = db["notes"]
 leave_requests_col = db["leave_requests"]
 pool_transfers_col = db["pool_transfer_requests"]
 agent_shifts_col = db["agent_shifts"]
+agent_presence_col = db["agent_presence"]
+agent_status_history_col = db["agent_status_history"]
 
 
 async def init_indexes():
@@ -51,6 +53,8 @@ async def init_indexes():
         await users_col.create_index("pool_id")
         await users_col.create_index([("role", 1), ("supervisor_id", 1)])
         await agent_shifts_col.create_index([("user_id", 1), ("shift_date", 1)])
+        await agent_presence_col.create_index("agent_id", unique=True)
+        await agent_status_history_col.create_index([("agent_id", 1), ("created_at", -1)])
 
         # Leads indexes
         await leads_col.create_index([("phone", 1), ("pool_id", 1)])

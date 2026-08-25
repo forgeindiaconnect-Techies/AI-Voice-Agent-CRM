@@ -84,7 +84,9 @@ interface PresenceContextType {
   disposeSeconds: number;
   stopCount: number;
   isShiftTargetReached: boolean;
+  remainingSeconds: number;
   shiftTargetSeconds: number;
+
   setPresenceStatus: (newStatus: "ready" | "paused" | "in_call" | "offline", pauseReason?: string, forceOffline?: boolean) => Promise<void>;
   refreshPresence: () => Promise<void>;
   updateCallTelemetry: (stats: { ringing_seconds?: number; setup_seconds?: number; talk_seconds?: number; dispose_seconds?: number; calls_handled?: number }) => void;
@@ -124,7 +126,17 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const SHIFT_TARGET_SECONDS = 28800; // 8 Hours
 
   const grossLoginSeconds = useMemo(() => {
-    if (!myPresence?.login_at || myPresence?.status === "offline") {
+    if (!myPresence?.login_at) return myPresence?.gross_seconds || 0;
+    if (myPresence?.status === "offline" && myPresence?.logout_at) {
+      try {
+        const s = new Date(myPresence.login_at).getTime();
+        const e = new Date(myPresence.logout_at).getTime();
+        return Math.max(0, Math.floor((e - s) / 1000));
+      } catch {
+        return myPresence?.gross_seconds || 0;
+      }
+    }
+    if (myPresence?.status === "offline") {
       return myPresence?.gross_seconds || 0;
     }
     try {
@@ -133,7 +145,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch {
       return 0;
     }
-  }, [myPresence?.login_at, myPresence?.status, myPresence?.gross_seconds, nowTicker]);
+  }, [myPresence?.login_at, myPresence?.logout_at, myPresence?.status, myPresence?.gross_seconds, nowTicker]);
 
   const completedBreakSeconds = useMemo(() => {
     return (myPresence?.break_logs || []).reduce((acc: number, b: BreakLogItem) => {
@@ -163,43 +175,54 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const totalBreakSeconds = completedBreakSeconds + activeBreakSeconds;
 
-  const calculatedWorkingSeconds = useMemo(() => {
-    if (myPresence?.status === "offline") return 0;
+  // Login HR = Ready Time + Pause Time => Ready Time = Login HR - Pause Time
+  const readySeconds = useMemo(() => {
     return Math.max(0, grossLoginSeconds - totalBreakSeconds);
-  }, [myPresence?.status, grossLoginSeconds, totalBreakSeconds]);
+  }, [grossLoginSeconds, totalBreakSeconds]);
+
+  const calculatedWorkingSeconds = readySeconds;
 
   const talkSeconds = myPresence?.talk_seconds || 0;
   const ringingSeconds = myPresence?.ringing_seconds || 0;
   const setupSeconds = myPresence?.setup_seconds || 0;
   const disposeSeconds = myPresence?.dispose_seconds || 0;
 
-  const readySeconds = useMemo(() => {
-    if (myPresence?.status === "ready") {
-      return Math.max(0, calculatedWorkingSeconds - talkSeconds - setupSeconds - disposeSeconds);
-    }
-    return myPresence?.ready_seconds || 0;
-  }, [myPresence?.status, myPresence?.ready_seconds, calculatedWorkingSeconds, talkSeconds, setupSeconds, disposeSeconds]);
-
   const stopCount = (myPresence?.break_logs || []).length + (myPresence?.status === "paused" ? 1 : 0);
 
-  const isShiftTargetReached = calculatedWorkingSeconds >= SHIFT_TARGET_SECONDS;
+  // 8-Hour shift target is evaluated directly against gross Login HR (breaks do NOT decrease shift progress)
+  const isShiftTargetReached = grossLoginSeconds >= SHIFT_TARGET_SECONDS;
+
 
   const fetchPresenceData = useCallback(async () => {
     if (!user) return;
     try {
-      const [agentList, summaryData] = await Promise.all([
+      const [agentList, summaryData, meData] = await Promise.all([
         api.get("/api/presence/agents").catch(() => []),
         api.get("/api/presence/summary").catch(() => defaultSummary),
+        api.get("/api/agent/presence").catch(() => api.get("/api/presence/me").catch(() => null)),
       ]);
 
       if (Array.isArray(agentList)) {
         setAgents(agentList);
-        const me = agentList.find((a: AgentPresence) => a.id === user.id || a.user_id === user.id);
+        const meFromList = agentList.find((a: AgentPresence) => a.id === user.id || a.user_id === user.id);
+        const me = meData || meFromList;
         if (me) {
-          setMyStatus(me.status || "ready");
+          const rawStatus = me.status || "offline";
+          const normalizedStatus = (rawStatus.toLowerCase().trim()) as "ready" | "paused" | "in_call" | "offline";
+          setMyStatus(normalizedStatus);
           setPauseReason(me.pause_reason || null);
+          setAgents((prev) => {
+            const idx = prev.findIndex((a) => a.id === user.id || a.user_id === user.id);
+            if (idx !== -1) {
+              const updated = [...prev];
+              updated[idx] = { ...updated[idx], ...me, status: normalizedStatus };
+              return updated;
+            }
+            return [...prev, { ...me, status: normalizedStatus }];
+          });
         }
       }
+
 
       if (summaryData && typeof summaryData.ready_count === "number") {
         setSummary(summaryData);
@@ -208,6 +231,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       console.warn("[PRESENCE] Error loading presence data:", err);
     }
   }, [user]);
+
 
   // Handle incoming presence updates & activity logs from WebSocket stream
   const handleWsMessage = useCallback((event: MessageEvent) => {
@@ -237,8 +261,8 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         );
       }
 
-      if (payload.type === "agent_presence_updated" && payload.data) {
-        const updated = payload.data as AgentPresence;
+      if ((payload.type === "agent_presence_updated" || payload.event === "agent.status.changed") && (payload.data || payload.presence)) {
+        const updated = (payload.data || payload.presence) as AgentPresence;
 
         setAgents((prevAgents) => {
           const index = prevAgents.findIndex((a) => a.id === updated.id || a.user_id === updated.user_id);
@@ -250,8 +274,8 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return [...prevAgents, updated];
         });
 
-        if (user && (updated.id === user.id || updated.user_id === user.id)) {
-          setMyStatus(updated.status);
+        if (user && (updated.id === user.id || updated.user_id === user.id || payload.agentId === user.id)) {
+          if (updated.status) setMyStatus(updated.status);
           setPauseReason(updated.pause_reason || null);
         }
 
@@ -292,6 +316,9 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       ws.onopen = () => {
         setWsConnected(true);
+        // Automatically sync authoritative presence from server on connect/reconnect
+        fetchPresenceData();
+
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = null;
@@ -325,7 +352,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         connectWebSocket();
       }, 5000);
     }
-  }, [user, handleWsMessage]);
+  }, [user, handleWsMessage, fetchPresenceData]);
 
   useEffect(() => {
     if (user) {
@@ -352,83 +379,66 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (isSubmittingStatus) return;
     setIsSubmittingStatus(true);
 
-    // Optimistically update local state immediately
+    const prevStatus = myStatus;
+    const prevPauseReason = pauseReason;
+
+    // Optimistically set local state
     setMyStatus(newStatus);
     if (newPauseReason !== undefined) setPauseReason(newPauseReason);
 
-    const nowIso = new Date().toISOString();
-    setAgents((prev) => {
-      if (!user) return prev;
-      const index = prev.findIndex((a) => a.id === user.id || a.user_id === user.id);
-      if (index !== -1) {
-        const next = [...prev];
-        const currentLog = next[index].login_at || nowIso;
-        next[index] = {
-          ...next[index],
-          status: newStatus,
-          pause_reason: newPauseReason !== undefined ? newPauseReason : next[index].pause_reason,
-          login_at: newStatus !== "offline" ? currentLog : next[index].login_at,
-          logout_at: newStatus === "offline" ? nowIso : next[index].logout_at,
-        };
-        return next;
-      }
-      const newAgent: AgentPresence = {
-        id: user.id,
-        user_id: user.id,
-        name: user.name || "Agent",
-        email: user.email || "",
-        role: user.role || "agent",
-        status: newStatus,
-        pause_reason: newPauseReason || null,
-        login_at: newStatus !== "offline" ? nowIso : null,
-        logout_at: newStatus === "offline" ? nowIso : null,
-        ready_seconds: 0,
-        paused_seconds: 0,
-      };
-      return [...prev, newAgent];
-    });
-
     try {
       let response: any = null;
+      const targetEndpoint = newStatus === "ready" ? "/api/agent/presence/ready"
+        : newStatus === "paused" ? "/api/agent/presence/pause"
+        : newStatus === "offline" ? "/api/agent/presence/offline"
+        : "/api/presence/status";
+
       try {
+        response = await api.post(targetEndpoint, {
+          status: newStatus,
+          reason: newPauseReason || null,
+          pause_reason: newPauseReason || null,
+          force_offline: forceOffline,
+        });
+      } catch {
         response = await api.post("/api/presence/status", {
           status: newStatus,
           pause_reason: newPauseReason || null,
           force_offline: forceOffline,
         });
-      } catch (primaryErr: any) {
-        if (primaryErr?.status === 404 || (primaryErr?.message && (primaryErr.message.includes("404") || primaryErr.message.includes("Not Found")))) {
-          response = await api.post("/api/presence/status-update", {
-            status: newStatus,
-            pause_reason: newPauseReason || null,
-            force_offline: forceOffline,
-          }).catch(() => null);
-        } else {
-          throw primaryErr;
-        }
       }
 
-      if (response && response.presence) {
+
+      if (response && (response.presence || response.status)) {
         const updated = response.presence as AgentPresence;
-        setAgents((prev) => {
-          const index = prev.findIndex((a) => a.id === updated.id || a.user_id === updated.user_id);
-          if (index !== -1) {
-            const next = [...prev];
-            next[index] = { ...next[index], ...updated };
-            return next;
-          }
-          return [...prev, updated];
-        });
+        if (updated) {
+          if (updated.status) setMyStatus(updated.status);
+          if (updated.pause_reason !== undefined) setPauseReason(updated.pause_reason);
+          setAgents((prev) => {
+            const index = prev.findIndex((a) => a.id === updated.id || a.user_id === updated.user_id);
+            if (index !== -1) {
+              const next = [...prev];
+              next[index] = { ...next[index], ...updated };
+              return next;
+            }
+            return [...prev, updated];
+          });
+        }
       }
+      await fetchPresenceData();
     } catch (err: any) {
-      console.warn("[PRESENCE] Status update server warning:", err?.message || err);
-      if (err?.status === 400 || (err?.message && err.message.includes("8-hour"))) {
-        throw err;
-      }
+      console.warn("[PRESENCE] Status update server error/rejection:", err?.response?.data || err?.message || err);
+      // Rollback optimistic update to authoritative state
+      setMyStatus(prevStatus);
+      setPauseReason(prevPauseReason);
+      await fetchPresenceData();
+      throw err;
     } finally {
       setIsSubmittingStatus(false);
     }
+
   };
+
 
   const updateCallTelemetry = (stats: {
     ringing_seconds?: number;
@@ -476,8 +486,10 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         disposeSeconds,
         stopCount,
         isShiftTargetReached,
+        remainingSeconds: Math.max(0, SHIFT_TARGET_SECONDS - grossLoginSeconds),
         shiftTargetSeconds: SHIFT_TARGET_SECONDS,
         setPresenceStatus,
+
         refreshPresence: fetchPresenceData,
         updateCallTelemetry,
       }}

@@ -33,6 +33,8 @@ import {
   X,
   Loader2,
   TrendingUp,
+  Calendar,
+  ChevronLeft,
   ChevronRight
 } from "lucide-react";
 
@@ -209,6 +211,21 @@ export default function Dashboard() {
   const [showShiftSummaryModal, setShowShiftSummaryModal] = useState<boolean>(false);
   const [showEarlyLogoutWarningModal, setShowEarlyLogoutWarningModal] = useState<boolean>(false);
 
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [historicalSummary, setHistoricalSummary] = useState<any>(null);
+
+  useEffect(() => {
+    if (selectedDate !== todayStr) {
+      api.get(`/api/presence/shift-summary?date=${selectedDate}`)
+        .then((res) => setHistoricalSummary(res.data))
+        .catch(() => setHistoricalSummary(null));
+    } else {
+      setHistoricalSummary(null);
+    }
+  }, [selectedDate, todayStr]);
+
+
   const handleGoOfflineClick = () => {
     if (myStatus === "offline") {
       setShowShiftSummaryModal(true);
@@ -356,33 +373,32 @@ export default function Dashboard() {
     try {
       if (user?.role !== "agent") {
         const [summaryData, logs, live] = await Promise.all([
-          api.get("/api/reports/summary"),
-          api.get("/api/reports/recent-activities"),
-          api.get("/api/calls/live")
+          api.get("/api/reports/summary").catch(() => null),
+          api.get("/api/reports/recent-activities").catch(() => []),
+          api.get("/api/calls/live").catch(() => [])
         ]);
-        setSummary(summaryData);
+        if (summaryData) setSummary(summaryData);
         setActivities(logs || []);
         setLiveCallsList(live || []);
       } else {
         const [summaryData, leadsRes, historyData] = await Promise.all([
-          api.get("/api/reports/summary"),
-          api.get("/api/leads?status_filter=new&limit=50"),
-          api.get("/api/calls")
+          api.get("/api/reports/summary").catch(() => null),
+          api.get("/api/leads?status_filter=new&limit=50").catch(() => []),
+          api.get("/api/calls").catch(() => [])
         ]);
-        setSummary(summaryData);
+        if (summaryData) setSummary(summaryData);
         const leadsList = Array.isArray(leadsRes) ? leadsRes : (leadsRes?.items || []);
         setAgentLeads(leadsList);
         setAgentCallHistory(historyData || []);
       }
-      
       setError(null);
     } catch (err: any) {
-      console.error("Dashboard fetch error:", err);
-      setError(err.message || "Failed to sync dashboard data.");
+      console.warn("Dashboard fetch warning:", err);
     } finally {
       setLoading(false);
     }
   }, [user]);
+
 
   useEffect(() => {
     fetchDashboardData();
@@ -540,35 +556,25 @@ export default function Dashboard() {
     const avgHandlingTimeSeconds = totalCallsHandled > 0 ? Math.round(totalCallDurationSeconds / totalCallsHandled) : 0;
     const avgHandlingTimeFormatted = formatMMSS(avgHandlingTimeSeconds);
 
-    const readyTimeFormatted = formatHHMMSS(myPresence?.ready_seconds || 0);
-    const pauseTimeFormatted = formatHHMMSS(myPresence?.paused_seconds || 0);
-    const loginTimeStr = myPresence?.login_at && myPresence?.status !== "offline"
-      ? new Date(myPresence.login_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-      : myPresence?.status === "offline" ? "Offline" : "09:00:00 AM";
+    const isTodaySelected = selectedDate === todayStr;
 
-    const loginHoursVal = (() => {
-      if (!myPresence?.login_at || myPresence?.status === "offline") {
-        if (myPresence?.status === "offline" && myPresence?.login_at && myPresence?.logout_at) {
-          const startMs = new Date(myPresence.login_at).getTime();
-          const endMs = new Date(myPresence.logout_at).getTime();
-          const diffSec = Math.max(0, Math.floor((endMs - startMs) / 1000));
-          const hrs = (diffSec / 3600).toFixed(1);
-          return `${hrs} hrs`;
-        }
-        return "0.0 hrs";
-      }
-      try {
-        const loginDt = new Date(myPresence.login_at);
-        const diffMs = Math.max(0, nowTicker - loginDt.getTime());
-        const totalSecs = Math.floor(diffMs / 1000);
-        const hrsFloat = (totalSecs / 3600).toFixed(1);
-        const mins = Math.floor((totalSecs % 3600) / 60);
-        const secs = totalSecs % 60;
-        return `${hrsFloat} hrs (${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")})`;
-      } catch {
-        return "0.0 hrs";
-      }
-    })();
+    const displayLoginAt = isTodaySelected ? myPresence?.login_at : historicalSummary?.login_at;
+    const displayLogoutAt = isTodaySelected ? myPresence?.logout_at : historicalSummary?.logout_at;
+    const displayGrossSec = isTodaySelected ? grossLoginSeconds : (historicalSummary?.gross_seconds || historicalSummary?.total_login_seconds || 0);
+    const displayPauseSec = isTodaySelected ? totalBreakSeconds : (historicalSummary?.total_pause_seconds || 0);
+    const displayReadySec = isTodaySelected ? readySeconds : (historicalSummary?.total_ready_seconds || Math.max(0, displayGrossSec - displayPauseSec));
+    const displayRemainingSec = Math.max(0, 28800 - displayGrossSec);
+    const isCompleted8Hrs = displayGrossSec >= 28800;
+
+    const loginTimeStr = displayLoginAt
+      ? new Date(displayLoginAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      : (myPresence?.status === "offline" && isTodaySelected ? "Offline" : "Not Logged In");
+
+    const loginHoursVal = formatHHMMSS(displayGrossSec);
+    const readyTimeFormatted = formatHHMMSS(displayReadySec);
+    const pauseTimeFormatted = formatHHMMSS(displayPauseSec);
+    const remainingTimeFormatted = formatHHMMSS(displayRemainingSec);
+
 
     const stopCount = 0;
     const ringingTimeFormatted = formatHHMMSS(totalCallsHandled * 8);
@@ -653,47 +659,94 @@ export default function Dashboard() {
                   await setPresenceStatus("ready");
                   showToast("Agent status set to READY.", "success");
                 } catch (err: any) {
-                  showToast(err?.message || "Failed to set status to Ready", "error");
+                  showToast(err?.response?.data?.detail || err?.message || "Failed to set status to Ready", "error");
                 }
               }}
               disabled={isSubmittingStatus}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
                 myStatus === "ready"
-                  ? "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30"
-                  : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white border border-emerald-500/30"
-              } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : "active:scale-95 hover:scale-102"}`}
-            >
-              <CheckCircle className="h-3.5 w-3.5" />
-              Set Ready
-            </button>
-
-            <button
-              onClick={() => setShowPauseModal(true)}
-              disabled={isSubmittingStatus}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                myStatus === "paused"
-                  ? "bg-amber-500 text-white shadow-xs"
-                  : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 dark:bg-slate-800 dark:hover:bg-amber-950/40 dark:text-slate-300 dark:hover:text-amber-400"
+                  ? "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30 active:scale-95 hover:bg-emerald-700"
+                  : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white border border-emerald-500/30 active:scale-95 hover:scale-102"
               } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <Clock className="h-3.5 w-3.5" />
-              Pause / Break
+              {isSubmittingStatus ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  <span>Setting Ready...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  <span>{myStatus === "ready" ? "✓ Set Ready" : "Set Ready"}</span>
+                </>
+              )}
+            </button>
+
+
+            <button
+              onClick={async () => {
+                if (myStatus === "offline") return;
+                if (myStatus === "paused") {
+                  try {
+                    await setPresenceStatus("ready");
+                    showToast("Break ended. Agent status set to READY.", "success");
+                  } catch (err: any) {
+                    showToast(err?.response?.data?.detail || err?.message || "Failed to resume status", "error");
+                  }
+                } else {
+                  setShowPauseModal(true);
+                }
+              }}
+              disabled={isSubmittingStatus || myStatus === "offline"}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                myStatus === "paused"
+                  ? "bg-amber-500 text-white shadow-xs"
+                  : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 dark:bg-slate-800 dark:hover:bg-amber-950/40 dark:text-slate-300 dark:hover:text-amber-400 border border-slate-200 dark:border-white/10"
+              } ${isSubmittingStatus || myStatus === "offline" ? "opacity-50 cursor-not-allowed" : "active:scale-95 hover:scale-102"}`}
+            >
+              {isSubmittingStatus ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  <span>Starting Break...</span>
+                </>
+              ) : myStatus === "paused" ? (
+                <>
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Resume / Ready</span>
+                </>
+              ) : (
+                <>
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>Pause / Break</span>
+                </>
+              )}
             </button>
 
             <button
               onClick={handleGoOfflineClick}
-              disabled={isSubmittingStatus}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+              disabled={isSubmittingStatus || myStatus === "offline"}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
                 myStatus === "offline"
-                  ? "bg-rose-600 text-white shadow-xs"
-                  : "bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400"
-              } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : ""}`}
+                  ? "bg-rose-600/20 text-rose-500 border border-rose-300 dark:border-rose-900/40 opacity-60 cursor-not-allowed"
+                  : "bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400 border border-slate-200 dark:border-white/10"
+              } ${isSubmittingStatus || myStatus === "offline" ? "opacity-50 cursor-not-allowed" : "active:scale-95 hover:scale-102"}`}
             >
-              <PhoneOff className="h-3.5 w-3.5" />
-              Go Offline
+              {isSubmittingStatus ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  <span>Going Offline...</span>
+                </>
+              ) : (
+                <>
+                  <PhoneOff className="h-3.5 w-3.5" />
+                  <span>{myStatus === "offline" ? "✓ Offline" : "Go Offline"}</span>
+                </>
+              )}
             </button>
           </div>
         </div>
+
+
 
         {/* TODAY'S SUMMARY & OPERATIONAL TELEMETRY PANEL */}
         <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-2xl p-5 shadow-2xs space-y-4">
@@ -703,11 +756,39 @@ export default function Dashboard() {
                 <Activity className="h-4.5 w-4.5 text-[#2563EB] dark:text-[#3B82F6]" />
               </div>
               <div>
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Today's Summary &amp; Telemetry</h2>
+                <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>{selectedDate === todayStr ? "Today's Summary & Telemetry" : `Shift Summary (${selectedDate})`}</span>
+                  {selectedDate !== todayStr && (
+                    <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 rounded-full border border-amber-200 dark:border-amber-700/50">
+                      Historical Log
+                    </span>
+                  )}
+                </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Real-time agent shift times, call setup, disposition, and handling performance</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">
+
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0 flex-wrap">
+              {/* Date / Calendar Selector */}
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700/60 shadow-2xs">
+                <Calendar className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={todayStr}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent text-xs font-extrabold text-slate-800 dark:text-slate-100 border-none outline-none focus:ring-0 cursor-pointer p-0 font-mono"
+                />
+                {selectedDate !== todayStr && (
+                  <button
+                    onClick={() => setSelectedDate(todayStr)}
+                    className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 hover:underline border-l border-slate-200 dark:border-slate-700 pl-1.5 ml-0.5"
+                  >
+                    Today
+                  </button>
+                )}
+              </div>
+
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 shadow-2xs">
                 <RefreshCw className="h-3 w-3 text-blue-500 animate-spin-slow" />
                 Last Update: <strong className="font-mono text-slate-900 dark:text-white">{new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</strong>
@@ -740,11 +821,24 @@ export default function Dashboard() {
               <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{pauseTimeFormatted}</div>
             </div>
 
-            {/* 5. Stop */}
+            {/* 5. Remaining */}
             <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Stop</span>
-              <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{stopCount}</div>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Remaining</span>
+              <div className="text-xs sm:text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">{remainingTimeFormatted}</div>
             </div>
+
+            {/* 6. 8-Hr Target Status */}
+            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">8-Hr Status</span>
+              <div className="text-xs font-black">
+                {isCompleted8Hrs ? (
+                  <span className="text-emerald-600 dark:text-emerald-400">✓ Completed</span>
+                ) : (
+                  <span className="text-amber-600 dark:text-amber-400">In Progress</span>
+                )}
+              </div>
+            </div>
+
 
             {/* 6. Ringing Time */}
             <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">

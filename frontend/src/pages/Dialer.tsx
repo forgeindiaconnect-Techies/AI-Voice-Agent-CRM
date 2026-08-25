@@ -205,14 +205,17 @@ export default function Dialer() {
     return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const loginTimeStr = myPresence?.login_at && myPresence?.status !== "offline"
+  const loginTimeStr = myPresence?.login_at
     ? new Date(myPresence.login_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    : myPresence?.status === "offline" ? "Offline" : "09:00:00 AM";
+    : (myPresence?.status === "offline" ? "Offline" : "Not Logged In");
 
-  const loginHoursVal = `${(netWorkingSeconds / 3600).toFixed(1)} hrs (${formatSecsToHMS(netWorkingSeconds)})`;
+  const loginHoursVal = formatSecsToHMS(grossLoginSeconds);
   const readyTimeFormatted = formatSecsToHMS(readySeconds);
   const pauseTimeFormatted = formatSecsToHMS(totalBreakSeconds);
+  const remainingTimeFormatted = formatSecsToHMS(Math.max(0, 28800 - grossLoginSeconds));
+  const isCompleted8Hrs = grossLoginSeconds >= 28800;
   const ringingTimeFormatted = formatSecsToHMS(ringingSeconds);
+
   const callSetupTimeFormatted = formatSecsToHMS(setupSeconds);
   const totalCallTimeFormatted = formatSecsToHMS(talkSeconds);
   const disposeTimeFormatted = formatSecsToHMS(disposeSeconds);
@@ -276,10 +279,72 @@ export default function Dialer() {
     queuedAt: number;
     department?: string;
   };
-  const [incomingCall, setIncomingCall] = useState<{ id: string; phone: string; name: string } | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{
+    id: string;
+    phone: string;
+    name: string;
+    campaign?: string;
+    timestamp?: string;
+  } | null>(null);
   const [inboundQueue, setInboundQueue] = useState<QueuedInboundCall[]>([]);
   const [queueWaitSeconds, setQueueWaitSeconds] = useState<number>(0);
   const [autoAnswerEnabled, setAutoAnswerEnabled] = useState<boolean>(true);
+  const [ringingDuration, setRingingDuration] = useState<number>(0);
+  const processedCallIdsRef = useRef<Set<string>>(new Set());
+
+  const ringingStartTimeRef = useRef<number | null>(null);
+  const answeredStartTimeRef = useRef<number | null>(null);
+  const myStatusRef = useRef(myStatus);
+  useEffect(() => {
+    myStatusRef.current = myStatus;
+  }, [myStatus]);
+  const callStatusRef = useRef(callStatus);
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
+
+  // Real-time Ringing Duration Timer based on event timestamps
+  useEffect(() => {
+    let interval: any = null;
+    if (callStatus === "ringing") {
+      if (!ringingStartTimeRef.current) {
+        ringingStartTimeRef.current = Date.now();
+      }
+      setRingingDuration(Math.max(0, Math.floor((Date.now() - ringingStartTimeRef.current) / 1000)));
+      interval = setInterval(() => {
+        if (ringingStartTimeRef.current) {
+          setRingingDuration(Math.max(0, Math.floor((Date.now() - ringingStartTimeRef.current) / 1000)));
+        }
+      }, 1000);
+    } else {
+      ringingStartTimeRef.current = null;
+      setRingingDuration(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [callStatus]);
+
+  // Real-time Call Duration Timer based on answered timestamp
+  useEffect(() => {
+    let interval: any = null;
+    if (callStatus === "connected" || callStatus === "hold") {
+      if (!answeredStartTimeRef.current) {
+        answeredStartTimeRef.current = Date.now();
+      }
+      setCallDuration(Math.max(0, Math.floor((Date.now() - answeredStartTimeRef.current) / 1000)));
+      interval = setInterval(() => {
+        if (answeredStartTimeRef.current) {
+          setCallDuration(Math.max(0, Math.floor((Date.now() - answeredStartTimeRef.current) / 1000)));
+        }
+      }, 1000);
+    } else if (callStatus === "ready" || callStatus === "wrapup") {
+      answeredStartTimeRef.current = null;
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [callStatus]);
 
   // SUPERVISOR STATE
   const [activeCalls, setActiveCalls] = useState<ActiveCall[]>([]);
@@ -518,14 +583,96 @@ export default function Dialer() {
                 setAgentStatus(data.status === "wrapup" ? "wrap_up" : data.status);
               }
             }
-            if (data.event === "incoming_call" || data.event === "inbound_call") {
-              setIncomingCall({
-                id: data.call_id || `inc_${Date.now()}`,
-                phone: data.phone || "9876543210",
-                name: data.name || "Customer Lead"
-              });
-              setCallStatus("ringing");
-              showToast(`Incoming Call from ${data.phone || 'Customer'}`, "info");
+            const evtName = (data.event || data.type || "").toLowerCase();
+
+            // 1. INBOUND CALL & CALL RINGING
+            if (evtName === "inbound_call" || evtName === "incoming_call" || evtName === "call_ringing") {
+              const callId = data.call_id || data.id;
+              if (!callId) return; // Requirement #13: Missing call_id -> ignore invalid event
+
+              if (!processedCallIdsRef.current.has(callId)) {
+                processedCallIdsRef.current.add(callId);
+                const rawPhone = data.caller_number || data.phone || data.number;
+                const cleanPhone = rawPhone ? String(rawPhone).replace(/\D/g, "").slice(-10) : "";
+                const displayPhone = cleanPhone || "Unknown Caller"; // Requirement #13: Missing caller number -> display "Unknown Caller"
+                const custName = data.customer_name || data.lead_name || data.name || (cleanPhone ? `Customer (${cleanPhone})` : "Unknown Caller");
+                const campName = data.campaign || data.queue || data.pool_id || "SBI Credit Card";
+                const timeStamp = data.timestamp || new Date().toISOString();
+
+                // Requirement #12: Agent availability - ONLY READY agents can receive inbound calls
+                if (myStatusRef.current === "ready" && (callStatusRef.current === "ready" || callStatusRef.current === "wrapup")) {
+                  const ringTs = Date.parse(timeStamp) || Date.now();
+                  ringingStartTimeRef.current = ringTs;
+
+                  setIncomingCall({
+                    id: callId,
+                    phone: displayPhone,
+                    name: custName,
+                    campaign: campName,
+                    timestamp: timeStamp
+                  });
+                  setOutboundPhone(cleanPhone || "9876543210");
+                  setDialerMode("inbound");
+                  setCallStatus("ringing");
+                  setRingingDuration(Math.max(0, Math.floor((Date.now() - ringTs) / 1000)));
+                  showToast(`📞 Incoming Call from ${custName} (${displayPhone})`, "info");
+                } else {
+                  // Agent is PAUSED, OFFLINE or IN_CALL -> Keep call in ACD queue
+                  const newQueued: QueuedInboundCall = {
+                    id: callId,
+                    phone: cleanPhone || "Unknown",
+                    name: custName,
+                    queuedAt: Date.now(),
+                    department: campName
+                  };
+                  setInboundQueue(prev => [...prev.filter(c => c.id !== newQueued.id), newQueued]);
+                  showToast(`📥 Inbound Call Queued (Agent ${myStatusRef.current.toUpperCase()})`, "warning");
+                }
+              }
+            }
+
+            // 2. CALL ACCEPTED & CALL CONNECTED
+            if (evtName === "call_accepted" || evtName === "call_connected") {
+              if (data.call_id) setCurrentCallId(data.call_id);
+              if (!answeredStartTimeRef.current) {
+                answeredStartTimeRef.current = Date.now();
+              }
+              setCallStatus("connected");
+              setAgentStatus("on_call");
+              setIsMuted(false);
+              setCallDuration(Math.max(0, Math.floor((Date.now() - (answeredStartTimeRef.current || Date.now())) / 1000)));
+            }
+
+            // 3. CALL HOLD & CALL RESUME
+            if (evtName === "call_hold" || (data.event === "manual_call_action" && data.action === "hold")) {
+              setCallStatus("hold");
+            }
+            if (evtName === "call_resume" || (data.event === "manual_call_action" && data.action === "resume")) {
+              setCallStatus("connected");
+            }
+
+            // 4. CALL TRANSFER
+            if (evtName === "call_transfer") {
+              setShowTransferModal(true);
+            }
+
+            // 5. CALL ENDED
+            if (evtName === "call_ended") {
+              answeredStartTimeRef.current = null;
+              ringingStartTimeRef.current = null;
+              setCallStatus("wrapup");
+              setAgentStatus("wrap_up");
+              fetchCallHistory();
+              showToast("Call disconnected", "info");
+            }
+
+            // 6. CALL REJECTED
+            if (evtName === "call_rejected") {
+              setIncomingCall(null);
+              ringingStartTimeRef.current = null;
+              setCallStatus("ready");
+              setAgentStatus("ready");
+              showToast("Call rejected", "info");
             }
             if (data.event === "manual_call_action") {
               if (data.action === "hold") {
@@ -910,6 +1057,7 @@ export default function Dialer() {
   };
 
   const handleAnswerRingingCall = () => {
+    answeredStartTimeRef.current = Date.now();
     setCallStatus("connected");
     setAgentStatus("on_call");
     setCallDuration(0);
@@ -918,8 +1066,10 @@ export default function Dialer() {
 
   const handleRejectRingingCall = () => {
     setCallStatus("ready");
+    setAgentStatus("ready");
     setIncomingCall(null);
-    showToast("Inbound Call Rejected / Missed", "warning");
+    ringingStartTimeRef.current = null;
+    showToast("Call rejected", "info");
   };
 
   // AUTO-CONNECT QUEUED CALL WHEN AGENT BECOMES READY
@@ -1407,6 +1557,7 @@ export default function Dialer() {
       }
 
       // Reset state for next call
+      setIncomingCall(null);
       setCallStatus("ready");
       setAgentStatus("ready");
       setCurrentCallId(null);
@@ -1414,6 +1565,9 @@ export default function Dialer() {
       setFollowUpDate("");
       setFollowUpTime("");
       setCallDuration(0);
+      setRingingDuration(0);
+      ringingStartTimeRef.current = null;
+      answeredStartTimeRef.current = null;
 
       if (nextLead) {
         handleSelectLead(nextLead);
@@ -1975,147 +2129,6 @@ export default function Dialer() {
                           </p>
                         </div>
                       </div>
-
-                      {/* Real-time Agent Status Action Buttons */}
-                      <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        <button
-                          onClick={async () => {
-                            try {
-                              await setPresenceStatus("ready");
-                              showToast("Agent status set to READY.", "success");
-                            } catch (err: any) {
-                              showToast(err?.message || "Failed to set status to Ready", "error");
-                            }
-                          }}
-                          disabled={isSubmittingStatus}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                            myStatus === "ready"
-                              ? "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30"
-                              : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white border border-emerald-500/30"
-                          } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : "active:scale-95 hover:scale-102"}`}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Set Ready
-                        </button>
-
-                        <button
-                          onClick={() => setShowPauseModal(true)}
-                          disabled={isSubmittingStatus}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                            myStatus === "paused"
-                              ? "bg-amber-500 text-white shadow-xs"
-                              : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 dark:bg-slate-800 dark:hover:bg-amber-950/40 dark:text-slate-300 dark:hover:text-amber-400"
-                          } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          <Clock className="h-3.5 w-3.5" />
-                          Pause / Break
-                        </button>
-
-                        <button
-                          onClick={handleGoOfflineClick}
-                          disabled={isSubmittingStatus}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                            myStatus === "offline"
-                              ? "bg-rose-600 text-white shadow-xs"
-                              : "bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400"
-                          } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          <PhoneOff className="h-3.5 w-3.5" />
-                          Go Offline
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* TODAY's SUMMARY & OPERATIONAL TELEMETRY PANEL */}
-                  <div className="w-full bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xs mb-5 space-y-4">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-500/20 shadow-2xs">
-                          <Activity className="h-4.5 w-4.5 text-[#2563EB] dark:text-[#3B82F6]" />
-                        </div>
-                        <div>
-                          <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Today's Summary &amp; Telemetry</h2>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Real-time agent shift times, call setup, disposition, and handling performance</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">
-                        <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 shadow-2xs">
-                          <RefreshCw className="h-3 w-3 text-blue-500 animate-spin-slow" />
-                          Last Update: <strong className="font-mono text-slate-900 dark:text-white">{new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</strong>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                      {/* 1. Login */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Login</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{loginTimeStr}</div>
-                      </div>
-
-                      {/* 2. Login Hr */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Login Hr</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-blue-600 dark:text-blue-400">{loginHoursVal}</div>
-                      </div>
-
-                      {/* 3. Ready */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ready</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{readyTimeFormatted}</div>
-                      </div>
-
-                      {/* 4. Pause */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pause</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{pauseTimeFormatted}</div>
-                      </div>
-
-                      {/* 5. Stop */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Stop</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{stopCount}</div>
-                      </div>
-
-                      {/* 6. Ringing Time */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ringing Time</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{ringingTimeFormatted}</div>
-                      </div>
-
-                      {/* 7. Call Setup Time */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Call Setup Time</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-sky-600 dark:text-sky-400">{callSetupTimeFormatted}</div>
-                      </div>
-
-                      {/* 8. Total Call Time */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Call Time</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-blue-600 dark:text-blue-400">{totalCallTimeFormatted}</div>
-                      </div>
-
-                      {/* 9. Dispose Time */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Dispose Time</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-purple-600 dark:text-purple-400">{disposeTimeFormatted}</div>
-                      </div>
-
-                      {/* 10. Average Handling Time */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Avg Handling Time</span>
-                        <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{avgHandlingTimeFormatted}</div>
-                      </div>
-
-                      {/* 11. Total Calls Handled */}
-                      <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2">
-                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Calls Handled</span>
-                        <div className="text-sm font-black font-mono text-slate-900 dark:text-white flex items-center justify-between">
-                          <span>{totalCallsHandled} calls</span>
-                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 font-sans">{shiftLogPercentage}</span>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
@@ -2124,6 +2137,100 @@ export default function Dialer() {
 
                     {/* Centered Softphone Dialer Core Card */}
                     <div className="w-full max-w-[420px] bg-slate-50/60 dark:bg-[#172033]/60 rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 shadow-xs flex flex-col justify-between my-auto">
+                      
+                      {/* CALL TYPE SELECTION SECTION */}
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            Call Type
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 ${
+                            callStatus === "ringing"
+                              ? "bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30 animate-pulse"
+                              : callStatus === "dialing"
+                              ? "bg-blue-50 text-blue-600 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30 animate-pulse"
+                              : callStatus === "connected"
+                              ? "bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/30"
+                              : callStatus === "hold"
+                              ? "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30"
+                              : callStatus === "wrapup"
+                              ? "bg-purple-50 text-purple-600 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-400 dark:border-purple-500/30"
+                              : "bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                          }`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${
+                              callStatus === "ringing" ? "bg-rose-500 animate-ping" :
+                              callStatus === "dialing" ? "bg-blue-500 animate-ping" :
+                              callStatus === "connected" ? "bg-emerald-500" :
+                              callStatus === "hold" ? "bg-amber-500" : "bg-slate-400"
+                            }`} />
+                            {callStatus === "ready"
+                              ? "Ready for Calls"
+                              : callStatus === "ringing"
+                              ? "Ringing..."
+                              : callStatus === "dialing"
+                              ? "Dialing..."
+                              : callStatus === "connected"
+                              ? `Connected (${formatTime(callDuration)})`
+                              : callStatus === "hold"
+                              ? `On Hold (${formatTime(callDuration)})`
+                              : "Call Ended"}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {/* Inbound Call Card */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (callStatus !== "ready" && callStatus !== "wrapup") return;
+                              setDialerMode("inbound");
+                            }}
+                            className={`p-3 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center ${
+                              dialerMode === "inbound"
+                                ? "bg-emerald-50 dark:bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-400 shadow-xs ring-2 ring-emerald-500/20 font-black"
+                                : "bg-white dark:bg-[#111827] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 font-bold"
+                            } ${callStatus !== "ready" && callStatus !== "wrapup" ? "opacity-60 cursor-not-allowed" : ""}`}
+                          >
+                            <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-transform ${
+                              dialerMode === "inbound"
+                                ? "bg-emerald-500 text-white shadow-xs scale-105"
+                                : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            }`}>
+                              <PhoneIncoming className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs tracking-tight font-extrabold">Inbound Call</p>
+                              <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500">Receive Incoming</p>
+                            </div>
+                          </button>
+
+                          {/* Outbound Call Card */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (callStatus !== "ready" && callStatus !== "wrapup") return;
+                              setDialerMode("outbound");
+                            }}
+                            className={`p-3 rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center ${
+                              dialerMode === "outbound"
+                                ? "bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-400 shadow-xs ring-2 ring-blue-500/20 font-black"
+                                : "bg-white dark:bg-[#111827] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:bg-slate-100/70 dark:hover:bg-slate-800/60 font-bold"
+                            } ${callStatus !== "ready" && callStatus !== "wrapup" ? "opacity-60 cursor-not-allowed" : ""}`}
+                          >
+                            <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-transform ${
+                              dialerMode === "outbound"
+                                ? "bg-blue-600 text-white shadow-xs scale-105"
+                                : "bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                            }`}>
+                              <PhoneOutgoing className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="text-xs tracking-tight font-extrabold">Outbound Call</p>
+                              <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500">Make Outgoing</p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
                       
                       {/* Selected Customer Info Badge */}
                       {selectedLead && (
@@ -2152,125 +2259,127 @@ export default function Dialer() {
                         </div>
                       )}
 
-                      {/* Target Mobile Input */}
-                      <div className="mb-3">
-                        <label className="block text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                          {dialerMode === "inbound" ? "INBOUND CALLER / LINE NUMBER" : "TARGET MOBILE NUMBER"}
-                        </label>
-                        <div className="relative h-[48px] flex items-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-xl px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-2xs">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={10}
-                            value={outboundPhone}
-                            onChange={(e) => {
-                              if (callStatus !== "ready") return;
-                              setOutboundPhone(sanitizeMobileNumber(e.target.value));
-                            }}
-                            readOnly={callStatus !== "ready"}
-                            placeholder={dialerMode === "inbound" ? "Enter caller 10-digit number" : "Enter 10-digit number"}
-                            className="w-full bg-transparent font-mono font-extrabold text-base text-slate-900 dark:text-white outline-none tracking-widest text-center placeholder:text-slate-400 placeholder:text-xs placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
-                          />
-                          {callStatus === "ready" && outboundPhone.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setOutboundPhone("")}
-                              className="h-6 w-6 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60 flex items-center justify-center cursor-pointer transition shrink-0 ml-1"
-                              title="Clear number"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
+                      {/* Target Mobile Input (Outbound Mode Only) */}
+                      {dialerMode === "outbound" && (
+                        <div className="mb-3">
+                          <label className="block text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                            TARGET MOBILE NUMBER
+                          </label>
+                          <div className="relative h-[48px] flex items-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 rounded-xl px-3 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all shadow-2xs">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={10}
+                              value={outboundPhone}
+                              onChange={(e) => {
+                                if (callStatus !== "ready") return;
+                                setOutboundPhone(sanitizeMobileNumber(e.target.value));
+                              }}
+                              readOnly={callStatus !== "ready"}
+                              placeholder="Enter 10-digit number"
+                              className="w-full bg-transparent font-mono font-extrabold text-base text-slate-900 dark:text-white outline-none tracking-widest text-center placeholder:text-slate-400 placeholder:text-xs placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
+                            />
+                            {callStatus === "ready" && outboundPhone.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setOutboundPhone("")}
+                                className="h-6 w-6 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60 flex items-center justify-center cursor-pointer transition shrink-0 ml-1"
+                                title="Clear number"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
 
-                        <div className="mt-1 text-center">
-                          {outboundPhone.length > 0 && !isValidMobile ? (
-                            <p className="text-[10px] font-bold text-rose-500 flex items-center justify-center gap-1">
-                              <AlertCircle className="h-3 w-3 shrink-0" />
-                              <span>Must be 10 digits starting with 6-9</span>
-                            </p>
-                          ) : (
-                            <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                              {dialerMode === "inbound" ? "Enter caller number or answer incoming line" : "Enter 10-digit mobile number"}
-                            </p>
-                          )}
+                          <div className="mt-1 text-center">
+                            {outboundPhone.length > 0 && !isValidMobile ? (
+                              <p className="text-[10px] font-bold text-rose-500 flex items-center justify-center gap-1">
+                                <AlertCircle className="h-3 w-3 shrink-0" />
+                                <span>Must be 10 digits starting with 6-9</span>
+                              </p>
+                            ) : (
+                              <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                                Enter 10-digit mobile number
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {/* Keypad Grid (Outbound Mode) */}
                       {dialerMode === "outbound" && callStatus === "ready" && renderKeypad()}
 
-                      {/* ── INBOUND ACD CALL INTERFACE (REPLACES KEYPAD IN INBOUND MODE) ── */}
+                      {/* ── INBOUND ACD CALL INTERFACE (AUTOMATIC REAL-TIME CALLS) ── */}
                       {dialerMode === "inbound" && (
                         <div className="my-2 space-y-3">
 
-                          {/* CASE 1: INBOUND LINE RINGING (INCOMING CALL CARD MATCHING DESIGN) */}
+                          {/* CASE 1: INBOUND LINE RINGING (REAL-TIME INCOMING CALL CARD) */}
                           {callStatus === "ringing" && (
                             <div className="bg-white dark:bg-[#111827] rounded-2xl border-2 border-emerald-500 p-5 text-center shadow-xl relative overflow-hidden">
-                              <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500" />
+                              <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500 animate-pulse" />
 
-                              {/* Call Ring Avatar */}
+                              {/* Call Ring Pulsing Avatar */}
                               <div className="relative h-16 w-16 mx-auto mb-3 flex items-center justify-center">
-                                <div className="relative h-14 w-14 rounded-full bg-emerald-50 dark:bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-inner">
-                                  <PhoneIncoming className="h-7 w-7" />
+                                <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
+                                <div className="relative h-14 w-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                                  <PhoneIncoming className="h-7 w-7 animate-bounce" />
                                 </div>
                               </div>
 
-                              {/* Caller Info */}
-                              <h3 className="text-base font-black text-slate-900 dark:text-white">
-                                {incomingCall?.name || selectedLead?.name || (outboundPhone ? `Incoming Caller (${outboundPhone})` : "Incoming Caller (John Doe)")}
-                              </h3>
-                              <p className="text-xs font-mono font-extrabold text-slate-500 dark:text-slate-400 mt-0.5">
-                                +91 {outboundPhone || incomingCall?.phone || "98765 43210"}
+                              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-1">
+                                INCOMING CALL
                               </p>
 
-                              {/* Line Ringing Badge */}
-                              <div className="mt-3 inline-flex items-center px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full border border-emerald-300 dark:border-emerald-500/30">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                                  INBOUND LINE RINGING
+                              {/* Caller Info */}
+                              <h3 className="text-base font-black text-slate-900 dark:text-white">
+                                {incomingCall?.name || selectedLead?.name || "Customer Lead"}
+                              </h3>
+                              <p className="text-xs font-mono font-extrabold text-slate-600 dark:text-slate-300 mt-0.5">
+                                +91 {incomingCall?.phone || outboundPhone || "9876543210"}
+                              </p>
+
+                              {/* Campaign / Queue Badge */}
+                              <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full border border-emerald-200 dark:border-emerald-500/30">
+                                <Sparkles className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                  {incomingCall?.campaign || "SBI Credit Card"}
                                 </span>
                               </div>
 
-                              {/* Green Answer & Red Reject Buttons */}
-                              <div className="mt-5 grid grid-cols-2 gap-3">
+                              {/* Real-time Ringing Duration */}
+                              <p className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 mt-2">
+                                Ringing Duration: <span className="text-emerald-600 dark:text-emerald-400 font-black">{formatTime(ringingDuration)}</span>
+                              </p>
+
+                              {/* Accept Call & Reject Call Action Buttons */}
+                              <div className="mt-4 grid grid-cols-2 gap-3">
                                 <button
                                   type="button"
                                   onClick={handleAnswerRingingCall}
-                                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
+                                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
                                 >
-                                  <PhoneIncoming className="h-4 w-4" /> Answer
+                                  <PhoneIncoming className="h-4 w-4" /> Accept Call
                                 </button>
                                 <button
                                   type="button"
                                   onClick={handleRejectRingingCall}
-                                  className="h-11 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
+                                  className="h-11 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-95 cursor-pointer"
                                 >
-                                  <PhoneOff className="h-4 w-4" /> Reject
+                                  <PhoneOff className="h-4 w-4" /> Reject Call
                                 </button>
-                              </div>
-
-                              {/* Disabled Secondary Action Matrix: Hold, Mute, Transfer */}
-                              <div className="mt-3 grid grid-cols-3 gap-2 opacity-40 pointer-events-none">
-                                <div className="py-2 px-1 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 text-[9px] font-black uppercase flex items-center justify-center gap-1">
-                                  <Pause className="h-3 w-3" /> Hold
-                                </div>
-                                <div className="py-2 px-1 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 text-[9px] font-black uppercase flex items-center justify-center gap-1">
-                                  <Mic className="h-3 w-3" /> Mute
-                                </div>
-                                <div className="py-2 px-1 rounded-xl border border-slate-200 dark:border-white/10 text-slate-400 text-[9px] font-black uppercase flex items-center justify-center gap-1">
-                                  <PhoneForwarded className="h-3 w-3" /> Transfer
-                                </div>
                               </div>
                             </div>
                           )}
 
                           {/* CASE 2: CALL CONNECTED OR ON HOLD */}
                           {(callStatus === "connected" || callStatus === "hold") && (
-                            <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-white/10 p-4 text-center shadow-2xs relative overflow-hidden">
-                              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" />
+                            <div className="bg-white dark:bg-[#111827] rounded-2xl border border-slate-200 dark:border-white/10 p-5 text-center shadow-2xs relative overflow-hidden space-y-3">
+                              <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                                callStatus === "hold" ? "bg-amber-500" : "bg-emerald-500"
+                              }`} />
                               
-                              {/* Call Avatar & Wave */}
-                              <div className="relative h-16 w-16 mx-auto mb-2 flex items-center justify-center">
+                              {/* Call Avatar */}
+                              <div className="relative h-16 w-16 mx-auto mb-1 flex items-center justify-center">
                                 <div className={`relative h-14 w-14 rounded-full flex items-center justify-center border-2 transition-all shadow-md ${
                                   callStatus === "hold"
                                     ? "bg-amber-500 text-white border-amber-400"
@@ -2280,20 +2389,33 @@ export default function Dialer() {
                                 </div>
                               </div>
 
-                              {/* Caller Info */}
-                              <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                                {selectedLead?.name || (outboundPhone ? `Customer +91 ${outboundPhone}` : "Inbound Customer")}
-                              </h3>
-                              <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400 mt-0.5">
-                                {outboundPhone ? `+91 ${outboundPhone}` : "+91 98765 43210"}
+                              <p className={`text-[10px] font-black uppercase tracking-widest ${
+                                callStatus === "hold" ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
+                              }`}>
+                                {callStatus === "hold" ? "CALL ON HOLD" : "CALL CONNECTED"}
                               </p>
 
-                              {/* Timer Pill */}
-                              <div className="mt-2.5 inline-flex items-center px-3 py-1 bg-emerald-50 dark:bg-emerald-500/10 rounded-full border border-emerald-300 dark:border-emerald-500/30">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                                  {callStatus === "hold" ? `On Hold: ${formatTime(callDuration)}` : `Connected: ${formatTime(callDuration)}`}
+                              {/* Caller Info */}
+                              <div>
+                                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                                  {incomingCall?.name || selectedLead?.name || "Customer Lead"}
+                                </h3>
+                                <p className="text-xs font-mono font-extrabold text-slate-600 dark:text-slate-300 mt-0.5">
+                                  +91 {incomingCall?.phone || outboundPhone || "9876543210"}
+                                </p>
+                              </div>
+
+                              {/* Campaign / Queue Badge */}
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700">
+                                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                  {incomingCall?.campaign || "SBI Credit Card"}
                                 </span>
                               </div>
+
+                              {/* Real-time Call Duration Timer */}
+                              <p className="text-sm font-mono font-black text-emerald-600 dark:text-emerald-400">
+                                {callStatus === "hold" ? `On Hold: ${formatTime(callDuration)}` : `Duration: ${formatTime(callDuration)}`}
+                              </p>
                             </div>
                           )}
 
