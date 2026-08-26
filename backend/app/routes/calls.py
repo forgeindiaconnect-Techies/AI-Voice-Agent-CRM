@@ -248,6 +248,12 @@ async def start_call(payload: CallStart, user: dict = Depends(get_current_user))
     result = await calls_col.insert_one(doc)
     doc["_id"] = result.inserted_id
     await leads_col.update_one({"_id": ObjectId(payload.lead_id)}, {"$set": {"status": "in_progress"}})
+
+    try:
+        await record_presence_change(user_id=_uid(user), new_status="in_call")
+    except Exception as err:
+        logger.warning(f"[CALL START] Could not update presence status to in_call: {err}")
+
     await ws_manager.broadcast(lead["pool_id"], {
         "event": "call_started", "call_id": str(doc["_id"]), "lead_name": lead["name"], "agent_id": _uid(user),
     })
@@ -270,6 +276,15 @@ async def end_call(payload: CallEnd):
     }
     await calls_col.update_one({"_id": ObjectId(payload.call_id)}, {"$set": update})
     release_call_lock(agent_id=call.get("agent_id"), call_id=payload.call_id)
+
+    agent_id = call.get("agent_id")
+    if agent_id:
+        try:
+            await record_call_completion(user_id=agent_id, call_duration=payload.duration_seconds or 0)
+            await record_presence_change(user_id=agent_id, new_status="ready")
+        except Exception as err:
+            logger.warning(f"[CALL END] Could not update presence status to ready: {err}")
+
     await ws_manager.broadcast(call["pool_id"], {"event": "call_ended", "call_id": payload.call_id})
     return {"status": "completed"}
 

@@ -35,7 +35,10 @@ import {
   TrendingUp,
   Calendar,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Play,
+  Coffee,
+  LogOut
 } from "lucide-react";
 
 type Summary = {
@@ -186,6 +189,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const {
+    nowTicker,
     myStatus,
     pauseReason,
     myPresence,
@@ -194,6 +198,9 @@ export default function Dashboard() {
     wsConnected,
     isSubmittingStatus,
     setPresenceStatus,
+    startBreak,
+    resumeWork,
+    goOffline,
     netWorkingSeconds,
     grossLoginSeconds,
     totalBreakSeconds,
@@ -240,7 +247,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleConfirmOffline = async (forceOffline: boolean = false) => {
+  const handleConfirmOffline = async (forceOffline: boolean = true) => {
     try {
       await setPresenceStatus("offline", undefined, forceOffline);
       showToast("Shift completed. Agent status set to Offline.", "info");
@@ -339,12 +346,6 @@ export default function Dashboard() {
 
   const [historySearchTerm, setHistorySearchTerm] = useState("");
   const [leadsSearchTerm, setLeadsSearchTerm] = useState("");
-  const [nowTicker, setNowTicker] = useState(Date.now());
-
-  useEffect(() => {
-    const interval = setInterval(() => setNowTicker(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const maskPhoneNumber = (phoneStr?: string): string => {
     if (!phoneStr) return "N/A";
@@ -410,6 +411,10 @@ export default function Dashboard() {
 
   // Agent dialer handlers
   const handleDialLead = async (lead: Lead) => {
+    if (myStatus === "offline") {
+      showToast("Agent is OFFLINE. Set status to READY to begin dialing.", "warning");
+      return;
+    }
     const leadKey = lead.id || lead.lead_id;
     if (dialingLeadId === leadKey || activeCallId) return;
 
@@ -578,10 +583,19 @@ export default function Dashboard() {
     const remainingTimeFormatted = formatHHMMSS(displayRemainingSec);
 
 
-    const stopCount = 0;
-    const ringingTimeFormatted = formatHHMMSS(totalCallsHandled * 8);
-    const callSetupTimeFormatted = formatHHMMSS(totalCallsHandled * 3);
-    const disposeTimeFormatted = formatHHMMSS(totalCallsHandled * 35);
+    const stopCountVal = (myPresence?.break_logs || []).length + (myStatus === "paused" ? 1 : 0);
+    const ringingSec = myPresence?.ringing_seconds || 0;
+    const setupSec = myPresence?.setup_seconds || 0;
+    const disposeSec = myPresence?.dispose_seconds || 0;
+    const talkSec = (myPresence?.talk_seconds !== undefined && myPresence?.talk_seconds !== null) ? myPresence.talk_seconds : totalCallDurationSeconds;
+
+    const ringingTimeFormatted = formatHHMMSS(ringingSec);
+    const disposeTimeFormatted = formatHHMMSS(disposeSec);
+    const realAvgHandlingSeconds = totalCallsHandled > 0 ? Math.round((talkSec + disposeSec + setupSec) / totalCallsHandled) : 0;
+    const realAvgHandlingFormatted = formatMMSS(realAvgHandlingSeconds);
+
+    const connectedCallsCount = agentCallHistory.filter((c) => c.outcome === "answered" || c.outcome === "qualified").length;
+    const connectedRate = totalCallsHandled > 0 ? Math.round((connectedCallsCount / totalCallsHandled) * 100) : 0;
 
     return (
       <motion.div
@@ -622,7 +636,7 @@ export default function Dashboard() {
                         : myStatus === "paused"
                         ? "bg-amber-500"
                         : myStatus === "in_call"
-                        ? "bg-purple-500 animate-ping"
+                        ? "bg-purple-500 animate-pulse"
                         : "bg-slate-400"
                     }`}
                   />
@@ -653,236 +667,142 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Interactive Presence Buttons */}
+          {/* AGENT STATUS ACTION CONTROLS */}
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={async () => {
-                try {
-                  await setPresenceStatus("ready");
-                  showToast("Agent status set to READY.", "success");
-                } catch (err: any) {
-                  showToast(err?.response?.data?.detail || err?.message || "Failed to set status to Ready", "error");
-                }
-              }}
-              disabled={isSubmittingStatus}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                myStatus === "ready"
-                  ? "bg-emerald-600 text-white shadow-md ring-2 ring-emerald-500/30 active:scale-95 hover:bg-emerald-700"
-                  : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-500/20 dark:text-emerald-400 dark:hover:bg-emerald-600 dark:hover:text-white border border-emerald-500/30 active:scale-95 hover:scale-102"
-              } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              {isSubmittingStatus ? (
-                <>
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  <span>Setting Ready...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-3.5 w-3.5" />
-                  <span>{myStatus === "ready" ? "✓ Set Ready" : "Set Ready"}</span>
-                </>
-              )}
-            </button>
+            {myStatus === "offline" && (
+              <button
+                type="button"
+                onClick={() => setPresenceStatus("ready")}
+                disabled={isSubmittingStatus}
+                className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
+              >
+                <Play className="h-4 w-4 fill-current" />
+                <span>Set Ready</span>
+              </button>
+            )}
 
-
-            <button
-              onClick={async () => {
-                if (myStatus === "offline") {
-                  showToast("Please click 'Set Ready' to start your shift before taking a break.", "info");
-                  return;
-                }
-                if (myStatus === "paused") {
-                  try {
-                    await setPresenceStatus("ready");
-                    showToast("Break ended. Agent status set to READY.", "success");
-                  } catch (err: any) {
-                    showToast(err?.response?.data?.detail || err?.message || "Failed to resume status", "error");
-                  }
-                } else {
-                  setShowPauseModal(true);
-                }
-              }}
-              disabled={isSubmittingStatus}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                myStatus === "paused"
-                  ? "bg-amber-500 text-white shadow-xs"
-                  : "bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-700 dark:bg-slate-800 dark:hover:bg-amber-950/40 dark:text-slate-300 dark:hover:text-amber-400 border border-slate-200 dark:border-white/10"
-              } ${isSubmittingStatus ? "opacity-50 cursor-not-allowed" : "active:scale-95 hover:scale-102"}`}
-            >
-
-              {isSubmittingStatus ? (
-                <>
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  <span>Starting Break...</span>
-                </>
-              ) : myStatus === "paused" ? (
-                <>
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>Resume / Ready</span>
-                </>
-              ) : (
-                <>
-                  <Clock className="h-3.5 w-3.5" />
+            {myStatus === "ready" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowPauseModal(true)}
+                  disabled={isSubmittingStatus}
+                  className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
+                >
+                  <Coffee className="h-4 w-4" />
                   <span>Pause / Break</span>
-                </>
-              )}
-            </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goOffline(true)}
+                  disabled={isSubmittingStatus}
+                  className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 disabled:opacity-50 font-extrabold text-xs flex items-center gap-2 cursor-pointer transition active:scale-95"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Go Offline</span>
+                </button>
+              </>
+            )}
 
-            <button
-              onClick={handleGoOfflineClick}
-              disabled={isSubmittingStatus || myStatus === "offline"}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
-                myStatus === "offline"
-                  ? "bg-rose-600/20 text-rose-500 border border-rose-300 dark:border-rose-900/40 opacity-60 cursor-not-allowed"
-                  : "bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 dark:bg-slate-800 dark:hover:bg-rose-950/40 dark:text-slate-300 dark:hover:text-rose-400 border border-slate-200 dark:border-white/10"
-              } ${isSubmittingStatus || myStatus === "offline" ? "opacity-50 cursor-not-allowed" : "active:scale-95 hover:scale-102"}`}
-            >
-              {isSubmittingStatus ? (
-                <>
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  <span>Going Offline...</span>
-                </>
-              ) : (
-                <>
-                  <PhoneOff className="h-3.5 w-3.5" />
-                  <span>{myStatus === "offline" ? "✓ Offline" : "Go Offline"}</span>
-                </>
-              )}
-            </button>
+            {myStatus === "paused" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => resumeWork()}
+                  disabled={isSubmittingStatus}
+                  className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  <span>Resume Work</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => goOffline(true)}
+                  disabled={isSubmittingStatus}
+                  className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 disabled:opacity-50 font-extrabold text-xs flex items-center gap-2 cursor-pointer transition active:scale-95"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Go Offline</span>
+                </button>
+              </>
+            )}
+
+            {myStatus === "in_call" && (
+              <span className="h-9 px-4 rounded-xl bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-extrabold text-xs flex items-center gap-2">
+                <Phone className="h-4 w-4 animate-pulse" />
+                <span>In Call (Active)</span>
+              </span>
+            )}
           </div>
         </div>
 
-
-
-        {/* TODAY'S SUMMARY & OPERATIONAL TELEMETRY PANEL */}
-        <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-2xl p-5 shadow-2xs space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-3.5">
-            <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-xl bg-blue-50 dark:bg-blue-500/15 text-[#2563EB] dark:text-[#3B82F6] flex items-center justify-center shrink-0 border border-blue-100 dark:border-blue-500/20 shadow-2xs">
-                <Activity className="h-4.5 w-4.5 text-[#2563EB] dark:text-[#3B82F6]" />
-              </div>
-              <div>
-                <h2 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>{selectedDate === todayStr ? "Today's Summary & Telemetry" : `Shift Summary (${selectedDate})`}</span>
-                  {selectedDate !== todayStr && (
-                    <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider font-extrabold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 rounded-full border border-amber-200 dark:border-amber-700/50">
-                      Historical Log
-                    </span>
-                  )}
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Real-time agent shift times, call setup, disposition, and handling performance</p>
-              </div>
+        {/* ── REAL-TIME BPO AGENT TELEMETRY PANEL ── */}
+        <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-2xl p-4 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-[#2563EB] dark:text-[#3B82F6]" />
+              <h2 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-900 dark:text-white">
+                Real-Time Session Telemetry
+              </h2>
             </div>
-
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0 flex-wrap">
-              {/* Date / Calendar Selector */}
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700/60 shadow-2xs">
-                <Calendar className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  max={todayStr}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-transparent text-xs font-extrabold text-slate-800 dark:text-slate-100 border-none outline-none focus:ring-0 cursor-pointer p-0 font-mono"
-                />
-                {selectedDate !== todayStr && (
-                  <button
-                    onClick={() => setSelectedDate(todayStr)}
-                    className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 hover:underline border-l border-slate-200 dark:border-slate-700 pl-1.5 ml-0.5"
-                  >
-                    Today
-                  </button>
-                )}
-              </div>
-
-              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60 shadow-2xs">
-                <RefreshCw className="h-3 w-3 text-blue-500 animate-spin-slow" />
-                Last Update: <strong className="font-mono text-slate-900 dark:text-white">{new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</strong>
-              </span>
-            </div>
+            <span className="text-[10.5px] font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/15 px-2.5 py-0.5 rounded-full border border-blue-100 dark:border-blue-500/30">
+              Live Backend Sync
+            </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {/* 1. Login */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Login</span>
-              <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{loginTimeStr}</div>
-            </div>
-
-            {/* 2. Login Hr */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Login Hr</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2.5">
+            {/* 1. LOGIN HR */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">LOGIN HR</span>
               <div className="text-xs sm:text-sm font-black font-mono text-blue-600 dark:text-blue-400">{loginHoursVal}</div>
             </div>
 
-            {/* 3. Ready */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ready</span>
+            {/* 2. READY */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">READY</span>
               <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{readyTimeFormatted}</div>
             </div>
 
-            {/* 4. Pause */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Pause</span>
+            {/* 3. PAUSE */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">PAUSE</span>
               <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{pauseTimeFormatted}</div>
             </div>
 
-            {/* 5. Remaining */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Remaining</span>
-              <div className="text-xs sm:text-sm font-black font-mono text-indigo-600 dark:text-indigo-400">{remainingTimeFormatted}</div>
+            {/* 4. STOP */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">STOP</span>
+              <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{stopCountVal}</div>
             </div>
 
-            {/* 6. 8-Hr Target Status */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">8-Hr Status</span>
-              <div className="text-xs font-black">
-                {isCompleted8Hrs ? (
-                  <span className="text-emerald-600 dark:text-emerald-400">✓ Completed</span>
-                ) : (
-                  <span className="text-amber-600 dark:text-amber-400">In Progress</span>
-                )}
-              </div>
-            </div>
-
-
-            {/* 6. Ringing Time */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ringing Time</span>
+            {/* 5. RINGING TIME */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">RINGING TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{ringingTimeFormatted}</div>
             </div>
 
-            {/* 7. Call Setup Time */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Call Setup Time</span>
-              <div className="text-xs sm:text-sm font-black font-mono text-sky-600 dark:text-sky-400">{callSetupTimeFormatted}</div>
-            </div>
-
-            {/* 8. Total Call Time */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Call Time</span>
+            {/* 6. TOTAL CALL TIME */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">TOTAL CALL TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-blue-600 dark:text-blue-400">{totalCallTimeFormatted}</div>
             </div>
 
-            {/* 9. Dispose Time */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Dispose Time</span>
+            {/* 7. DISPOSE TIME */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">DISPOSE TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-purple-600 dark:text-purple-400">{disposeTimeFormatted}</div>
             </div>
 
-            {/* 10. Average Handling Time */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Avg Handling Time</span>
-              <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{avgHandlingTimeFormatted}</div>
+            {/* 8. AVG HANDLING TIME */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">AVG HANDLING TIME</span>
+              <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{realAvgHandlingFormatted}</div>
             </div>
 
-            {/* 11. Total Calls Handled */}
-            <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-1 col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Calls Handled</span>
-              <div className="text-sm font-black font-mono text-slate-900 dark:text-white flex items-center justify-between">
-                <span>{totalCallsHandled} calls</span>
-                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 font-sans">{shiftLogPercentage}</span>
-              </div>
+            {/* 9. TOTAL CALLS HANDLED */}
+            <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5 col-span-2 sm:col-span-1">
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">TOTAL CALLS</span>
+              <div className="text-xs sm:text-sm font-black font-mono text-slate-900 dark:text-white">{totalCallsHandled} calls</div>
             </div>
           </div>
         </div>
@@ -902,12 +822,12 @@ export default function Dashboard() {
             <div className="space-y-1 pt-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-emerald-600 dark:text-[#22C55E] font-bold flex items-center gap-1">
-                  <ArrowUpRight className="h-3 w-3" /> +12 Today
+                  <ArrowUpRight className="h-3 w-3" /> +{agentLeads.length} Assigned
                 </span>
                 <span className="text-slate-400 font-medium">Goal: 20</span>
               </div>
               <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-[#2563EB] rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (agentLeads.length / 20) * 100)}%` }} />
+                <div className="h-full bg-[#2563EB] rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.round((agentLeads.length / 20) * 100))}%` }} />
               </div>
             </div>
           </div>
@@ -916,7 +836,7 @@ export default function Dashboard() {
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Shift Calls Made</span>
-                <div className="text-2xl font-black font-mono text-slate-900 dark:text-white tracking-tight">{agentCallHistory.length}</div>
+                <div className="text-2xl font-black font-mono text-slate-900 dark:text-white tracking-tight">{totalCallsHandled}</div>
               </div>
               <div className="h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-[#22C55E] flex items-center justify-center font-bold border border-emerald-100 dark:border-emerald-500/20">
                 <PhoneCall className="h-4.5 w-4.5" />
@@ -925,12 +845,12 @@ export default function Dashboard() {
             <div className="space-y-1 pt-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-emerald-600 dark:text-[#22C55E] font-bold flex items-center gap-1">
-                  <ArrowUpRight className="h-3 w-3" /> +8 Active Shift
+                  <ArrowUpRight className="h-3 w-3" /> +{totalCallsHandled} Active Shift
                 </span>
                 <span className="text-slate-400 font-medium">Target: 30</span>
               </div>
               <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (agentCallHistory.length / 30) * 100)}%` }} />
+                <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.round((totalCallsHandled / 30) * 100))}%` }} />
               </div>
             </div>
           </div>
@@ -940,7 +860,7 @@ export default function Dashboard() {
               <div className="space-y-0.5">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Connected Calls</span>
                 <div className="text-2xl font-black font-mono text-slate-900 dark:text-white tracking-tight">
-                  {agentCallHistory.filter((c) => c.outcome === "answered" || c.outcome === "qualified").length}
+                  {connectedCallsCount}
                 </div>
               </div>
               <div className="h-9 w-9 rounded-xl bg-purple-50 dark:bg-purple-500/15 text-purple-600 dark:text-[#A855F7] flex items-center justify-center font-bold border border-purple-100 dark:border-purple-500/20">
@@ -952,10 +872,10 @@ export default function Dashboard() {
                 <span className="text-purple-600 dark:text-[#A855F7] font-bold flex items-center gap-1">
                   <Sparkles className="h-3 w-3" /> High Engagement
                 </span>
-                <span className="text-slate-400 font-medium">85% Rate</span>
+                <span className="text-slate-400 font-medium">{connectedRate}% Rate</span>
               </div>
               <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 rounded-full w-[85%] transition-all duration-500" />
+                <div className="h-full bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, connectedRate)}%` }} />
               </div>
             </div>
           </div>
@@ -973,7 +893,7 @@ export default function Dashboard() {
             <div className="space-y-1 pt-1">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3" /> Optimal Performance
+                  <CheckCircle className="h-3 w-3" /> Real-Time Shift
                 </span>
                 <span className="text-slate-400 font-medium">Target 60%</span>
               </div>
@@ -1038,7 +958,8 @@ export default function Dashboard() {
                           </div>
                           <button
                             onClick={() => handleDialLead(l)}
-                            disabled={isDialingThis || !!activeCallId}
+                            disabled={isDialingThis || !!activeCallId || myStatus === "offline"}
+                            title={myStatus === "offline" ? "Agent is Offline. Set status to READY to begin dialing." : "Dial Lead"}
                             className="h-8 px-3.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition active:scale-95 disabled:cursor-not-allowed"
                           >
                             {isDialingThis ? (
@@ -1087,6 +1008,21 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        <PauseBreakModal
+          isOpen={showPauseModal}
+          onClose={() => setShowPauseModal(false)}
+          onSelectBreak={(reason) => {
+            setShowPauseModal(false);
+            startBreak(reason);
+          }}
+          onEndBreak={() => {
+            setShowPauseModal(false);
+            resumeWork();
+          }}
+          currentStatus={myStatus}
+          currentPauseReason={pauseReason}
+          totalBreakSeconds={totalBreakSeconds}
+        />
       </motion.div>
     );
   }
@@ -1628,13 +1564,15 @@ export default function Dashboard() {
       <PauseBreakModal
         isOpen={showPauseModal}
         onClose={() => setShowPauseModal(false)}
-        onSelectBreak={(reason) => setPresenceStatus("paused", reason)}
+        onSelectBreak={(reason) => {
+          setPresenceStatus("paused", reason).catch((err) => showToast(err?.message || "Failed to enter break", "error"));
+        }}
         onEndBreak={() => setPresenceStatus("ready")}
         currentStatus={myStatus}
         currentPauseReason={pauseReason}
         pausedSeconds={activeBreakSeconds}
+        totalBreakSeconds={totalBreakSeconds}
         breakStats={myPresence?.break_stats}
-
       />
 
       {/* Early Logout Warning Modal */}
@@ -1642,7 +1580,7 @@ export default function Dashboard() {
         isOpen={showEarlyLogoutWarningModal}
         onClose={() => setShowEarlyLogoutWarningModal(false)}
         onConfirmEarlyLogout={() => setShowShiftSummaryModal(true)}
-        netWorkingSeconds={netWorkingSeconds}
+        netWorkingSeconds={grossLoginSeconds}
         targetSeconds={shiftTargetSeconds}
       />
 

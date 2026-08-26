@@ -103,6 +103,9 @@ app.include_router(ws.router)
 app.include_router(ai_agents.router)
 app.include_router(presence.router)
 app.include_router(presence.agent_router)
+app.include_router(presence.agents_router)
+app.include_router(presence.session_router)
+app.include_router(presence.root_session_router)
 
 
 # ── Startup ──────────────────────────────────────────────────────────────────

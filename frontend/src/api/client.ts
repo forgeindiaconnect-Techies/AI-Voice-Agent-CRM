@@ -9,7 +9,41 @@ let currentBaseUrl: string | null = null;
 export const getBaseUrl = (): string => {
   if (currentBaseUrl !== null) return currentBaseUrl;
 
-  // 1. Check user custom override from local storage (e.g. set via ApiSettingsModal)
+  const isElectron =
+    typeof window !== "undefined" &&
+    (Boolean((window as any).electronAPI) ||
+      navigator.userAgent.toLowerCase().includes("electron") ||
+      window.location.protocol === "file:" ||
+      window.location.protocol.includes("electron"));
+
+  const isLocalEnv =
+    isElectron ||
+    (typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname === "" ||
+        window.location.hostname.endsWith(".local")));
+
+  // Clear stale remote custom_api_url override if running in local dev mode
+  if (isLocalEnv && typeof localStorage !== "undefined") {
+    const savedUrl = localStorage.getItem("custom_api_url");
+    if (savedUrl && savedUrl.includes("onrender.com")) {
+      localStorage.removeItem("custom_api_url");
+    }
+  }
+
+  // 1. Localhost / Dev / Electron Environment (Priority 1)
+  if (isLocalEnv) {
+    if (typeof localStorage !== "undefined") {
+      const savedUrl = localStorage.getItem("custom_api_url");
+      if (savedUrl && savedUrl.trim() !== "" && savedUrl.includes("localhost")) {
+        return savedUrl.trim().replace(/\/+$/, "");
+      }
+    }
+    return "http://localhost:8000";
+  }
+
+  // 2. Check user custom override from local storage
   if (typeof localStorage !== "undefined") {
     const savedUrl = localStorage.getItem("custom_api_url");
     if (savedUrl && savedUrl.trim() !== "") {
@@ -17,18 +51,18 @@ export const getBaseUrl = (): string => {
     }
   }
 
-  // 2. Check environment variable VITE_API_URL if configured
+  // 3. Check environment variable VITE_API_URL if configured
   if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== "") {
     let url = import.meta.env.VITE_API_URL.trim().replace(/\/+$/, "");
     if (url.startsWith(":")) {
-      const protocol = typeof window !== "undefined" ? window.location.protocol : "https:";
+      const protocol = typeof window !== "undefined" ? window.location.protocol : "http:";
       const hostname = typeof window !== "undefined" ? window.location.hostname : "localhost";
       url = `${protocol}//${hostname}${url}`;
     }
     return url;
   }
 
-  // 3. Default Target: Production Render Backend (https://ai-voice-agent-crm.onrender.com)
+  // 4. Default Target: Production Render Backend (https://ai-voice-agent-crm.onrender.com)
   return RENDER_PROD_URL;
 };
 
@@ -55,10 +89,14 @@ export const getWsUrl = (roomPath: string = ""): string => {
   const token = getToken();
   const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
   let cleanPath = roomPath ? (roomPath.startsWith("/") ? roomPath : `/${roomPath}`) : "";
-  if (cleanPath.startsWith("/ws/")) {
+  while (cleanPath.startsWith("/ws/")) {
     cleanPath = cleanPath.substring(3);
-  } else if (cleanPath === "/ws") {
+  }
+  if (cleanPath === "/ws") {
     cleanPath = "";
+  }
+  if (cleanPath && !cleanPath.startsWith("/")) {
+    cleanPath = "/" + cleanPath;
   }
   const baseUrl = getBaseUrl();
 

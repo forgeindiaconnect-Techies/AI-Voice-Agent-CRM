@@ -11,6 +11,7 @@ type PauseBreakModalProps = {
   currentStatus: string;
   currentPauseReason?: string | null;
   pausedSeconds?: number;
+  totalBreakSeconds?: number;
   breakStats?: BreakStats;
 };
 
@@ -22,6 +23,7 @@ export default function PauseBreakModal({
   currentStatus,
   currentPauseReason,
   pausedSeconds = 0,
+  totalBreakSeconds = 0,
   breakStats,
 }: PauseBreakModalProps) {
   const [selectedReason, setSelectedReason] = useState<string>("Lunch Break");
@@ -36,6 +38,9 @@ export default function PauseBreakModal({
   }, [isOpen, onClose]);
 
   if (!isOpen || typeof document === "undefined") return null;
+
+  const MAX_BREAK_LIMIT_SECONDS = 3780; // 1 hr 3 min
+  const isMaxBreakReached = totalBreakSeconds >= MAX_BREAK_LIMIT_SECONDS;
 
   const formatSecsToHMS = (secs: number) => {
     if (!secs || isNaN(secs)) return "00:00:00";
@@ -134,6 +139,38 @@ export default function PauseBreakModal({
           </button>
         </div>
 
+        {/* DAILY BREAK USAGE SUMMARY & PROGRESS */}
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-2">
+          <div className="flex justify-between items-center text-xs font-bold">
+            <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-amber-500" />
+              Daily Break Usage
+            </span>
+            <span className={`font-mono ${isMaxBreakReached ? "text-rose-600 dark:text-rose-400 font-black" : "text-slate-800 dark:text-slate-200"}`}>
+              {formatSecsToHMS(totalBreakSeconds)} / 01:03:00 Max
+            </span>
+          </div>
+
+          <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                isMaxBreakReached
+                  ? "bg-rose-500"
+                  : totalBreakSeconds > 3000
+                  ? "bg-amber-500"
+                  : "bg-emerald-500"
+              }`}
+              style={{ width: `${Math.min(100, (totalBreakSeconds / MAX_BREAK_LIMIT_SECONDS) * 100)}%` }}
+            />
+          </div>
+
+          {isMaxBreakReached && (
+            <p className="text-[11px] font-extrabold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 p-2 rounded-xl border border-rose-200 dark:border-rose-500/20">
+              ⚠️ Maximum daily break limit of 1 hr 3 min reached. No further breaks allowed today.
+            </p>
+          )}
+        </div>
+
         {/* ACTIVE BREAK BANNER (IF CURRENTLY PAUSED) */}
         {isCurrentlyPaused && (
           <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 dark:border-amber-500/40 space-y-3">
@@ -175,15 +212,18 @@ export default function PauseBreakModal({
               <div
                 key={opt.id}
                 onClick={() => {
+                  if (isMaxBreakReached && !isCurrentReason) return;
                   onSelectBreak(opt.id);
                   onClose();
                 }}
-                className={`group relative p-4 rounded-2xl border transition-all duration-200 cursor-pointer overflow-hidden ${
-                  isCurrentReason
-                    ? "bg-amber-50/90 dark:bg-amber-500/15 border-amber-500 shadow-md ring-2 ring-amber-500/20"
+                className={`group relative p-4 rounded-2xl border transition-all duration-200 overflow-hidden ${
+                  isMaxBreakReached && !isCurrentReason
+                    ? "opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                    : isCurrentReason
+                    ? "bg-amber-50/90 dark:bg-amber-500/15 border-amber-500 shadow-md ring-2 ring-amber-500/20 cursor-pointer"
                     : isSelected
-                    ? "bg-slate-50 dark:bg-slate-900 border-amber-500/80 shadow-md ring-2 ring-amber-500/20"
-                    : `bg-slate-50/70 dark:bg-slate-900/50 ${opt.borderColor} hover:shadow-md hover:scale-[1.01]`
+                    ? "bg-slate-50 dark:bg-slate-900 border-amber-500/80 shadow-md ring-2 ring-amber-500/20 cursor-pointer"
+                    : `bg-slate-50/70 dark:bg-slate-900/50 ${opt.borderColor} hover:shadow-md hover:scale-[1.01] cursor-pointer`
                 }`}
               >
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl ${opt.bgGradient} rounded-full blur-2xl pointer-events-none`} />
@@ -212,18 +252,22 @@ export default function PauseBreakModal({
                   {/* START BREAK ACTION BUTTON */}
                   <button
                     type="button"
+                    disabled={isMaxBreakReached && !isCurrentReason}
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (isMaxBreakReached && !isCurrentReason) return;
                       onSelectBreak(opt.id);
                       onClose();
                     }}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition shadow-xs flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
-                      isCurrentReason
-                        ? "bg-amber-500 text-white"
-                        : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-amber-500/20"
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black transition shadow-xs flex items-center gap-1.5 shrink-0 ${
+                      isMaxBreakReached && !isCurrentReason
+                        ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                        : isCurrentReason
+                        ? "bg-amber-500 text-white cursor-pointer active:scale-95"
+                        : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-amber-500/20 cursor-pointer active:scale-95"
                     }`}
                   >
-                    <span>Start Break</span>
+                    <span>{isMaxBreakReached && !isCurrentReason ? "Limit Reached" : "Start Break"}</span>
                     <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -236,7 +280,7 @@ export default function PauseBreakModal({
         {/* FOOTER */}
         <div className="flex justify-between items-center pt-2">
           <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
-            <Sparkles className="h-3 w-3 text-amber-500" /> Break time is included in your 8-hour daily shift session.
+            <Sparkles className="h-3 w-3 text-amber-500" /> Max break limit: 1h 03m / day (included in 8-hr shift).
           </span>
 
           <button

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { api, BASE_URL } from "../api/client";
@@ -1074,8 +1075,8 @@ export default function Leads() {
     const value = (manualForm as any)[field];
     const showError = error && touched;
     return (
-      <div className="flex flex-col gap-0.5 w-full text-left font-sans">
-        <label className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+      <div className="flex flex-col gap-1 w-full text-left font-sans">
+        <label className="text-xs sm:text-[13px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
           {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
         </label>
         <div className="relative">
@@ -1086,7 +1087,7 @@ export default function Leads() {
             value={value}
             onChange={e => handleFieldChange(field, e.target.value)}
             onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
-            className={`w-full h-[34px] sm:h-[36px] px-3 border rounded-lg bg-white dark:bg-[#09111E] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all duration-150 hover:border-[#2563EB] ${
+            className={`w-full h-[42px] sm:h-[44px] px-3.5 border rounded-xl bg-white dark:bg-[#09111E] text-xs sm:text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC] placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-all duration-150 hover:border-[#2563EB] ${
               showError
                 ? "border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
                 : "border-slate-200/90 dark:border-slate-700/80 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
@@ -1094,8 +1095,8 @@ export default function Leads() {
           />
         </div>
         {showError && (
-          <p className="text-[10px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
-            <AlertCircle className="h-3 w-3 shrink-0" />
+          <p className="text-[12px] text-rose-500 font-semibold flex items-center gap-1 mt-0.5">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             {error}
           </p>
         )}
@@ -1115,8 +1116,8 @@ export default function Leads() {
     const value = (manualForm as any)[field];
     const showError = error && touched;
     return (
-      <div className="flex flex-col gap-0.5 w-full text-left font-sans">
-        <label className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+      <div className="flex flex-col gap-1 w-full text-left font-sans">
+        <label className="text-xs sm:text-[13px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
           {label}<span className="text-rose-500 ml-0.5">*</span>
         </label>
         <CustomSelect
@@ -1132,15 +1133,15 @@ export default function Leads() {
           options={options}
           placeholder={placeholder}
           searchable={true}
-          triggerClassName={`h-[34px] sm:h-[36px] rounded-lg text-xs font-semibold border transition-all duration-150 bg-white dark:bg-[#09111E] hover:border-[#2563EB] ${
+          triggerClassName={`h-[42px] sm:h-[44px] rounded-xl text-xs sm:text-sm font-semibold border transition-all duration-150 bg-white dark:bg-[#09111E] hover:border-[#2563EB] ${
             showError
               ? "border-rose-500 focus:border-rose-500 ring-2 ring-rose-500/20"
               : "border-slate-200/90 dark:border-slate-700/80"
           }`}
         />
         {showError && (
-          <p className="text-[10px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
-            <AlertCircle className="h-3 w-3 shrink-0" />
+          <p className="text-[12px] text-rose-500 font-semibold flex items-center gap-1 mt-0.5">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             {error}
           </p>
         )}
@@ -1162,8 +1163,8 @@ export default function Leads() {
     const value = (manualForm as any)[field];
     const showError = error && touched;
     return (
-      <div className="flex flex-col gap-0.5 w-full text-left font-sans">
-        <label className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+      <div className="flex flex-col gap-1 w-full text-left font-sans">
+        <label className="text-xs sm:text-[13px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
           {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
         </label>
         <textarea
@@ -1172,15 +1173,15 @@ export default function Leads() {
           value={value}
           onChange={customChange || (e => handleFieldChange(field, e.target.value))}
           onBlur={() => setManualFormTouched(prev => ({ ...prev, [field]: true }))}
-          className={`w-full h-[56px] sm:h-[60px] px-3 py-2 border rounded-lg bg-white dark:bg-[#09111E] text-xs font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none transition-all duration-150 placeholder-slate-400 dark:placeholder-slate-500 hover:border-[#2563EB] ${
+          className={`w-full h-[64px] sm:h-[72px] px-3.5 py-2.5 border rounded-xl bg-white dark:bg-[#09111E] text-xs sm:text-sm font-semibold text-[#0F172A] dark:text-[#F8FAFC] focus:outline-none resize-none transition-all duration-150 placeholder-slate-400 dark:placeholder-slate-500 hover:border-[#2563EB] ${
             showError
               ? "border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
               : "border-slate-200/90 dark:border-slate-700/80 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
           }`}
         />
         {showError && (
-          <p className="text-[10px] text-rose-500 font-bold flex items-center gap-1 mt-0.5">
-            <AlertCircle className="h-3 w-3 shrink-0" />
+          <p className="text-[12px] text-rose-500 font-semibold flex items-center gap-1 mt-0.5">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             {error}
           </p>
         )}
@@ -1962,209 +1963,209 @@ export default function Leads() {
       />
 
       {/* MANUAL LEAD ENTRY MODAL */}
-      <AnimatePresence>
-        {showManualModal && (
-          <div
-            className="fixed inset-0 z-[9998] flex items-center justify-center p-3 md:p-6 font-sans pointer-events-auto modal-open-container overflow-hidden"
-            style={{
-              position: "fixed",
-              top: 0,
-              right: 0,
-              bottom: 0,
-              left: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "rgba(15, 23, 42, 0.75)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-              zIndex: 9998
-            }}
-          >
-            <style dangerouslySetInnerHTML={{__html: `
-              body {
-                overflow: hidden !important;
-              }
-              .lm-scroll::-webkit-scrollbar { width: 6px; }
-              .lm-scroll::-webkit-scrollbar-track { background: transparent; }
-              .lm-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-              .dark .lm-scroll::-webkit-scrollbar-thumb { background: #334155; }
-              .lm-scroll { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
-              .dark .lm-scroll { scrollbar-color: #334155 transparent; }
-            `}} />
-            <motion.div
-              initial={{ scale: 0.96, opacity: 0, y: 8 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.96, opacity: 0, y: 8 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="w-[min(880px,78vw)] h-[min(540px,72vh)] max-w-[880px] max-h-[72vh] min-h-[360px] bg-white dark:bg-[#0F172A] rounded-2xl shadow-2xl border border-slate-200/90 dark:border-white/10 flex flex-col overflow-hidden relative pointer-events-auto z-[9999] mx-auto my-auto box-border"
+      {typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showManualModal && (
+            <div
+              className="fixed inset-0 z-[99998] flex items-center justify-center p-3 sm:p-6 font-sans overflow-hidden bg-slate-950/75 backdrop-blur-md"
+              style={{
+                position: "fixed",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 99998
+              }}
             >
-              {/* ── Top Brand Bar ── */}
-              <div className="h-[3px] min-h-[3px] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#FACC15] shrink-0" />
+              <style dangerouslySetInnerHTML={{__html: `
+                body {
+                  overflow: hidden !important;
+                }
+                .lm-scroll::-webkit-scrollbar { width: 6px; }
+                .lm-scroll::-webkit-scrollbar-track { background: transparent; }
+                .lm-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+                .dark .lm-scroll::-webkit-scrollbar-thumb { background: #334155; }
+                .lm-scroll { scrollbar-width: thin; scrollbar-color: #CBD5E1 transparent; }
+                .dark .lm-scroll { scrollbar-color: #334155 transparent; }
+              `}} />
+              <motion.div
+                initial={{ scale: 0.96, opacity: 0, y: 8 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.96, opacity: 0, y: 8 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="w-[min(960px,92vw)] h-[min(680px,85vh)] max-w-[960px] max-h-[85vh] bg-white dark:bg-[#0F172A] rounded-2xl shadow-2xl border border-slate-200/90 dark:border-white/10 flex flex-col overflow-hidden relative pointer-events-auto z-[99999] mx-auto my-auto box-border"
+              >
+                {/* ── Top Brand Bar ── */}
+                <div className="h-[3px] min-h-[3px] bg-gradient-to-r from-[#2563EB] via-[#3B82F6] to-[#FACC15] shrink-0" />
 
-              {/* ── FIXED HEADER (44-46px) ── */}
-              <div className="h-[44px] sm:h-[46px] min-h-[44px] flex items-center justify-between px-4 sm:px-5 border-b border-slate-200/80 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-10">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
-                    <UserPlus className="h-4 w-4" />
+                {/* ── FIXED STICKY HEADER (52px) ── */}
+                <div className="h-[52px] min-h-[52px] flex items-center justify-between px-5 sm:px-6 border-b border-slate-200/80 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-20 sticky top-0">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold shrink-0">
+                      <UserPlus className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold tracking-tight flex items-center gap-1 text-slate-900 dark:text-white leading-tight">
+                        <span className="text-[#2563EB] dark:text-[#3B82F6]">Add Customer</span>
+                        <span className="text-[#FACC15]">Lead</span>
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Create a new customer lead record for pipeline routing</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold tracking-tight flex items-center gap-1 text-slate-900 dark:text-white leading-tight">
-                      <span className="text-[#2563EB] dark:text-[#3B82F6] font-black">Add Customer</span>
-                      <span className="text-[#FACC15] font-black">Lead</span>
-                    </h3>
-                    <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Create a new customer lead record for pipeline routing</p>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Enterprise Lead Form
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowManualModal(false)}
+                      className="h-8 w-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      <X className="h-4.5 w-4.5" />
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Enterprise Lead Form
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowManualModal(false)}
-                    className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+                {/* ── SCROLLABLE FORM BODY ── */}
+                <form onSubmit={handleCreateManualLead} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                  <div className="flex-1 overflow-y-auto lm-scroll p-4 sm:p-6 bg-slate-50/50 dark:bg-[#0B1120]/50 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {/* ── SCROLLABLE FORM BODY ── */}
-              <form onSubmit={handleCreateManualLead} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex-1 overflow-y-auto lm-scroll p-3.5 sm:p-4 bg-slate-50/50 dark:bg-[#0B1120]/50 space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-
-                    {/* ── CARD 1: Profile Information ── */}
-                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-3.5 shadow-2xs space-y-2.5">
-                      <div className="pb-2 border-b border-slate-100 dark:border-white/10">
-                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
-                          <Users className="h-3.5 w-3.5 text-[#2563EB]" />
-                          <span>Profile Information</span>
-                        </h4>
-                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Primary contact identity and enterprise details</p>
-                      </div>
-
-                      <div className="space-y-2">
-                        {renderTextInput("name", "Customer Name", "text", "Enter customer full name", true)}
-                        
-                        <div>
-                          <PhoneInput
-                            required
-                            value={manualForm.phone}
-                            onChange={(fullVal) => {
-                              setManualForm(prev => ({ ...prev, phone: fullVal }));
-                              setManualFormTouched(prev => ({ ...prev, phone: true }));
-                            }}
-                            error={getFieldError("phone")}
-                            label="Phone Number"
-                            inputClassName="h-[34px] sm:h-[36px] rounded-lg text-xs font-semibold"
-                          />
+                      {/* ── CARD 1: Profile Information ── */}
+                      <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-4 shadow-2xs space-y-3">
+                        <div className="pb-2.5 border-b border-slate-100 dark:border-white/10">
+                          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                            <Users className="h-4 w-4 text-[#2563EB]" />
+                            <span>Profile Information</span>
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Primary contact identity and enterprise details</p>
                         </div>
 
-                        {renderTextInput("email", "Email ID", "email", "name@company.com", true)}
-                        {renderTextInput("company_name", "Company Name", "text", "Company or organization (optional)", false)}
-                      </div>
-                    </div>
+                        <div className="space-y-3">
+                          {renderTextInput("name", "Customer Name", "text", "Enter customer full name", true)}
+                          
+                          <div>
+                            <PhoneInput
+                              required
+                              value={manualForm.phone}
+                              onChange={(fullVal) => {
+                                setManualForm(prev => ({ ...prev, phone: fullVal }));
+                                setManualFormTouched(prev => ({ ...prev, phone: true }));
+                              }}
+                              error={getFieldError("phone")}
+                              label="Phone Number"
+                              inputClassName="h-[42px] sm:h-[44px] rounded-xl text-xs sm:text-sm font-semibold"
+                            />
+                          </div>
 
-                    {/* ── CARD 2: Location Details ── */}
-                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-3.5 shadow-2xs space-y-2.5">
-                      <div className="pb-2 border-b border-slate-100 dark:border-white/10">
-                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
-                          <MapPin className="h-3.5 w-3.5 text-amber-500" />
-                          <span>Location Details</span>
-                        </h4>
-                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Operational address and geographic details</p>
+                          {renderTextInput("email", "Email ID", "email", "name@company.com", true)}
+                          {renderTextInput("company_name", "Company Name", "text", "Company or organization (optional)", false)}
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex flex-col gap-0.5 w-full text-left font-sans">
-                          <label className="text-[10.5px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                            Country <span className="text-slate-400 font-normal lowercase">(read-only)</span>
-                          </label>
-                          <input
-                            readOnly
-                            value="India"
-                            className="w-full h-[34px] sm:h-[36px] border border-slate-200/80 dark:border-slate-800 rounded-lg px-3 bg-slate-100/70 dark:bg-slate-800/40 text-xs font-semibold text-slate-500 dark:text-slate-400 cursor-not-allowed select-none focus:outline-none"
-                          />
+                      {/* ── CARD 2: Location Details ── */}
+                      <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-4 shadow-2xs space-y-3">
+                        <div className="pb-2.5 border-b border-slate-100 dark:border-white/10">
+                          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                            <MapPin className="h-4 w-4 text-amber-500" />
+                            <span>Location Details</span>
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Operational address and geographic details</p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2">
-                          {renderSelectInput("state", "State", stateOptions, "Select State")}
-                          {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
+                        <div className="space-y-3">
+                          <div className="flex flex-col gap-1 w-full text-left font-sans">
+                            <label className="text-xs sm:text-[13px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                              Country <span className="text-slate-400 font-normal lowercase">(read-only)</span>
+                            </label>
+                            <input
+                              readOnly
+                              value="India"
+                              className="w-full h-[42px] sm:h-[44px] border border-slate-200/80 dark:border-slate-800 rounded-xl px-3.5 bg-slate-100/70 dark:bg-slate-800/40 text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 cursor-not-allowed select-none focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2.5">
+                            {renderSelectInput("state", "State", stateOptions, "Select State")}
+                            {renderSelectInput("district", "District", districtOptions, manualForm.state ? "Select District" : "Select State First", !manualForm.state)}
+                          </div>
+
+                          {renderTextInput("pincode", "Pincode", "text", "6-digit pincode", true, 6)}
+                          {renderTextareaInput("address", "Address", "Street address, building, local area...", true, 2, addressRef, handleAddressChange)}
+                        </div>
+                      </div>
+
+                      {/* ── CARD 3: Pipeline & Routing ── */}
+                      <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-4 shadow-2xs space-y-3">
+                        <div className="pb-2.5 border-b border-slate-100 dark:border-white/10">
+                          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                            <Target className="h-4 w-4 text-emerald-500" />
+                            <span>Pipeline & Routing</span>
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Pipeline classification and agent assignment</p>
                         </div>
 
-                        {renderTextInput("pincode", "Pincode", "text", "6-digit pincode", true, 6)}
-                        {renderTextareaInput("address", "Address", "Street address, building, local area...", true, 2, addressRef, handleAddressChange)}
-                      </div>
-                    </div>
-
-                    {/* ── CARD 3: Pipeline & Routing ── */}
-                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-3.5 shadow-2xs space-y-2.5">
-                      <div className="pb-2 border-b border-slate-100 dark:border-white/10">
-                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
-                          <Target className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>Pipeline & Routing</span>
-                        </h4>
-                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Pipeline classification and agent assignment</p>
+                        <div className="space-y-3">
+                          {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool", user?.role === "agent")}
+                          {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
+                          {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
+                          {renderSelectInput("priority", "Priority", priorityOptions, "Select Priority")}
+                          {renderSelectInput("assigned_agent_id", "Assigned Agent", manualAgentOptions, "Select Agent (optional)", user?.role === "agent")}
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        {renderSelectInput("pool_id", "Target Pool", manualPoolOptions, "Select Target Pool", user?.role === "agent")}
-                        {renderSelectInput("purpose", "Purpose", purposeOptions, "Select Purpose")}
-                        {renderSelectInput("source", "Lead Source", sourceOptions, "Select Source")}
-                        {renderSelectInput("priority", "Priority", priorityOptions, "Select Priority")}
-                        {renderSelectInput("assigned_agent_id", "Assigned Agent", manualAgentOptions, "Select Agent (optional)", user?.role === "agent")}
-                      </div>
-                    </div>
+                      {/* ── CARD 4: Additional Notes ── */}
+                      <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-4 shadow-2xs space-y-3 flex flex-col">
+                        <div className="pb-2.5 border-b border-slate-100 dark:border-white/10">
+                          <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider">
+                            <FileText className="h-4 w-4 text-indigo-500" />
+                            <span>Additional Notes</span>
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Contextual notes and call instructions</p>
+                        </div>
 
-                    {/* ── CARD 4: Additional Notes ── */}
-                    <div className="bg-white/90 dark:bg-[#131C2F]/90 border border-slate-200/80 dark:border-white/10 rounded-xl p-3.5 shadow-2xs space-y-2.5 flex flex-col">
-                      <div className="pb-2 border-b border-slate-100 dark:border-white/10">
-                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wider">
-                          <FileText className="h-3.5 w-3.5 text-indigo-500" />
-                          <span>Additional Notes</span>
-                        </h4>
-                        <p className="text-[10.5px] text-slate-500 dark:text-slate-400 font-medium">Contextual notes and call instructions</p>
+                        <div className="space-y-3 flex-1 flex flex-col">
+                          {renderTextareaInput("notes", "Notes (Optional)", "Add any extra requirements, call scripts, or notes...", false, 4)}
+                        </div>
                       </div>
 
-                      <div className="space-y-2 flex-1 flex flex-col">
-                        {renderTextareaInput("notes", "Notes (Optional)", "Add any extra requirements, call scripts, or notes...", false, 4)}
-                      </div>
-                    </div>
+                    </div>{/* /grid */}
+                  </div>{/* /scroll */}
 
-                  </div>{/* /grid */}
-                </div>{/* /scroll */}
-
-                {/* ── FIXED FOOTER (48-50px) ── */}
-                <div className="h-[48px] min-h-[48px] flex items-center justify-end gap-2.5 px-4 sm:px-5 border-t border-slate-200/80 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-10">
-                  <button
-                    type="button"
-                    onClick={() => setShowManualModal(false)}
-                    className="h-[34px] px-4 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg border border-slate-200/80 dark:border-white/10 transition cursor-pointer shrink-0"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmittingManual || !isManualFormValid}
-                    className={`h-[34px] px-4 text-white text-xs font-extrabold rounded-lg transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
-                      isSubmittingManual || !isManualFormValid
-                        ? "bg-blue-600/50 cursor-not-allowed shadow-none"
-                        : "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] shadow-blue-500/25 active:scale-98"
-                    }`}
-                  >
-                    {isSubmittingManual && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                    <span>{isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}</span>
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                  {/* ── FIXED STICKY FOOTER (56px) ── */}
+                  <div className="h-[56px] min-h-[56px] flex items-center justify-end gap-3 px-5 sm:px-6 border-t border-slate-200/80 dark:border-slate-800 shrink-0 bg-white dark:bg-[#0F172A] z-20 sticky bottom-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowManualModal(false)}
+                      className="h-[38px] px-4 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs sm:text-sm font-bold rounded-xl border border-slate-200/80 dark:border-white/10 transition cursor-pointer shrink-0"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingManual || !isManualFormValid}
+                      className={`h-[38px] px-5 text-white text-xs sm:text-sm font-extrabold rounded-xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
+                        isSubmittingManual || !isManualFormValid
+                          ? "bg-blue-600/50 cursor-not-allowed shadow-none"
+                          : "bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] shadow-blue-500/25 active:scale-98"
+                      }`}
+                    >
+                      {isSubmittingManual && <Loader2 className="h-4 w-4 animate-spin" />}
+                      <span>{isSubmittingManual ? "Saving Lead..." : "Add Customer Lead"}</span>
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* DELETE CONFIRMATION MODAL */}
       {leadToDelete && (

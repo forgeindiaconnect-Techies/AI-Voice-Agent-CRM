@@ -52,6 +52,7 @@ export interface AgentPresence {
   break_stats?: BreakStats;
   net_working_seconds?: number;
   last_status_change?: string | null;
+  status_since?: string | null;
   last_activity?: string | null;
   is_active?: boolean;
 }
@@ -66,8 +67,12 @@ export interface PresenceSummary {
 }
 
 interface PresenceContextType {
+  nowTicker: number;
   myStatus: "ready" | "paused" | "in_call" | "offline";
+  displayStatus: "AVAILABLE" | "ON_BREAK" | "IN_CALL" | "OFFLINE";
   pauseReason: string | null;
+  breakType: "LUNCH" | "TEA" | "PERSONAL" | string | null;
+  breakStartedAt: string | null;
   myPresence: AgentPresence | null;
   agents: AgentPresence[];
   summary: PresenceSummary;
@@ -86,8 +91,15 @@ interface PresenceContextType {
   isShiftTargetReached: boolean;
   remainingSeconds: number;
   shiftTargetSeconds: number;
+  maxBreakSeconds: number;
+  isMaxBreakReached: boolean;
+  remainingBreakSeconds: number;
 
   setPresenceStatus: (newStatus: "ready" | "paused" | "in_call" | "offline", pauseReason?: string, forceOffline?: boolean) => Promise<void>;
+  startBreak: (breakType: string) => Promise<void>;
+  resumeWork: () => Promise<void>;
+  goOffline: (forceOffline?: boolean) => Promise<void>;
+  goOnline: () => Promise<void>;
   refreshPresence: () => Promise<void>;
   updateCallTelemetry: (stats: { ringing_seconds?: number; setup_seconds?: number; talk_seconds?: number; dispose_seconds?: number; calls_handled?: number }) => void;
 }
@@ -115,6 +127,10 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pauseStartedAtRef = useRef<number | null>(null);
+  const isUnmountedRef = useRef<boolean>(false);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const isAuthErrorRef = useRef<boolean>(false);
 
   const myPresenceMemo = useMemo(() => {
     if (!user) return null;
@@ -164,18 +180,27 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [myPresence?.break_logs]);
 
   const activeBreakSeconds = useMemo(() => {
-    if (myPresence?.status === "paused" && myPresence?.current_break?.start_time) {
-      try {
-        const cbStart = new Date(myPresence.current_break.start_time).getTime();
-        return Math.max(0, Math.floor((nowTicker - cbStart) / 1000));
-      } catch {
-        return 0;
+    if (myStatus === "paused" || myPresence?.status === "paused") {
+      const startTimeVal = myPresence?.current_break?.start_time || myPresence?.last_status_change || myPresence?.status_since;
+      if (startTimeVal) {
+        try {
+          const cbStart = new Date(startTimeVal).getTime();
+          return Math.max(0, Math.floor((nowTicker - cbStart) / 1000));
+        } catch {
+          // Fallback below
+        }
+      }
+      if (pauseStartedAtRef.current) {
+        return Math.max(0, Math.floor((nowTicker - pauseStartedAtRef.current) / 1000));
       }
     }
     return 0;
-  }, [myPresence?.status, myPresence?.current_break, nowTicker]);
+  }, [myStatus, myPresence?.status, myPresence?.current_break, myPresence?.last_status_change, myPresence?.status_since, nowTicker]);
 
+  const MAX_BREAK_SECONDS = 3780; // 1 Hour 3 Minutes
   const totalBreakSeconds = completedBreakSeconds + activeBreakSeconds;
+  const isMaxBreakReached = totalBreakSeconds >= MAX_BREAK_SECONDS;
+  const remainingBreakSeconds = Math.max(0, MAX_BREAK_SECONDS - totalBreakSeconds);
 
   // Login HR = Ready Time + Pause Time => Ready Time = Login HR - Pause Time
   const readySeconds = useMemo(() => {
@@ -189,7 +214,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const setupSeconds = myPresence?.setup_seconds || 0;
   const disposeSeconds = myPresence?.dispose_seconds || 0;
 
-  const stopCount = (myPresence?.break_logs || []).length + (myPresence?.status === "paused" ? 1 : 0);
+  const stopCount = (myPresence?.break_logs || []).length + (myPresence?.status === "paused" || myStatus === "paused" ? 1 : 0);
 
   // 8-Hour shift target is evaluated directly against gross Login HR (breaks do NOT decrease shift progress)
   const isShiftTargetReached = grossLoginSeconds >= SHIFT_TARGET_SECONDS;
@@ -198,22 +223,34 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchPresenceData = useCallback(async () => {
     if (!user) return;
     try {
-      const [agentList, summaryData, meData] = await Promise.all([
+      const [agentList, summaryData, meData, activeSession] = await Promise.all([
         api.get("/api/presence/agents").catch(() => []),
         api.get("/api/presence/summary").catch(() => defaultSummary),
         api.get("/api/agent/presence").catch(() => api.get("/api/presence/me").catch(() => null)),
+        api.get("/api/agent/session/active").catch(() => null),
       ]);
 
       if (Array.isArray(agentList)) {
         const uid = user.id || (user as any)._id;
         const meFromList = agentList.find((a: AgentPresence) => a.id === uid || a.user_id === uid || (a as any).agentId === uid);
         const me = meData || meFromList;
-        if (me) {
-          const rawStatus = me.status || "offline";
+        if (me || activeSession) {
+          const rawStatus = (activeSession?.raw_status || me?.status || "offline");
           const normalizedStatus = (rawStatus.toLowerCase().trim()) as "ready" | "paused" | "in_call" | "offline";
           setMyStatus(normalizedStatus);
-          setPauseReason(me.pause_reason || null);
-          const fullMe = { ...me, id: uid, user_id: uid, status: normalizedStatus };
+          setPauseReason(activeSession?.currentBreak?.reason || me?.pause_reason || null);
+          const fullMe = {
+            ...me,
+            ...activeSession,
+            id: uid,
+            user_id: uid,
+            status: normalizedStatus,
+            login_at: activeSession?.loginTime || me?.login_at,
+            logout_at: activeSession?.logoutTime || me?.logout_at,
+            current_break: activeSession?.currentBreak || me?.current_break,
+            break_logs: activeSession?.breakLogs || me?.break_logs,
+          };
+          setMyPresence((prev) => ({ ...prev, ...fullMe }));
           setAgents((prev) => {
             const idx = prev.findIndex((a) => a.id === uid || a.user_id === uid || (a as any).agentId === uid);
             if (idx !== -1) {
@@ -225,7 +262,6 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           });
         }
       }
-
 
       if (summaryData && typeof summaryData.ready_count === "number") {
         setSummary(summaryData);
@@ -239,6 +275,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Handle incoming presence updates & activity logs from WebSocket stream
   const handleWsMessage = useCallback((event: MessageEvent) => {
     try {
+      if (!event.data) return;
       const payload = JSON.parse(event.data);
 
       if (payload.type === "lead_activity_updated" && payload.data) {
@@ -270,28 +307,20 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const normalizedStatus = (rawStatus.toLowerCase().trim()) as "ready" | "paused" | "in_call" | "offline";
 
         setAgents((prevAgents) => {
+          let updatedList: AgentPresence[];
           const index = prevAgents.findIndex((a) => a.id === updated.id || a.user_id === updated.user_id);
           if (index !== -1) {
-            const next = [...prevAgents];
-            next[index] = { ...next[index], ...updated, status: normalizedStatus };
-            return next;
+            updatedList = [...prevAgents];
+            updatedList[index] = { ...updatedList[index], ...updated, status: normalizedStatus };
+          } else {
+            updatedList = [...prevAgents, { ...updated, status: normalizedStatus }];
           }
-          return [...prevAgents, { ...updated, status: normalizedStatus }];
-        });
 
-        if (user && (updated.id === user.id || updated.user_id === user.id || payload.agentId === user.id)) {
-          setMyStatus(normalizedStatus);
-          setPauseReason(updated.pause_reason || null);
-          setMyPresence((prev) => ({ ...prev, ...updated, status: normalizedStatus }));
-        }
-
-
-        setAgents((currentAgents) => {
-          const total = currentAgents.length;
-          const ready = currentAgents.filter((a) => a.status === "ready").length;
-          const paused = currentAgents.filter((a) => a.status === "paused").length;
-          const inCall = currentAgents.filter((a) => a.status === "in_call").length;
-          const offline = currentAgents.filter((a) => a.status === "offline").length;
+          const total = updatedList.length;
+          const ready = updatedList.filter((a) => a.status === "ready").length;
+          const paused = updatedList.filter((a) => a.status === "paused").length;
+          const inCall = updatedList.filter((a) => a.status === "in_call").length;
+          const offline = updatedList.filter((a) => a.status === "offline").length;
           const online = ready + paused + inCall;
 
           setSummary({
@@ -302,28 +331,49 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             in_call_count: inCall,
             offline_count: offline,
           });
-          return currentAgents;
+
+          return updatedList;
         });
+
+        if (user && (updated.id === user.id || updated.user_id === user.id || payload.agentId === user.id)) {
+          setMyStatus(normalizedStatus);
+          setPauseReason(updated.pause_reason || null);
+          setMyPresence((prev) => ({ ...prev, ...updated, status: normalizedStatus }));
+        }
       }
     } catch {
-      // Ignore control messages
+      // Control messages (pong, etc.)
     }
   }, [user]);
 
   const connectWebSocket = useCallback(() => {
-    if (!user) return;
+    if (!user || isUnmountedRef.current || isAuthErrorRef.current) return;
+
     if (socketRef.current && (socketRef.current.readyState === WebSocket.OPEN || socketRef.current.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
     try {
       const wsUrl = getWsUrl("/global");
+      if (!wsUrl || wsUrl.includes("undefined")) {
+        console.warn("[SESSION WS] Skipping invalid WS URL resolution:", wsUrl);
+        return;
+      }
+
+      console.log("[SESSION WS] Connecting to:", wsUrl);
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 
+      let isClosedByCleanup = false;
+
       ws.onopen = () => {
+        if (isClosedByCleanup || isUnmountedRef.current) {
+          try { ws.close(); } catch {}
+          return;
+        }
         setWsConnected(true);
-        // Automatically sync authoritative presence from server on connect/reconnect
+        reconnectAttemptsRef.current = 0;
+        isAuthErrorRef.current = false;
         fetchPresenceData();
 
         if (reconnectTimeoutRef.current) {
@@ -339,44 +389,103 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }, 15000);
       };
 
-      ws.onmessage = (evt) => handleWsMessage(evt);
-
-      ws.onclose = () => {
-        setWsConnected(false);
-        if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connectWebSocket();
-        }, 3000);
+      ws.onmessage = (evt) => {
+        if (!isClosedByCleanup && !isUnmountedRef.current) {
+          handleWsMessage(evt);
+        }
       };
 
-      ws.onerror = () => {
+      ws.onclose = (evt: CloseEvent) => {
         setWsConnected(false);
-        try { ws.close(); } catch {}
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
+
+        if (isClosedByCleanup || isUnmountedRef.current) {
+          return; // Cleanup triggered close: do NOT auto-reconnect
+        }
+
+        if (evt.code === 4001 || evt.code === 4003 || evt.code === 1008) {
+          console.warn("[SESSION WS] Auth rejected by backend. Halting reconnect.");
+          isAuthErrorRef.current = true;
+          return;
+        }
+
+        const attempt = reconnectAttemptsRef.current + 1;
+        reconnectAttemptsRef.current = attempt;
+        const delay = Math.min(3000 * Math.pow(1.5, attempt - 1), 30000);
+
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (!isUnmountedRef.current) {
+            connectWebSocket();
+          }
+        }, delay);
+      };
+
+      ws.onerror = (err) => {
+        console.warn("[SESSION WS] Socket error:", err);
+        setWsConnected(false);
       };
     } catch (err) {
+      console.warn("[SESSION WS] Error establishing socket:", err);
       setWsConnected(false);
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connectWebSocket();
-      }, 5000);
     }
   }, [user, handleWsMessage, fetchPresenceData]);
 
   useEffect(() => {
+    isUnmountedRef.current = false;
+    isAuthErrorRef.current = false;
+
     if (user) {
       fetchPresenceData();
       connectWebSocket();
     }
 
     return () => {
-      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      isUnmountedRef.current = true;
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
       if (socketRef.current) {
+        socketRef.current.onopen = null;
+        socketRef.current.onmessage = null;
+        socketRef.current.onclose = null;
+        socketRef.current.onerror = null;
         try { socketRef.current.close(); } catch {}
+        socketRef.current = null;
       }
     };
-  }, [user, fetchPresenceData, connectWebSocket]);
+  }, [user]);
 
   const [isSubmittingStatus, setIsSubmittingStatus] = useState<boolean>(false);
+
+  const displayStatus: "AVAILABLE" | "ON_BREAK" | "IN_CALL" | "OFFLINE" = useMemo(() => {
+    if (myStatus === "ready") return "AVAILABLE";
+    if (myStatus === "paused") return "ON_BREAK";
+    if (myStatus === "in_call") return "IN_CALL";
+    return "OFFLINE";
+  }, [myStatus]);
+
+  const breakType = useMemo(() => {
+    if (myStatus !== "paused") return null;
+    const r = myPresence?.current_break?.type || pauseReason || "";
+    const u = r.toUpperCase();
+    if (u.includes("LUNCH")) return "LUNCH";
+    if (u.includes("TEA") || u.includes("REFRESHMENT")) return "TEA";
+    return "PERSONAL";
+  }, [myStatus, myPresence?.current_break?.type, pauseReason]);
+
+  const breakStartedAt = useMemo(() => {
+    if (myStatus !== "paused") return null;
+    return myPresence?.current_break?.start_time || myPresence?.last_status_change || null;
+  }, [myStatus, myPresence?.current_break?.start_time, myPresence?.last_status_change]);
 
   const setPresenceStatus = async (
     newStatus: "ready" | "paused" | "in_call" | "offline",
@@ -384,6 +493,15 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     forceOffline: boolean = false
   ) => {
     if (isSubmittingStatus) return;
+
+    if (newStatus === "paused" && completedBreakSeconds >= MAX_BREAK_SECONDS) {
+      throw new Error("Maximum daily break limit of 1 hr 3 min reached. You cannot take any more breaks today.");
+    }
+
+    if (newStatus === "offline" && !forceOffline && grossLoginSeconds < SHIFT_TARGET_SECONDS) {
+      throw new Error("Shift incomplete. You must complete 8 hours of login shift time (including breaks) before going offline.");
+    }
+
     setIsSubmittingStatus(true);
 
     const prevStatus = myStatus;
@@ -393,34 +511,66 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setMyStatus(newStatus);
     if (newPauseReason !== undefined) setPauseReason(newPauseReason);
 
+    if (newStatus === "paused") {
+      if (!pauseStartedAtRef.current) pauseStartedAtRef.current = Date.now();
+    } else if (newStatus === "ready") {
+      pauseStartedAtRef.current = null;
+    }
+
     try {
       let response: any = null;
-      const targetEndpoint = newStatus === "ready" ? "/api/agent/presence/ready"
-        : newStatus === "paused" ? "/api/agent/presence/pause"
-        : newStatus === "offline" ? "/api/agent/presence/offline"
+
+      // Primary REST route targeting /api/agent/session/*
+      const primaryEndpoint = newStatus === "ready"
+        ? (prevStatus === "paused" ? "/api/agent/session/resume" : "/api/agent/session/start")
+        : newStatus === "paused" ? "/api/agent/session/break"
+        : newStatus === "offline" ? "/api/agent/session/logout"
         : "/api/presence/status";
 
+      const fallbackEndpoint = newStatus === "ready" ? "/api/agents/me/break/resume"
+        : newStatus === "paused" ? "/api/agents/me/break/start"
+        : newStatus === "offline" ? "/api/agents/me/offline"
+        : "/api/presence/status";
+
+      console.log("[SESSION API] Sending outbound status change to:", primaryEndpoint, {
+        status: newStatus,
+        pause_reason: newPauseReason || null,
+        force_offline: forceOffline,
+      });
+
       try {
-        response = await api.post(targetEndpoint, {
-          status: newStatus,
+        response = await api.post(primaryEndpoint, {
+          break_type: newPauseReason || null,
           reason: newPauseReason || null,
+          status: newStatus,
           pause_reason: newPauseReason || null,
           force_offline: forceOffline,
         });
       } catch {
-        response = await api.post("/api/presence/status", {
-          status: newStatus,
-          pause_reason: newPauseReason || null,
-          force_offline: forceOffline,
-        });
+        try {
+          response = await api.post(fallbackEndpoint, {
+            break_type: newPauseReason || null,
+            reason: newPauseReason || null,
+            status: newStatus,
+            pause_reason: newPauseReason || null,
+            force_offline: forceOffline,
+          });
+        } catch {
+          response = await api.post("/api/presence/status", {
+            status: newStatus,
+            pause_reason: newPauseReason || null,
+            force_offline: forceOffline,
+          });
+        }
       }
 
+      console.log("[SESSION API] Received server response:", response);
 
       if (response && (response.presence || response.status)) {
         const updated = (response.presence || response) as AgentPresence;
-        if (updated) {
+        if (updated && updated.status) {
           const rawSt = updated.status || newStatus;
-          const normSt = rawSt.toLowerCase().trim() as "ready" | "paused" | "in_call" | "offline";
+          const normSt = (rawSt.toLowerCase().trim()) as "ready" | "paused" | "in_call" | "offline";
           setMyStatus(normSt);
           if (updated.pause_reason !== undefined) setPauseReason(updated.pause_reason);
           setMyPresence((prev) => ({
@@ -429,15 +579,6 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             status: normSt,
             pause_reason: updated.pause_reason !== undefined ? updated.pause_reason : newPauseReason || null,
           }));
-          setAgents((prev) => {
-            const index = prev.findIndex((a) => a.id === updated.id || a.user_id === (updated.user_id || updated.id));
-            if (index !== -1) {
-              const next = [...prev];
-              next[index] = { ...next[index], ...updated, status: normSt };
-              return next;
-            }
-            return [...prev, { ...updated, status: normSt }];
-          });
         }
       }
 
@@ -452,9 +593,26 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } finally {
       setIsSubmittingStatus(false);
     }
-
   };
 
+  const startBreak = async (selectedBreakType: string) => {
+    return setPresenceStatus("paused", selectedBreakType);
+  };
+
+  const resumeWork = async () => {
+    return setPresenceStatus("ready");
+  };
+
+  const goOffline = async (forceOffline: boolean = true) => {
+    if (myStatus === "in_call") {
+      throw new Error("Cannot go offline while an active call is in progress. Please complete disposition first.");
+    }
+    return setPresenceStatus("offline", undefined, forceOffline);
+  };
+
+  const goOnline = async () => {
+    return setPresenceStatus("ready");
+  };
 
   const updateCallTelemetry = (stats: {
     ringing_seconds?: number;
@@ -484,8 +642,12 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   return (
     <PresenceContext.Provider
       value={{
+        nowTicker,
         myStatus,
+        displayStatus,
         pauseReason,
+        breakType,
+        breakStartedAt,
         myPresence,
         agents,
         summary,
@@ -504,8 +666,14 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         isShiftTargetReached,
         remainingSeconds: Math.max(0, SHIFT_TARGET_SECONDS - grossLoginSeconds),
         shiftTargetSeconds: SHIFT_TARGET_SECONDS,
+        maxBreakSeconds: MAX_BREAK_SECONDS,
+        isMaxBreakReached,
+        remainingBreakSeconds,
         setPresenceStatus,
-
+        startBreak,
+        resumeWork,
+        goOffline,
+        goOnline,
         refreshPresence: fetchPresenceData,
         updateCallTelemetry,
       }}

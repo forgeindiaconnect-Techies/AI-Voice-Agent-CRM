@@ -187,7 +187,7 @@ export default function Dialer() {
     }
   };
 
-  const handleConfirmOffline = async (forceOffline: boolean = false) => {
+  const handleConfirmOffline = async (forceOffline: boolean = true) => {
     try {
       await setPresenceStatus("offline", undefined, forceOffline);
       showToast("Shift completed. Agent status set to Offline.", "info");
@@ -2129,6 +2129,7 @@ export default function Dialer() {
                           </p>
                         </div>
                       </div>
+
                     </div>
                   </div>
 
@@ -2676,7 +2677,8 @@ export default function Dialer() {
                             <button
                               type="button"
                               onClick={() => setShowCallMethodModal(true)}
-                              disabled={!isValidMobile || isCreatingLead || isDialing}
+                              disabled={!isValidMobile || isCreatingLead || isDialing || myStatus === "offline"}
+                              title={myStatus === "offline" ? "Agent is Offline. Set status to READY to begin dialing." : "Call Customer"}
                               className="w-full h-[48px] bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                             >
                               {isDialing || isCreatingLead ? (
@@ -3191,11 +3193,14 @@ export default function Dialer() {
       <PauseBreakModal
         isOpen={showPauseModal}
         onClose={() => setShowPauseModal(false)}
-        onSelectBreak={(reason) => setPresenceStatus("paused", reason)}
+        onSelectBreak={(reason) => {
+          setPresenceStatus("paused", reason).catch((err) => showToast(err?.message || "Failed to enter break", "error"));
+        }}
         onEndBreak={() => setPresenceStatus("ready")}
         currentStatus={myStatus}
         currentPauseReason={pauseReason}
-        pausedSeconds={myPresence?.paused_seconds || 0}
+        pausedSeconds={activeBreakSeconds}
+        totalBreakSeconds={totalBreakSeconds}
         breakStats={myPresence?.break_stats}
       />
 
@@ -3204,7 +3209,7 @@ export default function Dialer() {
         isOpen={showEarlyLogoutWarningModal}
         onClose={() => setShowEarlyLogoutWarningModal(false)}
         onConfirmEarlyLogout={() => setShowShiftSummaryModal(true)}
-        netWorkingSeconds={netWorkingSeconds}
+        netWorkingSeconds={grossLoginSeconds}
         targetSeconds={shiftTargetSeconds}
       />
 
