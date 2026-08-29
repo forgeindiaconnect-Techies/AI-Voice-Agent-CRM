@@ -156,6 +156,7 @@ export default function Dialer() {
     myPresence,
     wsConnected,
     isSubmittingStatus,
+    isCheckedInToday,
     setPresenceStatus,
     netWorkingSeconds,
     grossLoginSeconds,
@@ -166,6 +167,10 @@ export default function Dialer() {
     ringingSeconds,
     setupSeconds,
     disposeSeconds,
+    waitingSeconds,
+    activeWaitingSeconds,
+    totalWaitingSeconds,
+    currentWaitingSeconds,
     stopCount,
     isShiftTargetReached,
     shiftTargetSeconds,
@@ -219,6 +224,8 @@ export default function Dialer() {
   const callSetupTimeFormatted = formatSecsToHMS(setupSeconds);
   const totalCallTimeFormatted = formatSecsToHMS(talkSeconds);
   const disposeTimeFormatted = formatSecsToHMS(disposeSeconds);
+  const waitingTimeFormatted = formatSecsToHMS(totalWaitingSeconds);
+  const currentWaitingFormatted = formatSecsToHMS(currentWaitingSeconds);
 
   const maskPhoneNumber = (phoneStr?: string): string => {
     if (!phoneStr) return "N/A";
@@ -453,6 +460,9 @@ export default function Dialer() {
   }, []);
 
   const isValidMobile = useMemo(() => {
+    const clean = outboundPhone.replace(/\D/g, "");
+    if (clean.length === 10) return true;
+    if (clean.length === 12 && clean.startsWith("91")) return true;
     return /^[6-9]\d{9}$/.test(outboundPhone);
   }, [outboundPhone]);
 
@@ -1113,6 +1123,14 @@ export default function Dialer() {
 
     const targetMode = overrideMode || callMode;
     setCallMode(targetMode);
+
+    if (myStatus === "offline") {
+      try {
+        await setPresenceStatus("ready", undefined, true);
+      } catch (err) {
+        console.warn("[Dialer] Auto ready transition on dial:", err);
+      }
+    }
 
     if (callStatus !== "ready") {
       setCallStatus("ready");
@@ -2131,6 +2149,96 @@ export default function Dialer() {
                       </div>
 
                     </div>
+
+                    {/* REAL-TIME SESSION TELEMETRY BAR */}
+                    <div className="mt-4 pt-3 border-t border-slate-200/80 dark:border-white/10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                      {/* 1. Post-Call Waiting Time (Idle Time) */}
+                      <div className={`p-2.5 rounded-xl border transition-all ${
+                        myStatus === "ready" && !(myPresence as any)?.currentCallId
+                          ? "bg-indigo-50/90 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/30 ring-2 ring-indigo-500/20"
+                          : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-white/10"
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-indigo-500" /> Waiting Time
+                          </span>
+                          {myStatus === "ready" && !(myPresence as any)?.currentCallId && (
+                            <span className="h-2 w-2 rounded-full bg-indigo-500 animate-ping" />
+                          )}
+                        </div>
+                        <p className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 mt-1">
+                          {waitingTimeFormatted}
+                        </p>
+                        <p className="text-[9px] font-semibold text-slate-400 truncate mt-0.5">
+                          {myStatus === "ready" && !(myPresence as any)?.currentCallId ? `Current Idle: ${currentWaitingFormatted}` : "Idle Post-Call"}
+                        </p>
+                      </div>
+
+                      {/* 2. Talk Time */}
+                      <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10">
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <PhoneCall className="h-3 w-3 text-emerald-500" /> Talk Time
+                        </span>
+                        <p className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400 mt-1">
+                          {totalCallTimeFormatted}
+                        </p>
+                        <p className="text-[9px] font-semibold text-slate-400 truncate mt-0.5">
+                          {totalCallsHandled} Calls Handled
+                        </p>
+                      </div>
+
+                      {/* 3. Wrap-up / Dispose Time */}
+                      <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10">
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <MessageSquare className="h-3 w-3 text-purple-500" /> Wrap-Up Time
+                        </span>
+                        <p className="text-sm font-black font-mono text-purple-600 dark:text-purple-400 mt-1">
+                          {disposeTimeFormatted}
+                        </p>
+                        <p className="text-[9px] font-semibold text-slate-400 truncate mt-0.5">
+                          After-Call Disposition
+                        </p>
+                      </div>
+
+                      {/* 4. Ringing Time */}
+                      <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10">
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <Activity className="h-3 w-3 text-rose-500" /> Ringing Time
+                        </span>
+                        <p className="text-sm font-black font-mono text-rose-600 dark:text-rose-400 mt-1">
+                          {ringingTimeFormatted}
+                        </p>
+                        <p className="text-[9px] font-semibold text-slate-400 truncate mt-0.5">
+                          Pre-Connect Ringing
+                        </p>
+                      </div>
+
+                      {/* 5. Break Time */}
+                      <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10">
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <Coffee className="h-3 w-3 text-amber-500" /> Break Time
+                        </span>
+                        <p className="text-sm font-black font-mono text-amber-600 dark:text-amber-400 mt-1">
+                          {pauseTimeFormatted}
+                        </p>
+                        <p className="text-[9px] font-semibold text-slate-400 truncate mt-0.5">
+                          {stopCount} Break Events
+                        </p>
+                      </div>
+
+                      {/* 6. Shift Login HR */}
+                      <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200 dark:border-white/10">
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <Calendar className="h-3 w-3 text-blue-500" /> Login HR
+                        </span>
+                        <p className="text-sm font-black font-mono text-blue-600 dark:text-blue-400 mt-1">
+                          {loginHoursVal}
+                        </p>
+                        <p className="text-[9px] font-semibold text-slate-400 truncate mt-0.5">
+                          Shift Target: 08:00:00
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Relative Container for Centered Dialer + Right Floating Action Rail */}
@@ -2676,9 +2784,18 @@ export default function Dialer() {
                           {callStatus === "ready" && (
                             <button
                               type="button"
-                              onClick={() => setShowCallMethodModal(true)}
-                              disabled={!isValidMobile || isCreatingLead || isDialing || myStatus === "offline"}
-                              title={myStatus === "offline" ? "Agent is Offline. Set status to READY to begin dialing." : "Call Customer"}
+                              onClick={async () => {
+                                if (myStatus === "offline") {
+                                  try {
+                                    await setPresenceStatus("ready", undefined, true);
+                                  } catch (e) {
+                                    // ignore fallback
+                                  }
+                                }
+                                setShowCallMethodModal(true);
+                              }}
+                              disabled={!isValidMobile || isCreatingLead || isDialing}
+                              title={!isValidMobile ? "Enter a valid 10-digit mobile number" : "Call Customer"}
                               className="w-full h-[48px] bg-[#10B981] hover:bg-[#059669] text-white rounded-xl font-extrabold text-sm shadow-xs transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                             >
                               {isDialing || isCreatingLead ? (

@@ -111,7 +111,7 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = () => {
 
             <span>
               {healthStatus === 'connected'
-                ? 'Render API Online'
+                ? (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1') ? 'Local API Online' : 'Render API Online')
                 : healthStatus === 'checking'
                 ? 'Connecting...'
                 : 'API Disconnected'}

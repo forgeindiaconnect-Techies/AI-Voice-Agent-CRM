@@ -12,7 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from app.core.config import settings
 from app.core.database import init_indexes, check_db_connection
 from app.core.http import get_http_client, close_http_client
-from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws, ai_agents, presence
+from app.routes import auth, users, pools, campaigns, leads, calls, leave, reports, ws, ai_agents, presence, attendance
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 logger = logging.getLogger("uvicorn.error")
@@ -106,6 +106,7 @@ app.include_router(presence.agent_router)
 app.include_router(presence.agents_router)
 app.include_router(presence.session_router)
 app.include_router(presence.root_session_router)
+app.include_router(attendance.router)
 
 
 # ── Startup ──────────────────────────────────────────────────────────────────
@@ -116,6 +117,25 @@ async def on_startup():
     if db_ok:
         await init_indexes()
         logger.info("[PERF] MongoDB connected and indexes initialized.")
+        
+        # Seed default public holidays if missing
+        from app.core.database import holidays_col
+        from app.core.utils import utcnow
+        
+        default_holidays = [
+            {"date": "2026-01-01", "name": "New Year's Day", "description": "Global New Year Celebration"},
+            {"date": "2026-01-26", "name": "Republic Day", "description": "National Holiday"},
+            {"date": "2026-08-15", "name": "Independence Day", "description": "National Holiday"},
+            {"date": "2026-10-02", "name": "Gandhi Jayanti", "description": "Mahatma Gandhi Birthday"},
+            {"date": "2026-12-25", "name": "Christmas Day", "description": "Christmas Celebration"},
+        ]
+        for h in default_holidays:
+            existing_h = await holidays_col.find_one({"date": h["date"]})
+            if not existing_h:
+                h["created_at"] = utcnow()
+                h["updated_at"] = utcnow()
+                await holidays_col.insert_one(h)
+                logger.info(f"Seeded holiday: {h['name']} ({h['date']})")
     else:
         logger.warning(
             "MongoDB is not accessible during startup. "

@@ -7,8 +7,6 @@ const RENDER_PROD_URL = "https://ai-voice-agent-crm.onrender.com";
 let currentBaseUrl: string | null = null;
 
 export const getBaseUrl = (): string => {
-  if (currentBaseUrl !== null) return currentBaseUrl;
-
   const isElectron =
     typeof window !== "undefined" &&
     (Boolean((window as any).electronAPI) ||
@@ -24,31 +22,24 @@ export const getBaseUrl = (): string => {
         window.location.hostname === "" ||
         window.location.hostname.endsWith(".local")));
 
-  // Clear stale remote custom_api_url override if running in local dev mode
-  if (isLocalEnv && typeof localStorage !== "undefined") {
-    const savedUrl = localStorage.getItem("custom_api_url");
-    if (savedUrl && savedUrl.includes("onrender.com")) {
-      localStorage.removeItem("custom_api_url");
-    }
-  }
+  const isDev = Boolean(import.meta.env.DEV) || isLocalEnv;
 
-  // 1. Localhost / Dev / Electron Environment (Priority 1)
-  if (isLocalEnv) {
-    if (typeof localStorage !== "undefined") {
-      const savedUrl = localStorage.getItem("custom_api_url");
-      if (savedUrl && savedUrl.trim() !== "" && savedUrl.includes("localhost")) {
-        return savedUrl.trim().replace(/\/+$/, "");
-      }
-    }
-    return "http://localhost:8000";
-  }
-
-  // 2. Check user custom override from local storage
+  // 1. In local dev or electron environment, clear stale remote Render URLs
   if (typeof localStorage !== "undefined") {
     const savedUrl = localStorage.getItem("custom_api_url");
     if (savedUrl && savedUrl.trim() !== "") {
-      return savedUrl.trim().replace(/\/+$/, "");
+      const cleanSaved = savedUrl.trim().replace(/\/+$/, "");
+      if (cleanSaved === RENDER_PROD_URL || (isDev && cleanSaved.includes("onrender.com"))) {
+        localStorage.removeItem("custom_api_url");
+      } else {
+        return cleanSaved;
+      }
     }
+  }
+
+  // 2. Localhost / Dev / Electron Environment default fallback to local backend
+  if (isDev) {
+    return "http://localhost:8000";
   }
 
   // 3. Check environment variable VITE_API_URL if configured
@@ -62,7 +53,7 @@ export const getBaseUrl = (): string => {
     return url;
   }
 
-  // 4. Default Target: Production Render Backend (https://ai-voice-agent-crm.onrender.com)
+  // 4. Default Target: Production Render Backend
   return RENDER_PROD_URL;
 };
 
@@ -109,7 +100,6 @@ export const getWsUrl = (roomPath: string = ""): string => {
   }
 };
 
-const WS_URL = getWsUrl();
 
 export type ApiFetchOptions = RequestInit & {
   timeoutMs?: number;
@@ -169,6 +159,11 @@ export async function apiFetch(
       // Gracefully handle 403 Forbidden for active/live call polling on remote server
       if (res.status === 403 && (path.includes("/calls/active") || path.includes("/calls/live"))) {
         return [];
+      }
+
+      // Gracefully handle 404 Not Found for optional presence, session & shift-summary polling endpoints
+      if (res.status === 404 && (path.includes("session") || path.includes("presence") || path.includes("shift-summary"))) {
+        return null;
       }
 
       if (!res.ok) {
@@ -233,4 +228,4 @@ export const api = {
   },
 };
 
-export { BASE_URL, WS_URL, getToken };
+export { BASE_URL, getToken };

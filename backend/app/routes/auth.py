@@ -1,5 +1,8 @@
+import logging
 from fastapi import APIRouter, HTTPException, Depends, status, Request
 from bson import ObjectId
+
+logger = logging.getLogger("uvicorn.error")
 from datetime import timedelta
 from app.core.database import users_col, audit_logs_col
 from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token, decode_token
@@ -115,16 +118,7 @@ async def login(payload: UserLogin, request: Request):
         "timestamp": utcnow()
     })
 
-    # Trigger real-time presence tracking update on login
-    try:
-        from app.routes.presence import record_presence_change
-        await record_presence_change(
-            user_id=str(user["_id"]),
-            new_status="ready",
-            source="login"
-        )
-    except Exception as e:
-        logger.warning(f"[PRESENCE LOGIN ERROR] Failed to record presence change: {e}")
+    curr_status = user.get("status", "offline")
 
     return {
         "access_token": access,
@@ -136,7 +130,7 @@ async def login(payload: UserLogin, request: Request):
             "role": user["role"],
             "employee_id": user["employee_id"],
             "pool_id": user.get("pool_id"),
-            "status": "ready",
+            "status": curr_status,
         },
     }
 

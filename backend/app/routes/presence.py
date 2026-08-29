@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from bson import ObjectId
-from app.core.database import users_col, agent_shifts_col, agent_presence_col, agent_status_history_col
+from app.core.database import users_col, agent_shifts_col, agent_presence_col, agent_status_history_col, attendance_col, calls_col
 from app.core.utils import utcnow, oid_str
 from app.core.deps import get_current_user
 from app.services.ws_manager import ws_manager
@@ -18,9 +18,12 @@ agents_router = APIRouter(prefix="/api/agents", tags=["agents-status"])
 # State machine allowed transition rules
 ALLOWED_TRANSITIONS = {
     "offline": ["ready"],
-    "ready": ["paused", "offline", "in_call"],
+    "ready": ["paused", "break", "ringing", "in_call", "wrap_up", "offline"],
     "paused": ["ready", "offline"],
-    "in_call": ["ready", "paused", "offline"]
+    "break": ["ready", "offline"],
+    "ringing": ["in_call", "ready"],
+    "in_call": ["wrap_up", "ready", "paused", "offline"],
+    "wrap_up": ["ready"]
 }
 
 
@@ -32,21 +35,29 @@ def normalize_status_input(st: str) -> str:
         return "paused"
     if s in ("offline", "logged_out"):
         return "offline"
-    if s in ("in_call", "busy"):
+    if s in ("in_call", "busy", "calling", "on_call"):
         return "in_call"
+    if s in ("ringing", "ring"):
+        return "ringing"
+    if s in ("wrap_up", "wrapup", "disposition"):
+        return "wrap_up"
     return s
 
 
 def map_status_to_enum(st: str) -> str:
     s = (st or "").strip().lower()
     if s == "ready":
-        return "AVAILABLE"
-    if s == "paused":
-        return "ON_BREAK"
+        return "READY"
+    if s in ("paused", "break"):
+        return "BREAK"
     if s == "offline":
         return "OFFLINE"
-    if s == "in_call":
-        return "IN_CALL"
+    if s in ("in_call", "busy"):
+        return "ON_CALL"
+    if s == "ringing":
+        return "RINGING"
+    if s == "wrap_up":
+        return "WRAP_UP"
     return st.upper() if st else "OFFLINE"
 
 
@@ -58,6 +69,8 @@ def get_break_type_code(reason: Optional[str]) -> str:
         return "LUNCH"
     if "TEA" in r or "REFRESHMENT" in r:
         return "TEA"
+    if "OTHER" in r:
+        return "OTHER"
     return "PERSONAL"
 
 
@@ -102,7 +115,7 @@ async def record_presence_change(
 
     new_status = normalize_status_input(new_status)
 
-    valid_statuses = {"ready", "paused", "in_call", "offline"}
+    valid_statuses = {"ready", "paused", "in_call", "offline", "ringing", "wrap_up"}
     if new_status not in valid_statuses:
         logger.warning(f"[PRESENCE] Invalid status '{new_status}' requested for user {user_id}")
         return None
@@ -128,6 +141,16 @@ async def record_presence_change(
         current_break = None
         break_logs = []
         current_status = "offline"
+
+    # ENFORCE BUSINESS RULE: Agent MUST check in before setting Ready or taking breaks/calls
+    today_att = await attendance_col.find_one({"agent_id": uid_str, "date": shift_date})
+    has_checked_in = bool(today_att and today_att.get("check_in_time") and today_att.get("status") not in ("NOT_CHECKED_IN", "ABSENT"))
+
+    if new_status in ("ready", "paused", "in_call", "ringing", "wrap_up") and not has_checked_in and source not in ("session_start", "check_in"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Agent has not checked in today. Please click Check In first to start today's shift."
+        )
 
     # REJECT INVALID SAME-STATE OR TRANSITION REQUESTS
     if current_status == "paused" and new_status == "paused" and user_shift_date == shift_date:
@@ -169,6 +192,18 @@ async def record_presence_change(
                 pass
         tot_break_sec = comp_break_sec + act_break_sec
         ready_sec = max(0, gross_sec - tot_break_sec)
+
+        waiting_sec = user.get("waiting_seconds", 0)
+        w_started = user.get("waiting_started_at")
+        act_waiting_sec = 0
+        if current_status == "ready" and w_started and not user.get("currentCallId"):
+            try:
+                w_dt = datetime.fromisoformat(w_started.replace("Z", "+00:00"))
+                act_waiting_sec = max(0, int((now - w_dt).total_seconds()))
+            except Exception:
+                pass
+        tot_waiting_sec = waiting_sec + act_waiting_sec
+
         return {
             "user_id": uid_str,
             "agentId": uid_str,
@@ -192,6 +227,10 @@ async def record_presence_change(
             "total_login_seconds": gross_sec,
             "total_ready_seconds": ready_sec,
             "total_pause_seconds": tot_break_sec,
+            "waiting_seconds": waiting_sec,
+            "active_waiting_seconds": act_waiting_sec,
+            "total_waiting_seconds": tot_waiting_sec,
+            "waiting_started_at": w_started,
             "required_seconds": 28800,
             "remaining_seconds": max(0, 28800 - gross_sec),
             "completed_8_hours": gross_sec >= 28800,
@@ -325,6 +364,44 @@ async def record_presence_change(
     completed_8_hours = gross_seconds >= 28800
     remaining_seconds = max(0, 28800 - gross_seconds)
 
+    # MANAGING POST-CALL WAITING / IDLE TIME
+    curr_waiting_started = user.get("waiting_started_at") if user_shift_date == shift_date else None
+    curr_waiting_seconds = user.get("waiting_seconds", 0) if user_shift_date == shift_date else 0
+
+    new_waiting_seconds = curr_waiting_seconds
+    new_waiting_started = curr_waiting_started
+
+    # 1. If transitioning OUT of 'ready' (ready -> in_call, ready -> paused, ready -> offline, ready -> wrap_up):
+    # Finalize current active waiting timer and accumulate duration idempotently
+    if current_status == "ready" and new_status != "ready":
+        if curr_waiting_started:
+            try:
+                w_dt = datetime.fromisoformat(curr_waiting_started.replace("Z", "+00:00"))
+                elapsed_waiting = max(0, int((now - w_dt).total_seconds()))
+                new_waiting_seconds += elapsed_waiting
+            except Exception as e:
+                logger.warning(f"[WAITING TIME] Error calculating elapsed waiting time: {e}")
+            new_waiting_started = None
+
+    # 2. If transitioning INTO 'ready' (e.g. offline -> ready, paused -> ready, wrap_up -> ready, check_in -> ready):
+    # Start a new active waiting timer if agent is not currently in a call
+    if new_status == "ready":
+        curr_call_id = user.get("currentCallId")
+        if not curr_call_id:
+            new_waiting_started = now_iso
+        else:
+            new_waiting_started = None
+
+    active_waiting_seconds = 0
+    if new_status == "ready" and new_waiting_started:
+        try:
+            w_dt = datetime.fromisoformat(new_waiting_started.replace("Z", "+00:00"))
+            active_waiting_seconds = max(0, int((now - w_dt).total_seconds()))
+        except Exception:
+            active_waiting_seconds = 0
+
+    total_waiting_seconds = new_waiting_seconds + active_waiting_seconds
+
     update_fields = {
         "status": new_status,
         "pause_reason": pause_reason if new_status == "paused" else None,
@@ -339,6 +416,8 @@ async def record_presence_change(
         "total_login_seconds": gross_seconds,
         "total_ready_seconds": ready_sec,
         "total_pause_seconds": total_break_seconds,
+        "waiting_seconds": new_waiting_seconds,
+        "waiting_started_at": new_waiting_started,
         "required_seconds": 28800,
         "completed_8_hours": completed_8_hours,
         "remaining_seconds": remaining_seconds,
@@ -416,6 +495,8 @@ async def record_presence_change(
             "total_break_seconds": total_break_seconds,
             "working_seconds": working_seconds,
             "gross_seconds": gross_seconds,
+            "waiting_seconds": new_waiting_seconds,
+            "waiting_started_at": new_waiting_started,
             "break_stats": break_stats,
             "created_at": now_iso,
             "updated_at": now_iso,
@@ -429,6 +510,8 @@ async def record_presence_change(
                 "total_break_seconds": total_break_seconds,
                 "working_seconds": working_seconds,
                 "gross_seconds": gross_seconds,
+                "waiting_seconds": new_waiting_seconds,
+                "waiting_started_at": new_waiting_started,
                 "break_stats": break_stats,
                 "updated_at": now_iso,
             }
@@ -469,6 +552,11 @@ async def record_presence_change(
         "eightHourCompleted": gross_seconds >= 28800,
         "session_status": "COMPLETED" if gross_seconds >= 28800 else "INCOMPLETE",
 
+        "waiting_seconds": new_waiting_seconds,
+        "active_waiting_seconds": active_waiting_seconds,
+        "total_waiting_seconds": total_waiting_seconds,
+        "waiting_started_at": new_waiting_started,
+        "last_waiting_started_at": new_waiting_started,
         "last_status_change": now_iso,
         "status_since": now_iso,
         "last_activity": now_iso,
@@ -503,36 +591,43 @@ async def record_presence_change(
 async def record_call_completion(
     user_id: str,
     duration_seconds: int = 0,
+    dispose_seconds: int = 0,
     call_id: Optional[str] = None,
-    outcome: str = "completed"
+    outcome: str = "completed",
+    call_duration: Optional[int] = None
 ) -> dict | None:
-    """Idempotently records completed call, increments total_calls_handled & talk_seconds in MongoDB, and emits WebSocket broadcast."""
+    """Idempotently records completed call, increments total_calls_handled, talk_seconds, and dispose_seconds in MongoDB, and emits WebSocket broadcast."""
     now = utcnow()
     now_iso = now.isoformat()
     shift_date = now.strftime("%Y-%m-%d")
 
+    if call_duration is not None and duration_seconds == 0:
+        duration_seconds = call_duration
+
     uid_str = str(user_id)
     query = {"_id": ObjectId(uid_str)} if ObjectId.is_valid(uid_str) else {"id": uid_str}
 
-    # Increment total_calls_handled and talk_seconds in users collection
+    # Increment total_calls_handled, talk_seconds, and dispose_seconds in users collection
     await users_col.update_one(
         query,
         {
             "$inc": {
                 "total_calls_handled": 1,
-                "talk_seconds": duration_seconds
+                "talk_seconds": duration_seconds,
+                "dispose_seconds": dispose_seconds
             },
             "$set": {"updated_at": now_iso}
         }
     )
 
-    # Increment total_calls_handled and talk_seconds in agent_shifts collection
+    # Increment total_calls_handled, talk_seconds, and dispose_seconds in agent_shifts collection
     await agent_shifts_col.update_one(
         {"user_id": uid_str, "shift_date": shift_date},
         {
             "$inc": {
                 "total_calls_handled": 1,
-                "talk_seconds": duration_seconds
+                "talk_seconds": duration_seconds,
+                "dispose_seconds": dispose_seconds
             },
             "$set": {"updated_at": now_iso}
         }
@@ -553,16 +648,18 @@ async def record_call_completion(
             "agent_id": uid_str,
             "call_id": call_id or "session_completed",
             "duration_seconds": duration_seconds,
+            "dispose_seconds": dispose_seconds,
             "outcome": outcome,
             "total_calls_handled": new_total_calls,
             "talk_seconds": updated_user.get("talk_seconds", 0),
+            "dispose_seconds": updated_user.get("dispose_seconds", 0),
             "timestamp": now_iso
         }
     }
 
     try:
         await ws_manager.broadcast_global(payload)
-        logger.info(f"[CALL COMPLETED WS BROADCAST] Agent {uid_str} → Total Calls: {new_total_calls}")
+        logger.info(f"[CALL COMPLETED WS BROADCAST] Agent {uid_str} → Total Calls: {new_total_calls}, Dispose Sec: {updated_user.get('dispose_seconds', 0)}")
     except Exception as e:
         logger.warning(f"[CALL COMPLETED WS ERROR] Broadcast failed: {e}")
 
@@ -635,14 +732,16 @@ async def get_agents_presence(current_user: dict = Depends(get_current_user)):
             except Exception:
                 pass
 
-        ready_sec = max(0, gross_sec - tot_break_sec)
-
-        raw_stats = (u.get("break_stats") if is_today else None) or {}
-        break_stats = {
-            "tea_break": {"count": raw_stats.get("tea_break", {}).get("count", 0), "total_seconds": raw_stats.get("tea_break", {}).get("total_seconds", 0)},
-            "lunch_break": {"count": raw_stats.get("lunch_break", {}).get("count", 0), "total_seconds": raw_stats.get("lunch_break", {}).get("total_seconds", 0)},
-            "personal_reason": {"count": raw_stats.get("personal_reason", {}).get("count", 0), "total_seconds": raw_stats.get("personal_reason", {}).get("total_seconds", 0)},
-        }
+        waiting_sec = u.get("waiting_seconds", 0) if is_today else 0
+        w_started = u.get("waiting_started_at") if is_today else None
+        act_waiting_sec = 0
+        if st == "ready" and w_started:
+            try:
+                w_dt = datetime.fromisoformat(w_started.replace("Z", "+00:00"))
+                act_waiting_sec = max(0, int((now - w_dt).total_seconds()))
+            except Exception:
+                pass
+        tot_waiting_sec = waiting_sec + act_waiting_sec
 
         agents.append({
             "id": uid,
@@ -667,6 +766,11 @@ async def get_agents_presence(current_user: dict = Depends(get_current_user)):
             "ready_seconds": ready_sec,
             "paused_seconds": tot_break_sec,
             "talk_seconds": u.get("talk_seconds", 0) if is_today else 0,
+            "dispose_seconds": u.get("dispose_seconds", 0) if is_today else 0,
+            "waiting_seconds": waiting_sec,
+            "active_waiting_seconds": act_waiting_sec,
+            "total_waiting_seconds": tot_waiting_sec,
+            "waiting_started_at": w_started,
             "total_calls_handled": u.get("total_calls_handled", 0) if is_today else 0,
             "break_stats": break_stats,
             "shift_target_reached": gross_sec >= 28800,
@@ -779,6 +883,17 @@ async def get_current_shift_summary(
     completed_8_hours = gross_seconds >= 28800
     remaining_sec = max(0, 28800 - gross_seconds)
 
+    waiting_sec = user.get("waiting_seconds", 0) if is_today else 0
+    w_started = user.get("waiting_started_at") if is_today else None
+    act_waiting_sec = 0
+    if is_today and st == "ready" and w_started:
+        try:
+            w_dt = datetime.fromisoformat(w_started.replace("Z", "+00:00"))
+            act_waiting_sec = max(0, int((now - w_dt).total_seconds()))
+        except Exception:
+            pass
+    tot_waiting_sec = waiting_sec + act_waiting_sec
+
     return {
         "user_id": uid_str,
         "name": user.get("name"),
@@ -799,6 +914,10 @@ async def get_current_shift_summary(
         "ready_seconds": ready_sec,
         "paused_seconds": tot_break_sec,
         "talk_seconds": talk_sec,
+        "waiting_seconds": waiting_sec,
+        "active_waiting_seconds": act_waiting_sec,
+        "total_waiting_seconds": tot_waiting_sec,
+        "waiting_started_at": w_started,
         "total_calls_handled": calls_count,
         "avg_handling_seconds": int(talk_sec / calls_count) if calls_count > 0 else 0,
         "break_stats": break_stats,
@@ -816,8 +935,10 @@ async def get_current_shift_summary(
 # ── Additional Agent Presence API Endpoints ─────────────────────────────────────
 
 @router.get("/me")
+@agent_router.get("/me")
+@agent_router.get("/presence")
 async def get_my_presence_endpoint(current_user: dict = Depends(get_current_user)):
-    """Fetch current authoritative presence state for authenticated agent."""
+    """Fetch current authoritative presence state and active attendance session for authenticated agent."""
     uid = str(current_user["_id"])
     query = {"_id": ObjectId(uid)} if ObjectId.is_valid(uid) else {"id": uid}
     user = await users_col.find_one(query)
@@ -828,11 +949,54 @@ async def get_my_presence_endpoint(current_user: dict = Depends(get_current_user
     now_iso = now.isoformat()
     today_str = now.strftime("%Y-%m-%d")
 
+    # Check today's attendance record
+    today_att = await attendance_col.find_one({"agent_id": uid, "date": today_str})
+    has_checked_in = bool(today_att and today_att.get("check_in_time") and today_att.get("status") not in ("NOT_CHECKED_IN", "ABSENT"))
+
+    if not has_checked_in:
+        return {
+            "success": True,
+            "agentId": uid,
+            "user_id": uid,
+            "status": "OFFLINE",
+            "raw_status": "offline",
+            "is_checked_in": False,
+            "businessDate": today_str,
+            "loginTime": None,
+            "logoutTime": None,
+            "check_in_time": None,
+            "readySeconds": 0,
+            "pauseSeconds": 0,
+            "loginSeconds": 0,
+            "remainingSeconds": 28800,
+            "eightHourCompleted": False,
+            "pause_reason": None,
+            "statusSince": None,
+            "last_status_change": None,
+            "serverTime": now_iso,
+            "login_at": None,
+            "logout_at": None,
+            "current_break": None,
+            "break_logs": [],
+            "working_seconds": 0,
+            "gross_seconds": 0,
+            "total_login_seconds": 0,
+            "total_ready_seconds": 0,
+            "total_pause_seconds": 0,
+            "ready_seconds": 0,
+            "paused_seconds": 0,
+            "talk_seconds": 0,
+            "dispose_seconds": 0,
+            "total_calls_handled": 0,
+            "completed_8_hours": False,
+        }
+
+    check_in_time = today_att["check_in_time"]
     user_shift_date = user.get("shift_date")
     is_today = (user_shift_date == today_str)
 
     st = user.get("status", "offline") if is_today else "offline"
-    login_val = user.get("login_at") if is_today else None
+    login_val = check_in_time
     logout_val = user.get("logout_at") if is_today else None
     current_break = user.get("current_break") if is_today else None
     break_logs = list(user.get("break_logs") or []) if is_today else []
@@ -859,21 +1023,54 @@ async def get_my_presence_endpoint(current_user: dict = Depends(get_current_user
     ready_sec = max(0, gross_sec - tot_break_sec)
     eight_completed = gross_sec >= 28800
 
+    # Session-specific call telemetry (only calls in active attendance session)
+    check_in_dt_naive = None
+    try:
+        check_in_dt_naive = datetime.fromisoformat(check_in_time.replace("Z", "+00:00")).replace(tzinfo=None) - timedelta(seconds=60)
+    except Exception:
+        pass
+
+    agent_id_match = [uid]
+    if ObjectId.is_valid(uid):
+        agent_id_match.append(ObjectId(uid))
+
+    cursor = calls_col.find({"agent_id": {"$in": agent_id_match}})
+    session_calls = []
+    async for c in cursor:
+        st_at = c.get("started_at")
+        if not st_at:
+            continue
+        if isinstance(st_at, str):
+            try:
+                st_at = datetime.fromisoformat(st_at.replace("Z", "+00:00"))
+            except Exception:
+                continue
+        if isinstance(st_at, datetime):
+            st_naive = st_at.replace(tzinfo=None)
+            if check_in_dt_naive is None or st_naive >= check_in_dt_naive:
+                session_calls.append(c)
+
+    total_calls_session = len(session_calls)
+    talk_sec_session = sum(c.get("duration_seconds", 0) for c in session_calls)
+    dispose_sec_session = sum(c.get("dispose_seconds", 0) for c in session_calls)
+
     return {
         "success": True,
         "agentId": uid,
         "user_id": uid,
         "status": st.upper(),
+        "raw_status": st,
+        "is_checked_in": True,
         "businessDate": today_str,
         "loginTime": login_val,
         "logoutTime": logout_val,
+        "check_in_time": check_in_time,
         "readySeconds": ready_sec,
         "pauseSeconds": tot_break_sec,
         "loginSeconds": gross_sec,
         "remainingSeconds": max(0, 28800 - gross_sec),
         "eightHourCompleted": eight_completed,
 
-        # Standard fields for backward compatibility
         "pause_reason": user.get("pause_reason") if is_today else None,
         "statusSince": user.get("last_status_change") if is_today else now_iso,
         "last_status_change": user.get("last_status_change") if is_today else now_iso,
@@ -889,16 +1086,11 @@ async def get_my_presence_endpoint(current_user: dict = Depends(get_current_user
         "total_pause_seconds": tot_break_sec,
         "ready_seconds": ready_sec,
         "paused_seconds": tot_break_sec,
-        "talk_seconds": user.get("talk_seconds", 0) if is_today else 0,
-        "total_calls_handled": user.get("total_calls_handled", 0) if is_today else 0,
+        "talk_seconds": talk_sec_session,
+        "dispose_seconds": dispose_sec_session,
+        "total_calls_handled": total_calls_session,
         "completed_8_hours": eight_completed,
     }
-
-
-@agent_router.get("/presence")
-async def get_agent_presence_alias(current_user: dict = Depends(get_current_user)):
-    """Alias route for GET /api/agent/presence."""
-    return await get_my_presence_endpoint(current_user)
 
 
 
@@ -987,8 +1179,19 @@ class SessionLogoutPayload(BaseModel):
     force_offline: Optional[bool] = Field(True, description="Confirmation flag for going offline")
 
 
+class SessionHeartbeatPayload(BaseModel):
+    session_id: Optional[str] = None
+    session_version: Optional[int] = None
+
+
 async def handle_session_start(current_user: dict):
     uid_str = str(current_user["_id"])
+    from app.services.attendance_service import check_in_agent
+    try:
+        await check_in_agent(uid_str)
+    except ValueError:
+        pass  # Already checked in today
+
     res = await record_presence_change(user_id=uid_str, new_status="ready", source="session_start")
     if not res:
         raise HTTPException(status_code=400, detail="Failed to start agent session")
@@ -1022,6 +1225,8 @@ async def handle_session_break(payload: Optional[SessionBreakPayload], current_u
             reason = "Tea Break"
         elif r_upper == "PERSONAL":
             reason = "Personal Break"
+        elif r_upper == "OTHER":
+            reason = "Other Break"
 
     res = await record_presence_change(user_id=uid_str, new_status="paused", pause_reason=reason, source="session_break")
     if not res:
@@ -1082,6 +1287,220 @@ async def handle_session_logout(payload: Optional[SessionLogoutPayload], current
     }
 
 
+async def handle_session_heartbeat(payload: Optional[SessionHeartbeatPayload], current_user: dict):
+    uid_str = str(current_user["_id"])
+    now = utcnow()
+    now_iso = now.isoformat()
+    await users_col.update_one(
+        {"_id": ObjectId(uid_str)},
+        {"$set": {"last_heartbeat_at": now_iso}}
+    )
+    return {
+        "success": True,
+        "agentId": uid_str,
+        "timestamp": now_iso,
+        "serverTimestamp": int(now.timestamp() * 1000)
+    }
+
+
+async def handle_session_resync(current_user: dict):
+    uid_str = str(current_user["_id"])
+    user = await users_col.find_one({"_id": ObjectId(uid_str)})
+    if not user:
+        raise HTTPException(status_code=404, detail="Agent user not found")
+
+    now = utcnow()
+    now_iso = now.isoformat()
+    today_str = now.strftime("%Y-%m-%d")
+
+    today_att = await attendance_col.find_one({"agent_id": uid_str, "date": today_str})
+    has_checked_in = bool(today_att and today_att.get("check_in_time") and today_att.get("status") not in ("NOT_CHECKED_IN", "ABSENT"))
+    session_id = f"session_{uid_str}_{today_str}"
+    session_ver = user.get("session_version", 1)
+
+    if not has_checked_in:
+        return {
+            "event": "agent.session.synced",
+            "type": "agent_session_synced",
+            "agentId": uid_str,
+            "sessionId": session_id,
+            "sessionVersion": session_ver,
+            "status": "OFFLINE",
+            "raw_status": "offline",
+            "is_checked_in": False,
+            "currentCallId": None,
+            "dispositionStartedAt": None,
+            "pause_reason": None,
+            "breakType": None,
+            "loginTime": None,
+            "logoutTime": None,
+            "check_in_time": None,
+            "currentBreak": None,
+            "breakLogs": [],
+            "totalReadySeconds": 0,
+            "totalBreakSeconds": 0,
+            "disposeSeconds": 0,
+            "completedDisposeSeconds": 0,
+            "activeWrapupSeconds": 0,
+            "grossSeconds": 0,
+            "totalLoginSeconds": 0,
+            "totalCallsHandled": 0,
+            "talkSeconds": 0,
+            "eightHourCompleted": False,
+            "serverTime": now_iso,
+            "serverTimestamp": int(now.timestamp() * 1000),
+            "timestamp": now_iso
+        }
+
+    check_in_time = today_att["check_in_time"]
+    user_shift_date = user.get("shift_date")
+    is_today = (user_shift_date == today_str)
+
+    raw_st = user.get("status", "offline") if is_today else "offline"
+    normalized_st = normalize_status_input(raw_st)
+    
+    current_break = user.get("current_break") if is_today else None
+    break_logs = list(user.get("break_logs") or []) if is_today else []
+
+    completed_break_sec = sum(int(b.get("duration_seconds", 0)) for b in break_logs)
+    active_break_sec = 0
+    if normalized_st == "paused" and current_break and current_break.get("start_time"):
+        try:
+            cb_start = datetime.fromisoformat(current_break["start_time"].replace("Z", "+00:00"))
+            active_break_sec = max(0, int((now - cb_start).total_seconds()))
+        except Exception:
+            pass
+    tot_break_sec = completed_break_sec + active_break_sec
+
+    login_val = check_in_time
+    logout_val = user.get("logout_at") if is_today else None
+
+    gross_sec = 0
+    if login_val:
+        try:
+            l_dt = datetime.fromisoformat(login_val.replace("Z", "+00:00"))
+            ref_end = datetime.fromisoformat(logout_val.replace("Z", "+00:00")) if logout_val and normalized_st == "offline" else now
+            gross_sec = max(0, int((ref_end - l_dt).total_seconds()))
+        except Exception:
+            pass
+
+    ready_sec = max(0, gross_sec - tot_break_sec)
+    eight_completed = gross_sec >= 28800
+
+    waiting_sec = user.get("waiting_seconds", 0) if is_today else 0
+    w_started = user.get("waiting_started_at") if is_today else None
+    act_waiting_sec = 0
+    if normalized_st == "ready" and w_started and not user.get("currentCallId"):
+        try:
+            w_dt = datetime.fromisoformat(w_started.replace("Z", "+00:00"))
+            act_waiting_sec = max(0, int((now - w_dt).total_seconds()))
+        except Exception:
+            pass
+    tot_waiting_sec = waiting_sec + act_waiting_sec
+
+    active_wrapup_sec = 0
+    disposition_started_at = user.get("dispositionStartedAt") or (user.get("last_status_change") if normalized_st == "wrap_up" else None) if is_today else None
+    if normalized_st == "wrap_up" and disposition_started_at:
+        try:
+            w_start = datetime.fromisoformat(disposition_started_at.replace("Z", "+00:00"))
+            active_wrapup_sec = max(0, int((now - w_start).total_seconds()))
+        except Exception:
+            pass
+
+    # Session-specific call telemetry
+    check_in_dt_naive = None
+    try:
+        check_in_dt_naive = datetime.fromisoformat(check_in_time.replace("Z", "+00:00")).replace(tzinfo=None) - timedelta(seconds=60)
+    except Exception:
+        pass
+
+    agent_id_match = [uid_str]
+    if ObjectId.is_valid(uid_str):
+        agent_id_match.append(ObjectId(uid_str))
+
+    cursor = calls_col.find({"agent_id": {"$in": agent_id_match}})
+    session_calls = []
+    async for c in cursor:
+        st_at = c.get("started_at")
+        if not st_at:
+            continue
+        if isinstance(st_at, str):
+            try:
+                st_at = datetime.fromisoformat(st_at.replace("Z", "+00:00"))
+            except Exception:
+                continue
+        if isinstance(st_at, datetime):
+            st_naive = st_at.replace(tzinfo=None)
+            if check_in_dt_naive is None or st_naive >= check_in_dt_naive:
+                session_calls.append(c)
+
+    total_calls_today = len(session_calls)
+    talk_sec_today = sum(c.get("duration_seconds", 0) for c in session_calls)
+    completed_dispose_sec = sum(c.get("dispose_seconds", 0) for c in session_calls)
+    tot_dispose_sec = completed_dispose_sec + active_wrapup_sec
+
+    return {
+        "event": "agent.session.synced",
+        "type": "agent_session_synced",
+        "agentId": uid_str,
+        "sessionId": session_id,
+        "sessionVersion": session_ver,
+        "status": map_status_to_enum(normalized_st),
+        "raw_status": normalized_st,
+        "is_checked_in": True,
+        "currentCallId": user.get("currentCallId"),
+        "dispositionStartedAt": disposition_started_at,
+        "pause_reason": user.get("pause_reason") if is_today else None,
+        "breakType": get_break_type_code(current_break.get("type") if isinstance(current_break, dict) else user.get("pause_reason")) if normalized_st == "paused" else None,
+        "loginTime": login_val,
+        "logoutTime": logout_val,
+        "check_in_time": check_in_time,
+        "currentBreak": current_break,
+        "breakLogs": break_logs,
+        "totalReadySeconds": ready_sec,
+        "totalBreakSeconds": tot_break_sec,
+        "disposeSeconds": tot_dispose_sec,
+        "completedDisposeSeconds": completed_dispose_sec,
+        "activeWrapupSeconds": active_wrapup_sec,
+        "grossSeconds": gross_sec,
+        "totalLoginSeconds": gross_sec,
+        "waitingSeconds": waiting_sec,
+        "activeWaitingSeconds": act_waiting_sec,
+        "totalWaitingSeconds": tot_waiting_sec,
+        "waiting_seconds": waiting_sec,
+        "active_waiting_seconds": act_waiting_sec,
+        "total_waiting_seconds": tot_waiting_sec,
+        "waiting_started_at": w_started,
+        "totalCallsHandled": total_calls_today,
+        "talkSeconds": talk_sec_today,
+        "eightHourCompleted": eight_completed,
+        "serverTime": now_iso,
+        "serverTimestamp": int(now.timestamp() * 1000),
+        "timestamp": now_iso
+    }
+
+
+async def handle_get_telemetry(current_user: dict):
+    resync_data = await handle_session_resync(current_user)
+    
+    total_calls = resync_data.get("totalCallsHandled", 0)
+    talk_sec = resync_data.get("talkSeconds", 0)
+    dispose_sec = resync_data.get("disposeSeconds", 0)
+    
+    answered_calls = total_calls
+    aht_sec = int((talk_sec + dispose_sec) / answered_calls) if answered_calls > 0 else 0
+
+    return {
+        **resync_data,
+        "totalCalls": total_calls,
+        "answeredCalls": answered_calls,
+        "talkSeconds": talk_sec,
+        "disposeSeconds": dispose_sec,
+        "ahtSeconds": aht_sec,
+        "ahtFormatted": f"{aht_sec // 60:02d}:{aht_sec % 60:02d}"
+    }
+
+
 async def handle_get_active_session(current_user: dict):
     uid_str = str(current_user["_id"])
     user = await users_col.find_one({"_id": ObjectId(uid_str)})
@@ -1102,6 +1521,10 @@ async def handle_get_active_session(current_user: dict):
         display_st = "BREAK"
     elif normalized_st == "in_call":
         display_st = "IN_CALL"
+    elif normalized_st == "ringing":
+        display_st = "RINGING"
+    elif normalized_st == "wrap_up":
+        display_st = "WRAP_UP"
     else:
         display_st = "OFFLINE"
 
@@ -1111,7 +1534,6 @@ async def handle_get_active_session(current_user: dict):
     break_type = get_break_type_code(current_break.get("type") if isinstance(current_break, dict) else user.get("pause_reason")) if normalized_st == "paused" else None
     break_start = current_break.get("start_time") if isinstance(current_break, dict) else None
 
-    # Fetch daily call metrics from shift or call logs
     shift_doc = await agent_shifts_col.find_one({"user_id": uid_str, "shift_date": today_str}) if is_today else None
 
     return {
@@ -1140,18 +1562,35 @@ async def api_session_start(current_user: dict = Depends(get_current_user)):
     return await handle_session_start(current_user)
 
 @session_router.post("/break")
+@session_router.post("/break/start")
 async def api_session_break(payload: Optional[SessionBreakPayload] = None, current_user: dict = Depends(get_current_user)):
     return await handle_session_break(payload, current_user)
 
 @session_router.post("/resume")
+@session_router.post("/break/end")
 async def api_session_resume(current_user: dict = Depends(get_current_user)):
     return await handle_session_resume(current_user)
 
 @session_router.post("/logout")
+@session_router.post("/offline")
 async def api_session_logout(payload: Optional[SessionLogoutPayload] = None, current_user: dict = Depends(get_current_user)):
     return await handle_session_logout(payload, current_user)
 
+@session_router.post("/heartbeat")
+async def api_session_heartbeat(payload: Optional[SessionHeartbeatPayload] = None, current_user: dict = Depends(get_current_user)):
+    return await handle_session_heartbeat(payload, current_user)
+
+@session_router.get("/resync")
+@session_router.post("/resync")
+async def api_session_resync(current_user: dict = Depends(get_current_user)):
+    return await handle_session_resync(current_user)
+
+@session_router.get("/telemetry")
+async def api_session_telemetry(current_user: dict = Depends(get_current_user)):
+    return await handle_get_telemetry(current_user)
+
 @session_router.get("/active")
+@session_router.get("/current")
 async def api_session_active(current_user: dict = Depends(get_current_user)):
     return await handle_get_active_session(current_user)
 
@@ -1166,24 +1605,42 @@ async def root_session_start(current_user: dict = Depends(get_current_user)):
     return await handle_session_start(current_user)
 
 @root_session_router.post("/break")
+@root_session_router.post("/break/start")
 async def root_session_break(payload: Optional[SessionBreakPayload] = None, current_user: dict = Depends(get_current_user)):
     return await handle_session_break(payload, current_user)
 
 @root_session_router.post("/resume")
+@root_session_router.post("/break/end")
 async def root_session_resume(current_user: dict = Depends(get_current_user)):
     return await handle_session_resume(current_user)
 
 @root_session_router.post("/logout")
+@root_session_router.post("/offline")
 async def root_session_logout(payload: Optional[SessionLogoutPayload] = None, current_user: dict = Depends(get_current_user)):
     return await handle_session_logout(payload, current_user)
 
+@root_session_router.post("/heartbeat")
+async def root_session_heartbeat(payload: Optional[SessionHeartbeatPayload] = None, current_user: dict = Depends(get_current_user)):
+    return await handle_session_heartbeat(payload, current_user)
+
+@root_session_router.get("/resync")
+@root_session_router.post("/resync")
+async def root_session_resync(current_user: dict = Depends(get_current_user)):
+    return await handle_session_resync(current_user)
+
+@root_session_router.get("/telemetry")
+async def root_session_telemetry(current_user: dict = Depends(get_current_user)):
+    return await handle_get_telemetry(current_user)
+
 @root_session_router.get("/active")
+@root_session_router.get("/current")
 async def root_session_active(current_user: dict = Depends(get_current_user)):
     return await handle_get_active_session(current_user)
 
 @root_session_router.get("/today")
 async def root_session_today(current_user: dict = Depends(get_current_user)):
     return await handle_get_active_session(current_user)
+
 
 
 

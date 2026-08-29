@@ -7,6 +7,7 @@ import { usePresence } from "../context/PresenceContext";
 import PauseBreakModal from "../components/PauseBreakModal";
 import ShiftSummaryModal from "../components/ShiftSummaryModal";
 import EarlyLogoutWarningModal from "../components/EarlyLogoutWarningModal";
+import TodayAttendanceCard from "../components/TodayAttendanceCard";
 import {
   Users,
   Phone,
@@ -120,6 +121,19 @@ type CallHistoryRow = {
   transcript?: string;
 };
 
+const formatHHMMSS = (sec: number) => {
+  const h = Math.floor(sec / 3600).toString().padStart(2, "0");
+  const m = Math.floor((sec % 3600) / 60).toString().padStart(2, "0");
+  const s = Math.floor(sec % 60).toString().padStart(2, "0");
+  return `${h}:${m}:${s}`;
+};
+
+const formatMMSS = (sec: number) => {
+  const m = Math.floor(sec / 60).toString().padStart(2, "0");
+  const s = Math.floor(sec % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+};
+
 // Compact SVG Sparkline Component
 function Sparkline({ color = "#2563EB" }: { color?: string }) {
   const cleanId = color.replace(/[^a-zA-Z0-9]/g, "");
@@ -197,7 +211,10 @@ export default function Dashboard() {
     summary: presenceSummary,
     wsConnected,
     isSubmittingStatus,
+    isCheckedInToday,
     setPresenceStatus,
+    checkIn,
+    checkOut,
     startBreak,
     resumeWork,
     goOffline,
@@ -211,7 +228,8 @@ export default function Dashboard() {
     ringingSeconds,
     setupSeconds,
     disposeSeconds,
-    stopCount,
+    activeDisposeSeconds,
+    refreshPresence,
     isShiftTargetReached,
     shiftTargetSeconds,
   } = usePresence();
@@ -219,6 +237,7 @@ export default function Dashboard() {
   const [showPauseModal, setShowPauseModal] = useState<boolean>(false);
   const [showShiftSummaryModal, setShowShiftSummaryModal] = useState<boolean>(false);
   const [showEarlyLogoutWarningModal, setShowEarlyLogoutWarningModal] = useState<boolean>(false);
+  const [showAttendanceSummaryModal] = useState<boolean>(false); // kept for compat; modal now in TodayAttendanceCard
 
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
@@ -542,27 +561,6 @@ export default function Dashboard() {
 
     const shiftLogPercentage = totalCallsHandled > 0 ? "100% Shift Log" : "0% Shift Log";
 
-    const totalCallDurationSeconds = (myPresence?.talk_seconds !== undefined && myPresence?.talk_seconds !== null)
-      ? myPresence.talk_seconds
-      : agentCallHistory.reduce((sum, c) => sum + (c.duration_seconds || 0), 0);
-
-    const formatHHMMSS = (sec: number) => {
-      const h = Math.floor(sec / 3600).toString().padStart(2, "0");
-      const m = Math.floor((sec % 3600) / 60).toString().padStart(2, "0");
-      const s = Math.floor(sec % 60).toString().padStart(2, "0");
-      return `${h}:${m}:${s}`;
-    };
-
-    const formatMMSS = (sec: number) => {
-      const m = Math.floor(sec / 60).toString().padStart(2, "0");
-      const s = Math.floor(sec % 60).toString().padStart(2, "0");
-      return `${m}:${s}`;
-    };
-
-    const totalCallTimeFormatted = formatHHMMSS(totalCallDurationSeconds);
-    const avgHandlingTimeSeconds = totalCallsHandled > 0 ? Math.round(totalCallDurationSeconds / totalCallsHandled) : 0;
-    const avgHandlingTimeFormatted = formatMMSS(avgHandlingTimeSeconds);
-
     const isTodaySelected = selectedDate === todayStr;
 
     const displayLoginAt = isTodaySelected ? myPresence?.login_at : historicalSummary?.login_at;
@@ -571,31 +569,32 @@ export default function Dashboard() {
     const displayPauseSec = isTodaySelected ? totalBreakSeconds : (historicalSummary?.total_pause_seconds || 0);
     const displayReadySec = isTodaySelected ? readySeconds : (historicalSummary?.total_ready_seconds || Math.max(0, displayGrossSec - displayPauseSec));
     const displayRemainingSec = Math.max(0, 28800 - displayGrossSec);
-    const isCompleted8Hrs = displayGrossSec >= 28800;
+    const totalCallDurationSeconds = (myPresence?.talk_seconds !== undefined && myPresence?.talk_seconds !== null)
+      ? myPresence.talk_seconds
+      : agentCallHistory.reduce((sum, c) => sum + (c.duration_seconds || 0), 0);
 
-    const loginTimeStr = displayLoginAt
-      ? new Date(displayLoginAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-      : (myPresence?.status === "offline" && isTodaySelected ? "Offline" : "Not Logged In");
+    const isSessionActive = isCheckedInToday && isTodaySelected && !!displayLoginAt && displayLoginAt !== "Not Logged In" && displayLoginAt !== "Offline";
 
-    const loginHoursVal = formatHHMMSS(displayGrossSec);
-    const readyTimeFormatted = formatHHMMSS(displayReadySec);
-    const pauseTimeFormatted = formatHHMMSS(displayPauseSec);
-    const remainingTimeFormatted = formatHHMMSS(displayRemainingSec);
+    const loginHoursVal = isSessionActive ? formatHHMMSS(displayGrossSec) : "00:00:00";
+    const readyTimeFormatted = isSessionActive ? formatHHMMSS(displayReadySec) : "00:00:00";
+    const pauseTimeFormatted = isSessionActive ? formatHHMMSS(displayPauseSec) : "00:00:00";
+    const remainingTimeFormatted = isSessionActive ? formatHHMMSS(displayRemainingSec) : "00:00:00";
 
-
-    const stopCountVal = (myPresence?.break_logs || []).length + (myStatus === "paused" ? 1 : 0);
-    const ringingSec = myPresence?.ringing_seconds || 0;
-    const setupSec = myPresence?.setup_seconds || 0;
-    const disposeSec = myPresence?.dispose_seconds || 0;
-    const talkSec = (myPresence?.talk_seconds !== undefined && myPresence?.talk_seconds !== null) ? myPresence.talk_seconds : totalCallDurationSeconds;
+    const stopCountVal = isSessionActive ? ((myPresence?.break_logs || []).length + (myStatus === "paused" ? 1 : 0)) : 0;
+    const ringingSec = isSessionActive ? (myPresence?.ringing_seconds || 0) : 0;
+    const setupSec = isSessionActive ? (myPresence?.setup_seconds || 0) : 0;
+    const disposeSec = isSessionActive ? ((myPresence?.dispose_seconds || 0) + activeDisposeSeconds) : 0;
+    const talkSec = isSessionActive ? ((myPresence?.talk_seconds !== undefined && myPresence?.talk_seconds !== null) ? myPresence.talk_seconds : totalCallDurationSeconds) : 0;
 
     const ringingTimeFormatted = formatHHMMSS(ringingSec);
+    const totalCallTimeFormatted = formatHHMMSS(talkSec);
     const disposeTimeFormatted = formatHHMMSS(disposeSec);
-    const realAvgHandlingSeconds = totalCallsHandled > 0 ? Math.round((talkSec + disposeSec + setupSec) / totalCallsHandled) : 0;
+    const displayTotalCalls = isSessionActive ? totalCallsHandled : 0;
+    const realAvgHandlingSeconds = displayTotalCalls > 0 ? Math.round((talkSec + disposeSec + setupSec) / displayTotalCalls) : 0;
     const realAvgHandlingFormatted = formatMMSS(realAvgHandlingSeconds);
 
     const connectedCallsCount = agentCallHistory.filter((c) => c.outcome === "answered" || c.outcome === "qualified").length;
-    const connectedRate = totalCallsHandled > 0 ? Math.round((connectedCallsCount / totalCallsHandled) * 100) : 0;
+    const connectedRate = displayTotalCalls > 0 ? Math.round((connectedCallsCount / displayTotalCalls) * 100) : 0;
 
     return (
       <motion.div
@@ -620,7 +619,9 @@ export default function Dashboard() {
                 {/* Real-Time Presence Badge */}
                 <span
                   className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${
-                    myStatus === "ready"
+                    !isCheckedInToday
+                      ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+                      : myStatus === "ready"
                       ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-[#22C55E] border-emerald-200 dark:border-emerald-500/30"
                       : myStatus === "paused"
                       ? "bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30"
@@ -631,7 +632,9 @@ export default function Dashboard() {
                 >
                   <span
                     className={`h-2 w-2 rounded-full ${
-                      myStatus === "ready"
+                      !isCheckedInToday
+                        ? "bg-slate-400"
+                        : myStatus === "ready"
                         ? "bg-emerald-500 animate-pulse"
                         : myStatus === "paused"
                         ? "bg-amber-500"
@@ -640,13 +643,15 @@ export default function Dashboard() {
                         : "bg-slate-400"
                     }`}
                   />
-                  {myStatus === "ready"
-                    ? "Agent Ready"
+                  {!isCheckedInToday
+                    ? "Not Checked In"
+                    : myStatus === "ready"
+                    ? "Present + Ready"
                     : myStatus === "paused"
-                    ? `Paused (${pauseReason || "Break"})`
+                    ? `Present + Paused (${pauseReason || "Break"})`
                     : myStatus === "in_call"
-                    ? "In Call"
-                    : "Offline"}
+                    ? "Present + In Call"
+                    : "Present + Offline"}
                 </span>
 
                 {/* WebSocket Stream Badge */}
@@ -669,65 +674,54 @@ export default function Dashboard() {
 
           {/* AGENT STATUS ACTION CONTROLS */}
           <div className="flex items-center gap-2 flex-wrap">
-            {myStatus === "offline" && (
+            {!isCheckedInToday ? (
               <button
                 type="button"
-                onClick={() => setPresenceStatus("ready")}
+                onClick={async () => {
+                  try {
+                    await checkIn("Krishnagiri Office");
+                    showToast("Checked in successfully! Shift started.", "success");
+                  } catch (err: any) {
+                    showToast(err.message || "Failed to check in", "error");
+                  }
+                }}
+                disabled={isSubmittingStatus}
+                className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
+              >
+                <Clock className="h-4 w-4" />
+                <span>Check In to Start Shift</span>
+              </button>
+            ) : myStatus === "offline" ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await setPresenceStatus("ready");
+                  } catch (err: any) {
+                    showToast(err.message || "Failed to set status to Ready", "error");
+                  }
+                }}
                 disabled={isSubmittingStatus}
                 className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
               >
                 <Play className="h-4 w-4 fill-current" />
                 <span>Set Ready</span>
               </button>
+            ) : null}
+
+            {isCheckedInToday && myStatus === "paused" && (
+              <button
+                type="button"
+                onClick={() => resumeWork()}
+                disabled={isSubmittingStatus}
+                className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
+              >
+                <Play className="h-4 w-4 fill-current" />
+                <span>Resume Work</span>
+              </button>
             )}
 
-            {myStatus === "ready" && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowPauseModal(true)}
-                  disabled={isSubmittingStatus}
-                  className="h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
-                >
-                  <Coffee className="h-4 w-4" />
-                  <span>Pause / Break</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => goOffline(true)}
-                  disabled={isSubmittingStatus}
-                  className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 disabled:opacity-50 font-extrabold text-xs flex items-center gap-2 cursor-pointer transition active:scale-95"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Go Offline</span>
-                </button>
-              </>
-            )}
-
-            {myStatus === "paused" && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => resumeWork()}
-                  disabled={isSubmittingStatus}
-                  className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center gap-2 cursor-pointer shadow-xs transition active:scale-95"
-                >
-                  <Play className="h-4 w-4 fill-current" />
-                  <span>Resume Work</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => goOffline(true)}
-                  disabled={isSubmittingStatus}
-                  className="h-9 px-4 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 disabled:opacity-50 font-extrabold text-xs flex items-center gap-2 cursor-pointer transition active:scale-95"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Go Offline</span>
-                </button>
-              </>
-            )}
-
-            {myStatus === "in_call" && (
+            {isCheckedInToday && myStatus === "in_call" && (
               <span className="h-9 px-4 rounded-xl bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 font-extrabold text-xs flex items-center gap-2">
                 <Phone className="h-4 w-4 animate-pulse" />
                 <span>In Call (Active)</span>
@@ -735,6 +729,11 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+
+        {/* ── TODAY'S ATTENDANCE MARKING CARD ── */}
+        <TodayAttendanceCard
+          onAttendanceUpdated={() => refreshPresence()}
+        />
 
         {/* ── REAL-TIME BPO AGENT TELEMETRY PANEL ── */}
         <div className="bg-white dark:bg-[#182233] border border-slate-200/80 dark:border-white/10 rounded-2xl p-4 shadow-2xs space-y-3">
@@ -751,28 +750,28 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2.5">
-            {/* 1. LOGIN HR */}
+            {/* 1. SESSION TIME */}
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
-              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">LOGIN HR</span>
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">SESSION TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-blue-600 dark:text-blue-400">{loginHoursVal}</div>
             </div>
 
-            {/* 2. READY */}
+            {/* 2. READY TIME */}
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
-              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">READY</span>
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">READY TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{readyTimeFormatted}</div>
             </div>
 
-            {/* 3. PAUSE */}
+            {/* 3. PAUSE TIME */}
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
-              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">PAUSE</span>
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">PAUSE TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{pauseTimeFormatted}</div>
             </div>
 
-            {/* 4. STOP */}
+            {/* 4. BREAKS TAKEN */}
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
-              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">STOP</span>
-              <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{stopCountVal}</div>
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">BREAKS TAKEN</span>
+              <div className="text-xs sm:text-sm font-black font-mono text-slate-800 dark:text-slate-100">{stopCountVal} breaks</div>
             </div>
 
             {/* 5. RINGING TIME */}
@@ -781,28 +780,28 @@ export default function Dashboard() {
               <div className="text-xs sm:text-sm font-black font-mono text-amber-600 dark:text-amber-400">{ringingTimeFormatted}</div>
             </div>
 
-            {/* 6. TOTAL CALL TIME */}
+            {/* 6. TALK TIME */}
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
-              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">TOTAL CALL TIME</span>
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">TALK TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-blue-600 dark:text-blue-400">{totalCallTimeFormatted}</div>
             </div>
 
-            {/* 7. DISPOSE TIME */}
+            {/* 7. WRAP-UP TIME */}
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
-              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">DISPOSE TIME</span>
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">WRAP-UP TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-purple-600 dark:text-purple-400">{disposeTimeFormatted}</div>
             </div>
 
-            {/* 8. AVG HANDLING TIME */}
+            {/* 8. AVG. HANDLE TIME */}
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5">
-              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">AVG HANDLING TIME</span>
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">AVG. HANDLE TIME</span>
               <div className="text-xs sm:text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">{realAvgHandlingFormatted}</div>
             </div>
 
-            {/* 9. TOTAL CALLS HANDLED */}
+            {/* 9. CALLS HANDLED */}
             <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 space-y-0.5 col-span-2 sm:col-span-1">
-              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">TOTAL CALLS</span>
-              <div className="text-xs sm:text-sm font-black font-mono text-slate-900 dark:text-white">{totalCallsHandled} calls</div>
+              <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">CALLS HANDLED</span>
+              <div className="text-xs sm:text-sm font-black font-mono text-slate-900 dark:text-white">{displayTotalCalls} calls</div>
             </div>
           </div>
         </div>
@@ -1592,6 +1591,8 @@ export default function Dashboard() {
         presenceData={myPresence}
         agentName={user?.name || "Agent"}
       />
+
+
     </motion.div>
   );
 }

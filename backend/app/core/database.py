@@ -40,12 +40,15 @@ pool_transfers_col = db["pool_transfer_requests"]
 agent_shifts_col = db["agent_shifts"]
 agent_presence_col = db["agent_presence"]
 agent_status_history_col = db["agent_status_history"]
+attendance_col = db["attendance"]
+attendance_breaks_col = db["attendance_breaks"]
+holidays_col = db["holidays"]
 
 
 async def init_indexes():
     """Ensure all indexes for MongoDB collections are created for high query performance."""
     try:
-        # Users indexes
+        # Users & Attendance indexes
         await users_col.create_index("email", unique=True)
         await users_col.create_index("employee_id", unique=True, sparse=True)
         await users_col.create_index("role")
@@ -55,6 +58,14 @@ async def init_indexes():
         await agent_shifts_col.create_index([("user_id", 1), ("shift_date", 1)])
         await agent_presence_col.create_index("agent_id", unique=True)
         await agent_status_history_col.create_index([("agent_id", 1), ("created_at", -1)])
+
+        # Attendance unique compound index (agent_id, date) to prevent duplicate check-ins
+        await attendance_col.create_index([("agent_id", 1), ("date", 1)], unique=True)
+        await attendance_col.create_index("agent_id")
+        await attendance_col.create_index("date")
+        await attendance_breaks_col.create_index([("agent_id", 1), ("status", 1)])
+        await attendance_breaks_col.create_index([("attendance_id", 1)])
+        await holidays_col.create_index("date", unique=True)
 
         # Leads indexes
         await leads_col.create_index([("phone", 1), ("pool_id", 1)])

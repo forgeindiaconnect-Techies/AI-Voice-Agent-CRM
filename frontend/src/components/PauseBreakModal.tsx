@@ -99,6 +99,19 @@ export default function PauseBreakModal({
       accentBg: "bg-sky-600 text-white",
       stats: personalStats,
     },
+    {
+      id: "Other Break",
+      emoji: "📝",
+      title: "Other Break",
+      recommended: "Admin / Briefing",
+      description: "Training, briefing, tech support or unscheduled pause",
+      icon: Clock,
+      color: "purple",
+      bgGradient: "from-purple-500/10 via-purple-500/5 to-transparent",
+      borderColor: "border-purple-500/40 hover:border-purple-500",
+      accentBg: "bg-purple-600 text-white",
+      stats: { count: 0, total_seconds: 0 },
+    },
   ];
 
   return createPortal(

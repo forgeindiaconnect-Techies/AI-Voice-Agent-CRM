@@ -53,36 +53,36 @@ async def run_tests():
         assert e.status_code == 400
         print(f"   [OK] Correctly rejected: HTTP {e.status_code} - {e.detail}")
 
-    # 4. Valid transition OFFLINE -> AVAILABLE (login/go online)
-    print("\n4. Testing valid transition OFFLINE -> AVAILABLE...")
+    # 4. Valid transition OFFLINE -> READY (login/go online)
+    print("\n4. Testing valid transition OFFLINE -> READY...")
     res = await record_presence_change(user_id=uid, new_status="ready")
-    assert res["status"] == "AVAILABLE", f"Expected AVAILABLE, got {res['status']}"
-    print("   [OK] Success: Status is AVAILABLE")
+    assert res["status"] == "READY", f"Expected READY, got {res['status']}"
+    print("   [OK] Success: Status is READY")
 
-    # 5. Valid transition AVAILABLE -> ON_BREAK (Lunch Break)
-    print("\n5. Testing valid transition AVAILABLE -> ON_BREAK...")
+    # 5. Valid transition READY -> BREAK (Lunch Break)
+    print("\n5. Testing valid transition READY -> BREAK...")
     res = await record_presence_change(user_id=uid, new_status="paused", pause_reason="Lunch Break")
-    assert res["status"] == "ON_BREAK", f"Expected ON_BREAK, got {res['status']}"
+    assert res["status"] == "BREAK", f"Expected BREAK, got {res['status']}"
     assert res["breakType"] == "LUNCH", f"Expected LUNCH breakType, got {res['breakType']}"
-    print("   [OK] Success: Status is ON_BREAK (LUNCH)")
+    print("   [OK] Success: Status is BREAK (LUNCH)")
 
-    # 6. Reject ON_BREAK -> ON_BREAK (invalid duplicate)
-    print("\n6. Testing invalid transition ON_BREAK -> ON_BREAK...")
+    # 6. Reject BREAK -> BREAK (invalid duplicate)
+    print("\n6. Testing invalid transition BREAK -> BREAK...")
     try:
         await record_presence_change(user_id=uid, new_status="paused", pause_reason="Tea Break")
-        print("   [FAIL] ON_BREAK -> ON_BREAK was allowed but should be rejected")
+        print("   [FAIL] BREAK -> BREAK was allowed but should be rejected")
     except HTTPException as e:
         assert e.status_code == 400
         print(f"   [OK] Correctly rejected: HTTP {e.status_code} - {e.detail}")
 
-    # 7. Valid transition ON_BREAK -> AVAILABLE (Resume Work)
-    print("\n7. Testing valid transition ON_BREAK -> AVAILABLE (Resume Work)...")
+    # 7. Valid transition BREAK -> READY (Resume Work)
+    print("\n7. Testing valid transition BREAK -> READY (Resume Work)...")
     res = await record_presence_change(user_id=uid, new_status="ready")
-    assert res["status"] == "AVAILABLE", f"Expected AVAILABLE, got {res['status']}"
-    print("   [OK] Success: Status returned to AVAILABLE")
+    assert res["status"] == "READY", f"Expected READY, got {res['status']}"
+    print("   [OK] Success: Status returned to READY")
 
-    # 8. Valid transition AVAILABLE -> OFFLINE (Go Offline)
-    print("\n8. Testing valid transition AVAILABLE -> OFFLINE...")
+    # 8. Valid transition READY -> OFFLINE (Go Offline)
+    print("\n8. Testing valid transition READY -> OFFLINE...")
     res = await record_presence_change(user_id=uid, new_status="offline", force_offline=True)
     assert res["status"] == "OFFLINE", f"Expected OFFLINE, got {res['status']}"
     print("   [OK] Success: Agent is now OFFLINE")

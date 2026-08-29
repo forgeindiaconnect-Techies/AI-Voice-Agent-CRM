@@ -28,7 +28,9 @@ from app.schemas.common import (
     CallDispositionPayload,
 )
 from app.services.ws_manager import ws_manager
-from app.routes.presence import record_call_completion
+from app.routes.presence import record_call_completion, record_presence_change
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/calls", tags=["calls"])
 
@@ -234,12 +236,20 @@ def _uid(user: dict) -> str:
 
 @router.post("/start", dependencies=[Depends(require_roles(Role.AGENT))])
 async def start_call(payload: CallStart, user: dict = Depends(get_current_user)):
+    uid_val = _uid(user)
+    agent_user = await users_col.find_one({"_id": ObjectId(uid_val)} if ObjectId.is_valid(uid_val) else {"id": uid_val})
+    if agent_user and agent_user.get("status") in ("wrap_up", "wrapup"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot start a new call while disposition is incomplete. Please submit disposition first."
+        )
+
     lead = await leads_col.find_one({"_id": ObjectId(payload.lead_id)})
     if not lead:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
     doc = {
         "lead_id": payload.lead_id,
-        "agent_id": _uid(user),
+        "agent_id": uid_val,
         "pool_id": lead["pool_id"],
         "direction": payload.direction,
         "status": "live",
@@ -250,12 +260,12 @@ async def start_call(payload: CallStart, user: dict = Depends(get_current_user))
     await leads_col.update_one({"_id": ObjectId(payload.lead_id)}, {"$set": {"status": "in_progress"}})
 
     try:
-        await record_presence_change(user_id=_uid(user), new_status="in_call")
+        await record_presence_change(user_id=uid_val, new_status="in_call")
     except Exception as err:
         logger.warning(f"[CALL START] Could not update presence status to in_call: {err}")
 
     await ws_manager.broadcast(lead["pool_id"], {
-        "event": "call_started", "call_id": str(doc["_id"]), "lead_name": lead["name"], "agent_id": _uid(user),
+        "event": "call_started", "call_id": str(doc["_id"]), "lead_name": lead["name"], "agent_id": uid_val,
     })
     return oid_str(doc)
 
@@ -265,28 +275,60 @@ async def end_call(payload: CallEnd):
     call = await calls_col.find_one({"_id": ObjectId(payload.call_id)})
     if not call:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Call not found")
+    ended_at = utcnow()
+    ended_at_iso = ended_at.isoformat()
+    agent_id = call.get("agent_id")
+    session_id = f"session_{agent_id}_{ended_at.strftime('%Y-%m-%d')}"
+
     update = {
-        "status": "completed",
+        "status": "wrap_up",
         "outcome": payload.outcome,
         "duration_seconds": payload.duration_seconds,
         "notes": payload.notes,
         "ai_summary": payload.ai_summary,
         "transcript": payload.transcript,
-        "ended_at": utcnow(),
+        "endedAt": ended_at_iso,
+        "ended_at": ended_at,
+        "dispositionStartedAt": ended_at_iso,
+        "wrapup_started_at": ended_at_iso,
     }
     await calls_col.update_one({"_id": ObjectId(payload.call_id)}, {"$set": update})
-    release_call_lock(agent_id=call.get("agent_id"), call_id=payload.call_id)
+    release_call_lock(agent_id=agent_id, call_id=payload.call_id)
 
-    agent_id = call.get("agent_id")
     if agent_id:
         try:
-            await record_call_completion(user_id=agent_id, call_duration=payload.duration_seconds or 0)
-            await record_presence_change(user_id=agent_id, new_status="ready")
+            await record_presence_change(user_id=agent_id, new_status="wrap_up")
+            await users_col.update_one(
+                {"_id": ObjectId(agent_id)},
+                {"$set": {
+                    "currentCallId": payload.call_id,
+                    "dispositionStartedAt": ended_at_iso
+                }}
+            )
         except Exception as err:
-            logger.warning(f"[CALL END] Could not update presence status to ready: {err}")
+            logger.warning(f"[CALL END] Could not update presence status to wrap_up: {err}")
+
+        # Broadcast agent.wrapup.started WS event
+        event_payload = {
+            "eventId": f"evt_wrapstart_{ended_at.strftime('%Y%m%d%H%M%S')}_{agent_id[-6:]}",
+            "agentId": agent_id,
+            "sessionId": session_id,
+            "event": "agent.wrapup.started",
+            "type": "agent_wrapup_started",
+            "status": "WRAP_UP",
+            "previousStatus": "ON_CALL",
+            "callId": payload.call_id,
+            "dispositionStartedAt": ended_at_iso,
+            "timestamp": ended_at_iso,
+            "serverTimestamp": int(ended_at.timestamp() * 1000)
+        }
+        try:
+            await ws_manager.broadcast_global(event_payload)
+        except Exception as e:
+            logger.warning(f"[CALL END WS] Error broadcasting agent.wrapup.started: {e}")
 
     await ws_manager.broadcast(call["pool_id"], {"event": "call_ended", "call_id": payload.call_id})
-    return {"status": "completed"}
+    return {"status": "wrap_up", "callId": payload.call_id, "dispositionStartedAt": ended_at_iso}
 
 
 @router.get("")
@@ -594,7 +636,10 @@ async def dispatch_next_queued_call(agent_id: str, pool_id: str = None):
     
     if queued_call:
         call_id_str = str(queued_call["_id"])
-        await users_col.update_one({"_id": ObjectId(agent_id)}, {"$set": {"status": "on_call"}})
+        try:
+            await record_presence_change(user_id=agent_id, new_status="in_call")
+        except Exception as err:
+            logger.warning(f"[ACD DISPATCH] Could not update presence status to in_call: {err}")
         
         lead = None
         if queued_call.get("lead_id"):
@@ -688,7 +733,10 @@ async def process_inbound_acd(payload: InboundACDPayload):
         result = await calls_col.insert_one(doc)
         doc["_id"] = result.inserted_id
 
-        await users_col.update_one({"_id": ObjectId(agent_id)}, {"$set": {"status": "on_call"}})
+        try:
+            await record_presence_change(user_id=agent_id, new_status="in_call")
+        except Exception as err:
+            logger.warning(f"[ACD PROCESS] Could not update presence status to in_call: {err}")
         await leads_col.update_one({"_id": ObjectId(lead_id_str)}, {"$set": {"status": "in_progress", "assigned_agent_id": agent_id}})
 
         event_payload = {
@@ -817,7 +865,24 @@ async def record_call_disposition(call_id: str, payload: CallDispositionPayload,
         
     started_at = call.get("started_at") or utcnow()
     ended_at = utcnow()
-    duration = int((ended_at - started_at).total_seconds())
+    try:
+        s_dt = started_at.replace(tzinfo=None) if hasattr(started_at, "replace") else datetime.fromisoformat(str(started_at).replace("Z", "+00:00")).replace(tzinfo=None)
+        e_dt = ended_at.replace(tzinfo=None)
+        duration = max(1, int((e_dt - s_dt).total_seconds()))
+    except Exception:
+        duration = 1
+
+    wrapup_start = call.get("wrapup_started_at") or call.get("ended_at") or user.get("last_status_change")
+    dispose_sec = 0
+    if wrapup_start:
+        try:
+            if isinstance(wrapup_start, str):
+                ws_dt = datetime.fromisoformat(wrapup_start.replace("Z", "+00:00"))
+            else:
+                ws_dt = wrapup_start
+            dispose_sec = max(0, int((ended_at.replace(tzinfo=None) - ws_dt.replace(tzinfo=None)).total_seconds()))
+        except Exception:
+            dispose_sec = 0
 
     disp_title = f"Agent Updated Disposition ({payload.disposition.replace('_', ' ').title()})"
     disp_desc = f"Status set to: {payload.disposition.replace('_', ' ').title()}" + (f" • Notes: {payload.notes}" if payload.notes else "")
@@ -832,10 +897,18 @@ async def record_call_disposition(call_id: str, payload: CallDispositionPayload,
         "created_at": utcnow().isoformat()
     }
     
+    completed_at = utcnow()
+    completed_at_iso = completed_at.isoformat()
+    session_id = f"session_{agent_id}_{completed_at.strftime('%Y-%m-%d')}"
+
     update_fields = {
         "status": "completed",
-        "ended_at": ended_at,
+        "dispositionCompletedAt": completed_at_iso,
+        "endedAt": completed_at_iso,
+        "ended_at": completed_at,
         "duration_seconds": max(1, duration),
+        "disposeDurationSeconds": dispose_sec,
+        "dispose_seconds": dispose_sec,
         "outcome": payload.disposition,
         "disposition": payload.disposition,
         "notes": payload.notes or "",
@@ -863,9 +936,32 @@ async def record_call_disposition(call_id: str, payload: CallDispositionPayload,
         except Exception:
             pass
         
-    # Reset agent status to READY
-    await users_col.update_one({"_id": ObjectId(agent_id)}, {"$set": {"status": "ready"}})
+    try:
+        await record_call_completion(user_id=agent_id, duration_seconds=duration, dispose_seconds=dispose_sec, call_id=call_id, outcome=payload.disposition)
+        await record_presence_change(user_id=agent_id, new_status="ready")
+        await users_col.update_one({"_id": ObjectId(agent_id)}, {"$unset": {"currentCallId": "", "dispositionStartedAt": ""}})
+    except Exception as err:
+        logger.warning(f"[DISPOSITION] Error updating agent completion/presence: {err}")
     
+    wrapup_completed_payload = {
+        "eventId": f"evt_wrapcomp_{completed_at.strftime('%Y%m%d%H%M%S')}_{agent_id[-6:]}",
+        "agentId": agent_id,
+        "sessionId": session_id,
+        "event": "agent.wrapup.completed",
+        "type": "agent_wrapup_completed",
+        "status": "READY",
+        "previousStatus": "WRAP_UP",
+        "callId": call_id,
+        "dispositionCompletedAt": completed_at_iso,
+        "disposeDurationSeconds": dispose_sec,
+        "timestamp": completed_at_iso,
+        "serverTimestamp": int(completed_at.timestamp() * 1000)
+    }
+    try:
+        await ws_manager.broadcast_global(wrapup_completed_payload)
+    except Exception as e:
+        logger.warning(f"[DISPOSITION WS] Error broadcasting agent.wrapup.completed: {e}")
+
     # Auto-dispatch next queued caller if any
     dispatched_call = await dispatch_next_queued_call(agent_id, call.get("pool_id"))
     
@@ -881,6 +977,7 @@ async def record_call_disposition(call_id: str, payload: CallDispositionPayload,
         "status": "dispositioned",
         "call_id": call_id,
         "agent_status": "ready",
+        "disposeDurationSeconds": dispose_sec,
         "next_auto_connected_call": dispatched_call
     }
 
