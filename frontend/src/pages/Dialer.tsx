@@ -332,6 +332,75 @@ export default function Dialer() {
     };
   }, [callStatus]);
 
+  // Web Audio Ringtone Player for Incoming Plivo Calls
+  const ringAudioCtxRef = useRef<AudioContext | null>(null);
+  const ringIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopRingtone = useCallback(() => {
+    if (ringIntervalRef.current) {
+      clearInterval(ringIntervalRef.current);
+      ringIntervalRef.current = null;
+    }
+    if (ringAudioCtxRef.current) {
+      try {
+        ringAudioCtxRef.current.close();
+      } catch {}
+      ringAudioCtxRef.current = null;
+    }
+  }, []);
+
+  const startRingtone = useCallback(() => {
+    try {
+      stopRingtone();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      ringAudioCtxRef.current = ctx;
+
+      const playToneBurst = () => {
+        if (!ringAudioCtxRef.current || ringAudioCtxRef.current.state === "closed") return;
+        try {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.type = "sine";
+          osc2.type = "sine";
+          osc1.frequency.value = 440;
+          osc2.frequency.value = 480;
+
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.8);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start(ctx.currentTime);
+          osc2.start(ctx.currentTime);
+          osc1.stop(ctx.currentTime + 1.8);
+          osc2.stop(ctx.currentTime + 1.8);
+        } catch {}
+      };
+
+      playToneBurst();
+      ringIntervalRef.current = setInterval(playToneBurst, 3000);
+    } catch (err) {
+      console.warn("Ringtone playback notice:", err);
+    }
+  }, [stopRingtone]);
+
+  useEffect(() => {
+    if (callStatus === "ringing") {
+      startRingtone();
+    } else {
+      stopRingtone();
+    }
+    return () => {
+      stopRingtone();
+    };
+  }, [callStatus, startRingtone, stopRingtone]);
+
   // Real-time Call Duration Timer based on answered timestamp
   useEffect(() => {
     let interval: any = null;
