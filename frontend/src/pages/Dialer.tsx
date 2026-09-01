@@ -295,7 +295,7 @@ export default function Dialer() {
   } | null>(null);
   const [inboundQueue, setInboundQueue] = useState<QueuedInboundCall[]>([]);
   const [queueWaitSeconds, setQueueWaitSeconds] = useState<number>(0);
-  const [autoAnswerEnabled, setAutoAnswerEnabled] = useState<boolean>(true);
+  const [autoAnswerEnabled, setAutoAnswerEnabled] = useState<boolean>(false);
   const [ringingDuration, setRingingDuration] = useState<number>(0);
   const processedCallIdsRef = useRef<Set<string>>(new Set());
 
@@ -1057,15 +1057,6 @@ export default function Dialer() {
     ringingStartTimeRef.current = null;
     showToast("Call rejected", "info");
   };
-
-  // AUTO-CONNECT QUEUED CALL WHEN AGENT BECOMES READY
-  useEffect(() => {
-    if (agentStatus === "ready" && callStatus === "ready" && inboundQueue.length > 0) {
-      const nextCall = inboundQueue[0];
-      showToast(`Inbound Call Connected: ${nextCall.name} (+91 ${nextCall.phone})`, "success");
-      connectInboundCall(nextCall);
-    }
-  }, [agentStatus, callStatus, inboundQueue, connectInboundCall]);
 
   // QUEUE WAIT TIME TIMER
   useEffect(() => {
