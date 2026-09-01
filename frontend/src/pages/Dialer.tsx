@@ -220,8 +220,6 @@ export default function Dialer() {
   const pauseTimeFormatted = formatSecsToHMS(totalBreakSeconds);
   const remainingTimeFormatted = formatSecsToHMS(Math.max(0, 28800 - grossLoginSeconds));
   const isCompleted8Hrs = grossLoginSeconds >= 28800;
-  const totalRingingSecs = (ringingSeconds || 0) + (callStatus === "ringing" ? ringingDuration : 0);
-  const ringingTimeFormatted = formatSecsToHMS(totalRingingSecs);
 
   const callSetupTimeFormatted = formatSecsToHMS(setupSeconds);
   const totalCallTimeFormatted = formatSecsToHMS(talkSeconds);
@@ -311,6 +309,9 @@ export default function Dialer() {
   useEffect(() => {
     callStatusRef.current = callStatus;
   }, [callStatus]);
+
+  const totalRingingSecs = (ringingSeconds || 0) + (callStatus === "ringing" ? ringingDuration : 0);
+  const ringingTimeFormatted = formatSecsToHMS(totalRingingSecs);
 
   // Real-time Ringing Duration Timer based on event timestamps
   useEffect(() => {
