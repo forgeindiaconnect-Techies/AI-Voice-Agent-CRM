@@ -165,6 +165,7 @@ export default function Dialer() {
     readySeconds,
     talkSeconds,
     ringingSeconds,
+    updateCallTelemetry,
     setupSeconds,
     disposeSeconds,
     waitingSeconds,
@@ -219,7 +220,8 @@ export default function Dialer() {
   const pauseTimeFormatted = formatSecsToHMS(totalBreakSeconds);
   const remainingTimeFormatted = formatSecsToHMS(Math.max(0, 28800 - grossLoginSeconds));
   const isCompleted8Hrs = grossLoginSeconds >= 28800;
-  const ringingTimeFormatted = formatSecsToHMS(ringingSeconds);
+  const totalRingingSecs = (ringingSeconds || 0) + (callStatus === "ringing" ? ringingDuration : 0);
+  const ringingTimeFormatted = formatSecsToHMS(totalRingingSecs);
 
   const callSetupTimeFormatted = formatSecsToHMS(setupSeconds);
   const totalCallTimeFormatted = formatSecsToHMS(talkSeconds);
@@ -324,13 +326,17 @@ export default function Dialer() {
         }
       }, 1000);
     } else {
-      ringingStartTimeRef.current = null;
+      if (ringingStartTimeRef.current) {
+        const finalRingingSecs = Math.max(1, Math.floor((Date.now() - ringingStartTimeRef.current) / 1000));
+        updateCallTelemetry({ ringing_seconds: finalRingingSecs });
+        ringingStartTimeRef.current = null;
+      }
       setRingingDuration(0);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [callStatus]);
+  }, [callStatus, updateCallTelemetry]);
 
   // Web Audio Ringtone Player for Incoming Plivo Calls
   const ringAudioCtxRef = useRef<AudioContext | null>(null);
