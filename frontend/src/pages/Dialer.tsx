@@ -2229,9 +2229,14 @@ export default function Dialer() {
                       {/* CALL TYPE SELECTION SECTION */}
                       <div className="mb-4">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                            Call Type
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                              Call Type
+                            </span>
+                            <span className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-200/80 dark:border-blue-500/30 flex items-center gap-1">
+                              Plivo Voice
+                            </span>
+                          </div>
                           <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 ${
                             callStatus === "ringing"
                               ? "bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30 animate-pulse"
@@ -2330,7 +2335,7 @@ export default function Dialer() {
                               {selectedLead?.name || "Target Customer"}
                             </h4>
                             <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                              {selectedLead?.source || "Direct Dial"} • {maskPhoneNumber(selectedLead?.phone || outboundPhone)}
+                              Plivo Voice • {selectedLead?.source || "Manual Dialer"} • {maskPhoneNumber(selectedLead?.phone || outboundPhone)}
                             </p>
                           </div>
                         </div>
