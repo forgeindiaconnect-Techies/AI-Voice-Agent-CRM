@@ -585,17 +585,36 @@ export default function Dialer() {
     const checkActiveSession = async () => {
       try {
         const activeRes = await api.get("/api/calls/active").catch(() => null);
-        const active = Array.isArray(activeRes) ? activeRes[0] : activeRes;
+        const activeList = Array.isArray(activeRes) ? activeRes : (activeRes?.calls || activeRes?.items || []);
+        const active = activeList[0];
         if (active && (active.id || active._id)) {
-          setCurrentCallId(active.id || active._id);
-          if (active.phone) {
-            setOutboundPhone(sanitizeMobileNumber(active.phone));
+          const startedAt = active.started_at || active.startedAt || active.created_at;
+          const startedTs = startedAt ? new Date(startedAt).getTime() : 0;
+          const isStale = (Date.now() - startedTs) > 1800000; // Older than 30 mins
+
+          if (isStale) {
+            await api.post(`/api/calls/${active.id || active._id}/manual-end`, {
+              call_id: active.id || active._id,
+              outcome: "no_answer",
+              notes: "Stale ghost session auto-closed on load"
+            }).catch(() => {});
+            setCallStatus("ready");
+            setAgentStatus("ready");
+          } else {
+            setCurrentCallId(active.id || active._id);
+            if (active.phone) {
+              setOutboundPhone(sanitizeMobileNumber(active.phone));
+            }
+            setCallStatus(active.call_state === "hold" ? "hold" : "connected");
+            setAgentStatus("on_call");
           }
-          setCallStatus(active.call_state === "hold" ? "hold" : "connected");
-          setAgentStatus("on_call");
+        } else {
+          setCallStatus("ready");
+          setAgentStatus("ready");
         }
       } catch (err) {
-        // Silent catch
+        setCallStatus("ready");
+        setAgentStatus("ready");
       }
     };
     checkActiveSession();
