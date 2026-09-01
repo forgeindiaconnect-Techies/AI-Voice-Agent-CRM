@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     VAPI_ASSISTANT_ID: str = ""
     VAPI_PHONE_NUMBER_ID: str = ""
     VAPI_BASE_URL: str = "https://api.vapi.ai"
+    PLIVO_APP_ID: str = "42024221415255694"
+    PLIVO_PHONE_NUMBER: str = "+918031826757"
+    PLIVO_SIP_URI: str = "sip:42024221415255694@app.plivo.com"
     BASE_URL: str = "https://ai-voice-agent-crm.onrender.com"
 
     class Config:
