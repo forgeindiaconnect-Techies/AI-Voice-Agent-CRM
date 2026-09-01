@@ -1895,37 +1895,24 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
     plivo_auth_token = getattr(settings, 'PLIVO_AUTH_TOKEN', '') or os.getenv('PLIVO_AUTH_TOKEN', '')
     plivo_phone_number = getattr(settings, 'PLIVO_PHONE_NUMBER', '+918031826757')
     base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
-    agent_phone_val = user.get("agent_phone") or user.get("phone") or "+919444667411"
-    clean_agent_p = re.sub(r"\D", "", agent_phone_val)
-    clean_target_p = re.sub(r"\D", "", normalized_phone)
+    agent_phone_val = user.get("agent_phone") or user.get("phone") or ""
 
     if plivo_auth_id and plivo_auth_token:
         try:
             plivo_url = f"https://api.plivo.com/v1/Account/{plivo_auth_id}/Call/"
-            if clean_agent_p and clean_target_p and clean_agent_p != clean_target_p:
-                # Agent-First Click-to-Call: Plivo calls Agent first, then bridges Customer upon answer
-                plivo_body = {
-                    "from": plivo_phone_number.replace("+", ""),
-                    "to": agent_phone_val.replace("+", ""),
-                    "answer_url": f"{base_url}/api/calls/plivo/answer?dial_to={quote(normalized_phone)}",
-                    "answer_method": "POST",
-                    "hangup_url": f"{base_url}/api/calls/plivo/status",
-                    "hangup_method": "POST",
-                }
-            else:
-                # Direct test call
-                plivo_body = {
-                    "from": plivo_phone_number.replace("+", ""),
-                    "to": normalized_phone.replace("+", ""),
-                    "answer_url": f"{base_url}/api/calls/plivo/answer?agent_phone={quote(agent_phone_val)}",
-                    "answer_method": "POST",
-                    "hangup_url": f"{base_url}/api/calls/plivo/status",
-                    "hangup_method": "POST",
-                }
+            # Always call the entered number directly as the primary destination
+            plivo_body = {
+                "from": plivo_phone_number.replace("+", ""),
+                "to": normalized_phone.replace("+", ""),
+                "answer_url": f"{base_url}/api/calls/plivo/answer?agent_phone={quote(agent_phone_val)}",
+                "answer_method": "POST",
+                "hangup_url": f"{base_url}/api/calls/plivo/status",
+                "hangup_method": "POST",
+            }
             client = get_http_client()
             res = await client.post(plivo_url, json=plivo_body, auth=(plivo_auth_id, plivo_auth_token), timeout=10.0)
             if res.status_code in (200, 201, 202):
-                print(f"[Plivo] Outbound Call initiated successfully: {res.json()}")
+                print(f"[Plivo] Outbound Call initiated successfully to {normalized_phone}: {res.json()}")
             else:
                 print(f"[Plivo] API Error: {res.status_code} - {res.text}")
         except Exception as plivo_err:
