@@ -72,12 +72,8 @@ async def plivo_answer_webhook(request: Request):
     Plivo XML Answer Webhook:
     Executed when a call connects on Plivo (both inbound and outbound).
 
-    - Outbound (agent dialled customer): call is already live between Plivo and the
-      customer's PSTN number. We just broadcast a connected event and return an empty
-      <Response> so the call stays alive and audio flows normally.
-
-    - Inbound (customer calling our Plivo number): we play a brief greeting and then
-      <Dial> into the agent SIP endpoint to bridge the two legs.
+    Returns Plivo XML with <Wait length="3600"/> to keep the live call connected and open.
+    Without <Wait>, Plivo finishes XML execution and terminates the call immediately.
     """
     if request.method == "POST":
         try:
@@ -94,61 +90,32 @@ async def plivo_answer_webhook(request: Request):
         direction   = (request.query_params.get("Direction", "") or request.query_params.get("CallDirection", "")).lower()
         call_uuid   = request.query_params.get("CallUUID", "")
 
-    base_url        = getattr(settings, "BASE_URL", "https://ai-voice-agent-crm.onrender.com")
-    plivo_sip_uri   = getattr(settings, "PLIVO_SIP_URI", "")   # e.g. sip:42024221415255694@app.plivo.com
-    plivo_number    = getattr(settings, "PLIVO_PHONE_NUMBER", "").replace("+", "")
-    hangup_url      = f"{base_url}/api/calls/plivo/hangup"
-
-    # ── OUTBOUND: agent initiated the call to the customer ──────────────────────
-    # Plivo hits this URL when the customer *answers*. The two legs (agent browser
-    # leg is NOT WebRTC here – Plivo dials the customer directly) are already
-    # bridged by Plivo. Just return an empty <Response> to keep the call alive.
-    if direction in ("outbound", "outbound-api", "outboundapi", "out"):
-        await ws_manager.broadcast_global({
-            "event": "call_status_update",
-            "call_status": "in-progress",
-            "from": from_number,
-            "to": to_number,
-            "call_sid": call_uuid,
-            "provider": "plivo"
-        })
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '</Response>'
-        )
-        return PlainTextResponse(plivo_xml, media_type="text/xml")
-
-    # ── INBOUND: customer called our Plivo number ────────────────────────────────
-    # Bridge the call to the agent SIP endpoint (Plivo WebRTC / SIP app).
+    # Broadcast real-time call connected status event to CRM frontend over WebSockets
     await ws_manager.broadcast_global({
-        "event": "inbound_call",
+        "event": "call_status_update",
+        "call_status": "in-progress",
         "from": from_number,
         "to": to_number,
         "call_sid": call_uuid,
         "provider": "plivo"
     })
 
-    if plivo_sip_uri:
-        # Dial into the Plivo SIP/WebRTC application so the browser agent can answer
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '    <Speak voice="WOMAN" language="en-IN">Please hold while we connect your call.</Speak>\n'
-            f'    <Dial callerId="{plivo_number}" callerName="Forge CRM" timeout="30" hangupOnStar="true" callbackUrl="{hangup_url}">\n'
-            f'        <User>{plivo_sip_uri}</User>\n'
-            '    </Dial>\n'
-            '</Response>'
-        )
-    else:
-        # Fallback: just keep the call alive if no SIP URI configured
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '    <Speak voice="WOMAN" language="en-IN">Welcome to Forge India Connect. An agent will assist you shortly.</Speak>\n'
-            '    <Wait length="30"/>\n'
-            '</Response>'
-        )
+    if direction in ("inbound", "in"):
+        await ws_manager.broadcast_global({
+            "event": "inbound_call",
+            "from": from_number,
+            "to": to_number,
+            "call_sid": call_uuid,
+            "provider": "plivo"
+        })
+
+    # <Wait length="3600"/> keeps the active PSTN call connected and open for up to 1 hour
+    plivo_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Response>\n'
+        '    <Wait length="3600"/>\n'
+        '</Response>'
+    )
 
     return PlainTextResponse(plivo_xml, media_type="text/xml")
 
