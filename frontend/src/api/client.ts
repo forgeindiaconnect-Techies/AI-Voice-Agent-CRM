@@ -197,16 +197,16 @@ export async function apiFetch(
 
 export const api = {
   get: (path: string, signal?: AbortSignal) => apiFetch(path, {}, signal),
-  post: (path: string, body?: unknown) =>
-    apiFetch(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
-  put: (path: string, body?: unknown) =>
-    apiFetch(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
-  patch: (path: string, body?: unknown) =>
-    apiFetch(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
-  delete: (path: string) =>
-    apiFetch(path, { method: "DELETE" }),
-  upload: (path: string, formData: FormData) =>
-    apiFetch(path, { method: "POST", body: formData }),
+  post: (path: string, body?: unknown, signal?: AbortSignal) =>
+    apiFetch(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }, signal),
+  put: (path: string, body?: unknown, signal?: AbortSignal) =>
+    apiFetch(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }, signal),
+  patch: (path: string, body?: unknown, signal?: AbortSignal) =>
+    apiFetch(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }, signal),
+  delete: (path: string, signal?: AbortSignal) =>
+    apiFetch(path, { method: "DELETE" }, signal),
+  upload: (path: string, formData: FormData, signal?: AbortSignal) =>
+    apiFetch(path, { method: "POST", body: formData }, signal),
   checkHealth: async (): Promise<{ status: string; database?: string }> => {
     try {
       return await apiFetch("/health", { timeoutMs: 35000, retries: 1 });

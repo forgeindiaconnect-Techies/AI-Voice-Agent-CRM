@@ -13,7 +13,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     payload = decode_token(token)
     if not payload or payload.get("type") != "access":
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired token")
-    user = await users_col.find_one({"_id": ObjectId(payload["sub"])})
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token subject claim")
+    query = {"_id": ObjectId(sub)} if ObjectId.is_valid(sub) else {"id": sub}
+    user = await users_col.find_one(query)
+    if not user and not ObjectId.is_valid(sub):
+        user = await users_col.find_one({"_id": sub})
     if not user or not user.get("is_active", True):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found or inactive")
     user["_id"] = str(user["_id"])

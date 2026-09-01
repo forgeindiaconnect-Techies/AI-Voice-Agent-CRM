@@ -217,7 +217,7 @@ class CallStart(BaseModel):
 class CallEnd(BaseModel):
     call_id: str
     outcome: str
-    duration_seconds: int
+    duration_seconds: Optional[int] = 0
     notes: Optional[str] = None
     ai_summary: Optional[str] = None
     transcript: Optional[str] = None

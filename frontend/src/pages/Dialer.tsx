@@ -585,8 +585,9 @@ export default function Dialer() {
     const checkActiveSession = async () => {
       try {
         const activeRes = await api.get("/api/calls/active").catch(() => null);
-        const activeList = Array.isArray(activeRes) ? activeRes : (activeRes?.calls || activeRes?.items || []);
-        const active = activeList[0];
+        const active = Array.isArray(activeRes)
+          ? activeRes[0]
+          : (activeRes?.calls?.[0] || activeRes?.items?.[0] || (activeRes && typeof activeRes === "object" && (activeRes.id || activeRes._id) ? activeRes : null));
         if (active && (active.id || active._id)) {
           const startedAt = active.started_at || active.startedAt || active.created_at;
           const startedTs = startedAt ? new Date(startedAt).getTime() : 0;
@@ -596,6 +597,7 @@ export default function Dialer() {
             await api.post(`/api/calls/${active.id || active._id}/manual-end`, {
               call_id: active.id || active._id,
               outcome: "no_answer",
+              duration_seconds: 0,
               notes: "Stale ghost session auto-closed on load"
             }).catch(() => {});
             setCallStatus("ready");
@@ -950,6 +952,7 @@ export default function Dialer() {
         await api.post(`/api/calls/${currentCallId}/manual-end`, {
           call_id: currentCallId,
           outcome: status,
+          duration_seconds: callDuration || 0,
           notes,
           follow_up_date: followUpDate
         });
@@ -2285,30 +2288,7 @@ export default function Dialer() {
                           </button>
                         </div>
                       </div>
-                        {/* Target Customer Card (Requirement 3) */}
-                      <div className="mb-3 p-3 rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-2xs">
-                        <div className="flex items-center gap-2.5">
-                          <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-extrabold flex items-center justify-center text-sm border border-blue-200 dark:border-blue-700/60 shrink-0">
-                            {(selectedLead?.name || "Target Customer").charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-extrabold text-slate-900 dark:text-white leading-tight">
-                              {selectedLead?.name || "Target Customer"}
-                            </h4>
-                            <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                              {selectedLead?.source || "Direct Dial"} • {maskPhoneNumber(selectedLead?.phone || outboundPhone)}
-                            </p>
-                          </div>
-                        </div>
-                        {selectedLead && (
-                          <button
-                            onClick={() => setSelectedLead(null)}
-                            className="text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white transition cursor-pointer"
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
+
 
                       {/* Professional Phone Input Field (Requirement 4) */}
                       {dialerMode === "outbound" && callStatus === "ready" && (

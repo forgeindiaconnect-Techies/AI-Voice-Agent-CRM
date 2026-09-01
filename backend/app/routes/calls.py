@@ -480,7 +480,6 @@ async def list_calls(user: dict = Depends(get_current_user), pool_id: str | None
 
 
 @router.get("/live")
-@router.get("/active")
 @router.get("/live-calls")
 async def live_calls(pool_id: str | None = None, user: dict = Depends(get_current_user)):
     query = {"status": "live"}
@@ -1932,7 +1931,7 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
         "recording_status": "recording",
         "recording_file": f"C:/recordings/manual_{lead_id_str}_{int(utcnow().timestamp())}.wav",
         "started_at": utcnow(),
-        "twilio_sid": twilio_sid
+        "twilio_sid": None
     }
 
     result = await calls_col.insert_one(doc)
