@@ -123,20 +123,19 @@ async def plivo_answer_webhook(request: Request):
         if clean_agent == clean_to or clean_agent == clean_from or clean_agent in clean_to or clean_to in clean_agent:
             is_same = True
 
-    # ── Single Call Connection ────────────────────────────────────────────────
-    # For outbound calls or when agent phone matches target number, connect in ONE call only.
-    # Do not execute <Dial> to avoid triggering a second incoming call.
-    if is_same or direction in ("outbound", "outbound-api", "outboundapi", "out"):
+    # 1. If calling agent's own number, speak welcome greeting so voice audio is clearly audible
+    if is_same:
         plivo_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<Response>\n'
+            '    <Speak voice="WOMAN" language="en-IN">Welcome to Forge India Connect. Your call is connected successfully.</Speak>\n'
             '    <Wait length="3600"/>\n'
             '</Response>'
         )
         return PlainTextResponse(plivo_xml, media_type="text/xml")
 
-    # ── Inbound Call Bridging ──────────────────────────────────────────────────
-    if clean_agent:
+    # 2. If outbound call to customer and agent phone is provided, bridge customer to agent
+    if clean_agent and not is_same:
         if not clean_agent.startswith("91") and len(clean_agent) == 10:
             clean_agent = f"91{clean_agent}"
         plivo_xml = (
@@ -148,24 +147,16 @@ async def plivo_answer_webhook(request: Request):
             '    </Dial>\n'
             '</Response>'
         )
-    elif plivo_sip_uri:
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '    <Speak voice="WOMAN" language="en-IN">Connecting your call.</Speak>\n'
-            f'    <Dial callerId="{plivo_number}" timeout="30">\n'
-            f'        <User>{plivo_sip_uri}</User>\n'
-            '    </Dial>\n'
-            '</Response>'
-        )
-    else:
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '    <Wait length="3600"/>\n'
-            '</Response>'
-        )
+        return PlainTextResponse(plivo_xml, media_type="text/xml")
 
+    # 3. Fallback: speak welcome message and keep active
+    plivo_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Response>\n'
+        '    <Speak voice="WOMAN" language="en-IN">Welcome to Forge India Connect. Connecting your call now.</Speak>\n'
+        '    <Wait length="3600"/>\n'
+        '</Response>'
+    )
     return PlainTextResponse(plivo_xml, media_type="text/xml")
 
 
