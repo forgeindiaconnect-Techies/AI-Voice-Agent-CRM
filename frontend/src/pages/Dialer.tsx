@@ -517,16 +517,20 @@ export default function Dialer() {
       try {
         const activeRes = await api.get("/api/calls/active").catch(() => null);
         const active = Array.isArray(activeRes) ? activeRes[0] : activeRes;
-        if (active && (active.id || active._id)) {
+        if (active && (active.id || active._id) && active.status === "live") {
           setCurrentCallId(active.id || active._id);
           if (active.phone) {
             setOutboundPhone(sanitizeMobileNumber(active.phone));
           }
           setCallStatus(active.call_state === "hold" ? "hold" : "connected");
           setAgentStatus("on_call");
+        } else {
+          setCurrentCallId(null);
+          setCallStatus("ready");
         }
       } catch (err) {
-        // Silent catch
+        setCurrentCallId(null);
+        setCallStatus("ready");
       }
     };
     checkActiveSession();
@@ -557,17 +561,7 @@ export default function Dialer() {
       }
       if (data.event === "inbound_call_auto_answered") {
         const cleanPhone = (data.phone || "9876543210").replace(/\D/g, "").slice(-10);
-        setCurrentCallId(data.call_id);
-        setOutboundPhone(cleanPhone);
-        setCallStatus("connected");
-        setAgentStatus("on_call");
-        setCallDuration(0);
-        setIsMuted(false);
-        setIsSpeaker(false);
-        setIsDialing(false);
-        isDialingRef.current = false;
-        setInboundQueue(prev => prev.filter(c => c.id !== data.call_id && c.phone !== cleanPhone));
-        showToast(`Inbound Call Connected: Call from ${data.lead_name || 'Customer'} (+91 ${cleanPhone})`, "success");
+        showToast(`Incoming Call Alert: Call from ${data.lead_name || 'Customer'} (+91 ${cleanPhone})`, "info");
       }
       if (data.event === "inbound_call_queued") {
         const cleanPhone = (data.phone || "9876543210").replace(/\D/g, "").slice(-10);

@@ -34,8 +34,11 @@ if (process.platform === 'win32') {
     'Forge CRM Desktop.exe',
     'Forge CRM Desktop 0.1.0.exe',
     'Forge CRM.exe',
+    'ForgeCRM Setup 0.1.0.exe',
     'electron.exe',
-    'app-builder.exe'
+    'app-builder.exe',
+    'signtool.exe',
+    'elevate.exe'
   ];
 
   let killedAny = false;
