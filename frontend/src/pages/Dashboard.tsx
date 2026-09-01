@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
-import { api, isTokenExpired } from "../api/client";
+import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { usePresence, getStatusBadgeDetails } from "../context/PresenceContext";
@@ -396,9 +396,6 @@ export default function Dashboard() {
   }, [activeLead, activeCallId]);
 
   const fetchDashboardData = useCallback(async () => {
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    if (!user || !token || isTokenExpired(token)) return;
-
     try {
       if (user?.role !== "agent") {
         const [summaryData, logs, live] = await Promise.all([
@@ -430,13 +427,10 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
-    if (!user || !token || isTokenExpired(token)) return;
-
     fetchDashboardData();
     const interval = setInterval(fetchDashboardData, 10000);
     return () => clearInterval(interval);
-  }, [user, fetchDashboardData]);
+  }, [fetchDashboardData]);
 
   // Agent dialer handlers
   const handleDialLead = async (lead: Lead) => {

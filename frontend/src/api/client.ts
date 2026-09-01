@@ -55,54 +55,8 @@ export const setCustomApiUrl = (newUrl: string | null) => {
 
 const BASE_URL = getBaseUrl();
 
-type UnauthorizedHandler = () => void;
-let unauthorizedHandler: UnauthorizedHandler | null = null;
-
-export const setUnauthorizedHandler = (handler: UnauthorizedHandler | null) => {
-  unauthorizedHandler = handler;
-};
-
-export function isTokenExpired(token: string | null): boolean {
-  if (!token) return true;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return true;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    if (!payload.exp) return false;
-    // Buffer of 10 seconds before actual expiration
-    return Date.now() >= payload.exp * 1000 - 10000;
-  } catch {
-    return true;
-  }
-}
-
-function handleUnauthorizedCleanup() {
-  if (typeof localStorage !== "undefined") {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("refresh_token");
-  }
-  if (unauthorizedHandler) {
-    try {
-      unauthorizedHandler();
-    } catch (err) {
-      console.warn("[AUTH] Error executing unauthorized handler:", err);
-    }
-  } else if (typeof window !== "undefined") {
-    window.location.hash = "#/login";
-  }
-}
-
 function getToken(): string | null {
-  if (typeof localStorage === "undefined") return null;
-  const token = localStorage.getItem("access_token");
-  if (!token) return null;
-  if (isTokenExpired(token)) {
-    console.warn("[AUTH] Stale/Expired access token detected in localStorage. Clearing.");
-    handleUnauthorizedCleanup();
-    return null;
-  }
-  return token;
+  return localStorage.getItem("access_token");
 }
 
 export const getWsUrl = (roomPath: string = ""): string => {
@@ -150,17 +104,7 @@ export async function apiFetch(
   signal?: AbortSignal
 ): Promise<any> {
   const { timeoutMs = 35000, retries = 1, ...fetchOptions } = options;
-
-  // Proactively prevent sending unauthenticated requests to protected endpoints
-  const isAuthRoute = path.startsWith("/api/auth/login") || path.startsWith("/api/auth/register") || path.startsWith("/health") || path === "/";
   const token = getToken();
-
-  if (!token && !isAuthRoute) {
-    handleUnauthorizedCleanup();
-    const err = new Error("Session expired or unauthenticated. Please sign in again.");
-    (err as any).status = 401;
-    throw err;
-  }
 
   const headers: Record<string, string> = {
     ...(fetchOptions.body && !(fetchOptions.body instanceof FormData)
@@ -190,12 +134,14 @@ export async function apiFetch(
 
       clearTimeout(timeoutId);
 
-      // Handle 401 Unauthorized response from backend
-      if (res.status === 401 && !isAuthRoute) {
-        handleUnauthorizedCleanup();
-        const err = new Error("Session expired. Please sign in again.");
-        (err as any).status = 401;
-        throw err;
+      // Handle token expiration safely for HashRouter/Electron
+      if (res.status === 401 && path !== "/api/auth/login") {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
+        if (typeof window !== "undefined") {
+          window.location.hash = "#/login";
+        }
+        throw new Error("Session expired. Please sign in again.");
       }
 
       // Gracefully handle 403 Forbidden for active/live call polling on remote server

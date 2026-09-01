@@ -517,20 +517,16 @@ export default function Dialer() {
       try {
         const activeRes = await api.get("/api/calls/active").catch(() => null);
         const active = Array.isArray(activeRes) ? activeRes[0] : activeRes;
-        if (active && (active.id || active._id) && active.status === "live") {
+        if (active && (active.id || active._id)) {
           setCurrentCallId(active.id || active._id);
           if (active.phone) {
             setOutboundPhone(sanitizeMobileNumber(active.phone));
           }
           setCallStatus(active.call_state === "hold" ? "hold" : "connected");
           setAgentStatus("on_call");
-        } else {
-          setCurrentCallId(null);
-          setCallStatus("ready");
         }
       } catch (err) {
-        setCurrentCallId(null);
-        setCallStatus("ready");
+        // Silent catch
       }
     };
     checkActiveSession();
@@ -561,7 +557,17 @@ export default function Dialer() {
       }
       if (data.event === "inbound_call_auto_answered") {
         const cleanPhone = (data.phone || "9876543210").replace(/\D/g, "").slice(-10);
-        showToast(`Incoming Call Alert: Call from ${data.lead_name || 'Customer'} (+91 ${cleanPhone})`, "info");
+        setCurrentCallId(data.call_id);
+        setOutboundPhone(cleanPhone);
+        setCallStatus("connected");
+        setAgentStatus("on_call");
+        setCallDuration(0);
+        setIsMuted(false);
+        setIsSpeaker(false);
+        setIsDialing(false);
+        isDialingRef.current = false;
+        setInboundQueue(prev => prev.filter(c => c.id !== data.call_id && c.phone !== cleanPhone));
+        showToast(`Inbound Call Connected: Call from ${data.lead_name || 'Customer'} (+91 ${cleanPhone})`, "success");
       }
       if (data.event === "inbound_call_queued") {
         const cleanPhone = (data.phone || "9876543210").replace(/\D/g, "").slice(-10);
@@ -1057,6 +1063,15 @@ export default function Dialer() {
     ringingStartTimeRef.current = null;
     showToast("Call rejected", "info");
   };
+
+  // AUTO-CONNECT QUEUED CALL WHEN AGENT BECOMES READY (ONLY IF AUTO-ANSWER ENABLED BY AGENT)
+  useEffect(() => {
+    if (autoAnswerEnabled && agentStatus === "ready" && callStatus === "ready" && inboundQueue.length > 0) {
+      const nextCall = inboundQueue[0];
+      showToast(`Inbound Call Connected: ${nextCall.name} (+91 ${nextCall.phone})`, "success");
+      connectInboundCall(nextCall);
+    }
+  }, [autoAnswerEnabled, agentStatus, callStatus, inboundQueue, connectInboundCall]);
 
   // QUEUE WAIT TIME TIMER
   useEffect(() => {
@@ -2214,14 +2229,9 @@ export default function Dialer() {
                       {/* CALL TYPE SELECTION SECTION */}
                       <div className="mb-4">
                         <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                              Call Type
-                            </span>
-                            <span className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/15 px-2 py-0.5 rounded-full border border-blue-200/80 dark:border-blue-500/30 flex items-center gap-1">
-                              Plivo Voice
-                            </span>
-                          </div>
+                          <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                            Call Type
+                          </span>
                           <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 ${
                             callStatus === "ringing"
                               ? "bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/30 animate-pulse"
@@ -2320,7 +2330,7 @@ export default function Dialer() {
                               {selectedLead?.name || "Target Customer"}
                             </h4>
                             <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                              Plivo Voice • {selectedLead?.source || "Manual Dialer"} • {maskPhoneNumber(selectedLead?.phone || outboundPhone)}
+                              {selectedLead?.source || "Direct Dial"} • {maskPhoneNumber(selectedLead?.phone || outboundPhone)}
                             </p>
                           </div>
                         </div>
