@@ -1,7 +1,7 @@
 // @refresh reset
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "./AuthContext";
-import { api, getWsUrl, sanitizeUrl } from "../api/client";
+import { api, getWsUrl, sanitizeUrl, isTokenExpired } from "../api/client";
 
 export interface BreakCategoryStats {
   count: number;
@@ -395,12 +395,10 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const fetchPresenceData = useCallback(async () => {
     if (!user) return;
 
-    // Do NOT fire any API call without a valid access token.
-    // This prevents 401 storms when a stale user object lives in React state
-    // but the corresponding JWT has expired or been cleared from localStorage.
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      console.warn("[PRESENCE] Skipping fetch: no access token in localStorage");
+    // Do NOT fire any API call without a valid, unexpired access token.
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    if (!token || isTokenExpired(token)) {
+      console.warn("[PRESENCE] Skipping fetch: no valid access token in localStorage");
       return;
     }
 
@@ -621,12 +619,10 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const connectWebSocket = useCallback(() => {
     if (!user || isUnmountedRef.current || isAuthErrorRef.current) return;
 
-    // Do NOT attempt WS connection without a valid token.
-    // Without this guard, the reconnect backoff loop fires repeatedly after
-    // session expiry, connecting as anonymous and causing infinite retries.
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      console.warn("[SESSION WS] Skipping connection: no access token in localStorage");
+    // Do NOT attempt WS connection without a valid unexpired token.
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    if (!token || isTokenExpired(token)) {
+      console.warn("[SESSION WS] Skipping connection: no valid access token in localStorage");
       return;
     }
 
@@ -725,7 +721,10 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     isAuthErrorRef.current = false;
     isFetchingRef.current = false;
 
-    if (user) {
+    const token = typeof localStorage !== "undefined" ? localStorage.getItem("access_token") : null;
+    const hasValidSession = Boolean(user && token && !isTokenExpired(token));
+
+    if (hasValidSession) {
       fetchPresenceData();
       connectWebSocket();
     }
@@ -734,7 +733,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // is temporarily unavailable (e.g. network blip, server restart).
     // Only runs when authenticated; cancelled immediately on unmount/logout.
     let pollId: NodeJS.Timeout | null = null;
-    if (user) {
+    if (hasValidSession) {
       pollId = setInterval(() => {
         if (!isUnmountedRef.current) {
           fetchPresenceData();
