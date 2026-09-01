@@ -58,131 +58,12 @@ def normalize_e164(phone_str: str) -> str:
 from fastapi import Form
 # pyrefly: ignore [missing-import]
 from fastapi.responses import PlainTextResponse
-# pyrefly: ignore [missing-import]
-from twilio.jwt.access_token import AccessToken
-# pyrefly: ignore [missing-import]
-from twilio.jwt.access_token.grants import VoiceGrant
-# pyrefly: ignore [missing-import]
-from twilio.twiml.voice_response import VoiceResponse, Dial, Gather
+# Twilio removed – Plivo is the sole voice provider
 from urllib.parse import quote
 import re
 from app.core.config import settings
 
-@router.get("/token")
-async def get_twilio_token(user: dict = Depends(get_current_user)):
-    """Generate a Twilio Voice Access Token for WebRTC browser calling"""
-    if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_API_KEY:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Twilio credentials missing")
-        
-    token = AccessToken(
-        settings.TWILIO_ACCOUNT_SID,
-        settings.TWILIO_API_KEY,
-        settings.TWILIO_API_SECRET,
-        identity=_uid(user)
-    )
-    
-    # Needs TWILIO_TWIML_APP_SID in .env
-    app_sid = getattr(settings, 'TWILIO_TWIML_APP_SID', '')
-    if not app_sid:
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "TWILIO_TWIML_APP_SID missing in .env")
-        
-    voice_grant = VoiceGrant(
-        outgoing_application_sid=app_sid,
-        incoming_allow=True
-    )
-    token.add_grant(voice_grant)
-    
-    return {"token": token.to_jwt()}
-
-
-@router.api_route("/twiml", methods=["GET", "POST"])
-async def get_twiml(request: Request):
-    """
-    Step 1 TwiML Webhook:
-    Executed when Desktop App places a call.
-    Plays trial account notification ONLY to the Desktop Agent on WebRTC leg.
-    The customer's phone DOES NOT RING AT ALL during this step.
-    When the message finishes, Twilio automatically proceeds to /twiml-dial to ring customer.
-    """
-    if request.method == "POST":
-        try:
-            form_data = await request.form()
-        except Exception:
-            form_data = {}
-        To = form_data.get("To", "")
-    else:
-        To = request.query_params.get("To", "")
-
-    if To:
-        To = To.replace(" ", "+")
-
-    base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
-    dial_url = f"{base_url}/api/calls/twiml-dial?To={quote(To)}"
-
-    response = VoiceResponse()
-    
-    # Gather prompt plays ONLY to Desktop Agent. Customer is not dialed yet.
-    gather = Gather(
-        action=dial_url,
-        method="POST",
-        num_digits=1,
-        timeout=1,
-    )
-    gather.say("Twilio trial account call. Connecting customer now.", voice="alice")
-    response.append(gather)
-
-    # Redirect to dial endpoint once message finishes playing
-    response.redirect(dial_url, method="POST")
-
-    return PlainTextResponse(str(response), media_type="text/xml")
-
-
-@router.api_route("/twiml-dial", methods=["GET", "POST"])
-async def get_twiml_dial(request: Request):
-    """
-    Step 2 TwiML Webhook:
-    Executed ONLY AFTER the trial account message finishes playing in Desktop App.
-    Now Twilio places the single outbound call to the customer's phone.
-    """
-    if request.method == "POST":
-        try:
-            form_data = await request.form()
-        except Exception:
-            form_data = {}
-        To = form_data.get("To", "") or request.query_params.get("To", "")
-    else:
-        To = request.query_params.get("To", "")
-
-    if To:
-        To = To.replace(" ", "+")
-
-    base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
-    status_callback_url = f"{base_url}/api/calls/status-callback"
-    twilio_number = getattr(settings, 'TWILIO_PHONE_NUMBER', '')
-    caller_id = twilio_number if twilio_number else '+19783818471'
-
-    response = VoiceResponse()
-
-    if To and To != twilio_number:
-        dial = Dial(
-            caller_id=caller_id,
-            action=status_callback_url,
-            timeout=30,
-        )
-        if re.match(r"^[\d\+\-\(\) ]+$", To):
-            dial.number(
-                To,
-                status_callback=status_callback_url,
-                status_callback_event="initiated ringing answered completed",
-                status_callback_method="POST",
-            )
-        else:
-            dial.client(To)
-        response.append(dial)
-    else:
-        response.say("Welcome to Forge India Connect. Connecting your call.")
-
-    return PlainTextResponse(str(response), media_type="text/xml")
+# Twilio token & TwiML endpoints removed – Plivo handles all inbound/outbound calls.
 
 
 @router.api_route("/plivo/answer", methods=["GET", "POST"])
@@ -1825,34 +1706,8 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
             except Exception as vapi_err:
                 print(f"[Vapi] Exception calling Vapi API: {vapi_err}")
 
-    # Actually trigger Twilio call if configured and initiate_pstn is requested (WebRTC calls handle dialing natively)
-    twilio_sid = None
-    try:
-        # pyrefly: ignore [missing-import]
-        from twilio.rest import Client
-        from app.core.config import settings
-        if payload.initiate_pstn and hasattr(settings, 'TWILIO_ACCOUNT_SID') and settings.TWILIO_ACCOUNT_SID:
-            client = Client(getattr(settings, 'TWILIO_API_KEY', settings.TWILIO_ACCOUNT_SID),
-                            getattr(settings, 'TWILIO_API_SECRET', getattr(settings, 'TWILIO_AUTH_TOKEN', '')),
-                            settings.TWILIO_ACCOUNT_SID)
 
-            from_number = getattr(settings, 'TWILIO_PHONE_NUMBER', '+12345678900')
-
-            twiml_url = f"<Response><Say>Please hold while we connect your call.</Say>"
-            if agent_phone:
-                twiml_url += f"<Dial>{agent_phone}</Dial>"
-            else:
-                twiml_url += "<Play loop=\"0\">http://com.twilio.sounds.music.s3.amazonaws.com/MARKOVICHAMP-Borghestral.mp3</Play>"
-            twiml_url += "</Response>"
-
-            call = client.calls.create(
-                to=normalized_phone,
-                from_=from_number,
-                twiml=twiml_url
-            )
-            twilio_sid = call.sid
-    except Exception as e:
-        print(f"Failed to initiate Twilio call: {e}")
+    # Plivo is the sole PSTN provider – Twilio removed
 
     # Plivo Outbound PSTN Call trigger if configured
     plivo_auth_id = getattr(settings, 'PLIVO_AUTH_ID', '') or os.getenv('PLIVO_AUTH_ID', '')
@@ -1885,7 +1740,7 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
         f"[{utcnow().isoformat()}] [SIP] Sending: SIP/2.0 100 Trying",
         f"[{utcnow().isoformat()}] [SIP] Sending: SIP/2.0 180 Ringing",
         f"[{utcnow().isoformat()}] [SIP] Sending: SIP/2.0 200 OK",
-        f"[{utcnow().isoformat()}] [SIP] Call established via {'Vapi AI Agent' if is_ai_call else 'WebRTC Trunk'} (Twilio SID: {twilio_sid}, Vapi ID: {vapi_call_id})"
+        f"[{utcnow().isoformat()}] [SIP] Call established via {'Vapi AI Agent' if is_ai_call else 'Plivo PSTN'} (Vapi ID: {vapi_call_id})"
     ]
 
     doc = {

@@ -4,7 +4,7 @@ import { usePresence, getStatusBadgeDetails } from "../context/PresenceContext";
 import { api, getWsUrl } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { Device } from "@twilio/voice-sdk";
+// Plivo-only: Twilio SDK removed
 import { CustomPauseIcon } from "../components/CustomPauseIcon";
 import { CustomSelect } from "../components/CustomSelect";
 import LeadFilterModal from "../components/LeadFilterModal";
@@ -807,53 +807,7 @@ export default function Dialer() {
     };
   }, [fetchLeads, fetchCallHistory]);
 
-  // TWILIO DEVICE STATE
-  const [deviceReady, setDeviceReady] = useState(false);
-  const [isInitializingDevice, setIsInitializingDevice] = useState(false);
-  const deviceRef = useRef<Device | null>(null);
-  const callRef = useRef<any>(null);
-
-  const setupDevice = useCallback(async () => {
-    if (deviceRef.current && deviceReady) return;
-    setIsInitializingDevice(true);
-    try {
-      const { token } = await api.get("/api/calls/token");
-      if (!token) throw new Error("No token returned");
-
-      const device = new Device(token, {
-        codecPreferences: ["opus" as any, "pcmu" as any],
-      });
-
-      deviceRef.current = device;
-
-      device.on("registered", () => {
-        setDeviceReady(true);
-        setIsInitializingDevice(false);
-      });
-
-      device.on("error", (error: any) => {
-        console.warn("[Twilio Device Error]", error);
-        setIsInitializingDevice(false);
-      });
-
-      await device.register();
-    } catch (err: any) {
-      console.warn("Softphone registration notice:", err);
-      setIsInitializingDevice(false);
-    }
-  }, [deviceReady]);
-
-  useEffect(() => {
-    setupDevice();
-
-    return () => {
-      if (deviceRef.current) {
-        try {
-          deviceRef.current.destroy();
-        } catch {}
-      }
-    };
-  }, []);
+  // PLIVO-ONLY: No Twilio Device needed – calls go through Plivo REST API via backend
 
   // Timer effect during connected/hold states
   useEffect(() => {
@@ -1213,9 +1167,6 @@ export default function Dialer() {
 
     const idempotencyKey = `${user?.id || 'agent'}_${outboundPhone}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-    if (!deviceReady && !isInitializingDevice) {
-      await setupDevice();
-    }
 
     setIsCreatingLead(true);
     setCallStatus("dialing");
@@ -1292,7 +1243,7 @@ export default function Dialer() {
         assigned_agent_id: user?.id,
         priority: "high",
         notes: "",
-        initiate_pstn: false,
+        initiate_pstn: true,
         idempotency_key: idempotencyKey,
         call_mode: targetMode,
         sim_slot: simSlot
@@ -1313,7 +1264,7 @@ export default function Dialer() {
             assigned_agent_id: user?.id,
             priority: "high",
             notes: "",
-            initiate_pstn: false,
+            initiate_pstn: true,
             idempotency_key: `retry_${idempotencyKey}`,
             call_mode: callMode
           });
@@ -1336,107 +1287,20 @@ export default function Dialer() {
       }
     }
 
-    // Request Mic access
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      showToast("Microphone denied! Enable mic access to make calls.", "error");
-      setCallStatus("ready");
-      setAgentStatus("ready");
-      isDialingRef.current = false;
-      setIsDialing(false);
-      return;
-    }
-
-    // Twilio WebRTC Connect
-    if (deviceRef.current && deviceReady) {
-      try {
-        const twilioCall = await deviceRef.current.connect({
-          params: { To: fullPhoneNumber }
-        });
-        callRef.current = twilioCall;
-
-        twilioCall.on("ringing", () => {
-          setCallStatus("ringing");
-        });
-
-        twilioCall.on("accept", () => {
-          setCallStatus("connected");
-          setAgentStatus("on_call");
-          setCallDuration(0);
-          isDialingRef.current = false;
-          setIsDialing(false);
-        });
-
-        twilioCall.on("disconnect", () => {
-          callRef.current = null;
-          setIsMuted(false);
-          isDialingRef.current = false;
-          setIsDialing(false);
-          const reason = callEndReasonRef.current;
-          if (reason === "busy") {
-            setCallStatus("busy");
-          } else if (reason === "no-answer") {
-            setCallStatus("no-answer");
-          } else {
-            setCallStatus("wrapup");
-            setAgentStatus("wrap_up");
-          }
-        });
-
-        twilioCall.on("reject", () => {
-          callRef.current = null;
-          setIsMuted(false);
-          setCallStatus("busy");
-          isDialingRef.current = false;
-          setIsDialing(false);
-        });
-
-        twilioCall.on("error", (err: any) => {
-          console.error("[Twilio] Call error:", err);
-          callRef.current = null;
-          setIsMuted(false);
-          isDialingRef.current = false;
-          setIsDialing(false);
-          const code = err?.code || err?.twilioError?.code || 0;
-          const msg: string = (err?.message || "").toLowerCase();
-          if (code === 31480 || msg.includes("busy") || msg.includes("486")) {
-            setCallStatus("busy");
-          } else if (code === 31486 || msg.includes("no answer") || msg.includes("408")) {
-            setCallStatus("no-answer");
-          } else {
-            setCallStatus("failed");
-            showToast(err?.message || "Call failed", "error");
-          }
-        });
-
-      } catch (e: any) {
-        setCallStatus("failed");
-        showToast(e?.message || "Failed to initiate call", "error");
-        isDialingRef.current = false;
-        setIsDialing(false);
-        return;
-      }
-    } else {
-      showToast("Softphone not ready yet. Please wait and try again.", "warning");
-      setCallStatus("ready");
-      setAgentStatus("ready");
-      isDialingRef.current = false;
-      setIsDialing(false);
-      return;
-    }
+    // Plivo Outbound: backend already triggered the Plivo REST call in /api/calls/manual-dial.
+    // Transition to ringing – real status updates arrive via WebSocket (call_status_update events).
+    setCallStatus("ringing");
+    isDialingRef.current = false;
+    setIsDialing(false);
+    showToast(`Calling ${fullPhoneNumber} via Plivo…`, "info");
+    fetchLeads();
+    fetchCallHistory();
   };
 
   const handleHangup = useCallback(() => {
     if (callStatus === "ready") return;
 
-    if (callRef.current) {
-      try {
-        callRef.current.disconnect();
-      } catch {}
-      callRef.current = null;
-    }
-
+    // Plivo-only: no local call object to disconnect; backend/Plivo handles PSTN leg.
     setIsMuted(false);
     setIsSpeaker(false);
     isDialingRef.current = false;
