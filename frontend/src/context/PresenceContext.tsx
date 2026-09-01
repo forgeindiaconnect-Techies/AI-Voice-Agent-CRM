@@ -1,7 +1,7 @@
 // @refresh reset
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "./AuthContext";
-import { api, getWsUrl } from "../api/client";
+import { api, getWsUrl, sanitizeUrl } from "../api/client";
 
 export interface BreakCategoryStats {
   count: number;
@@ -34,7 +34,19 @@ export interface AgentPresence {
   role: string;
   employee_id?: string;
   pool_id?: string;
-  status: "ready" | "paused" | "in_call" | "offline";
+  agentId?: string;
+  agentName?: string;
+  requirementPoolId?: string;
+  requirementPoolName?: string;
+  supervisorId?: string;
+  supervisorName?: string;
+  statusSince?: string | null;
+  currentCallId?: string | null;
+  currentCallType?: string | null;
+  loginAt?: string | null;
+  lastUpdatedAt?: string;
+  version?: number;
+  status: "ready" | "paused" | "in_call" | "offline" | "checked_in" | "ringing" | "wrap_up";
   pause_reason?: string | null;
   login_at?: string | null;
   logout_at?: string | null;
@@ -60,6 +72,7 @@ export interface AgentPresence {
   status_since?: string | null;
   last_activity?: string | null;
   is_active?: boolean;
+  shift_date?: string;
 }
 
 export interface PresenceSummary {
@@ -67,14 +80,16 @@ export interface PresenceSummary {
   online_count: number;
   ready_count: number;
   paused_count: number;
+  ringing_count?: number;
   in_call_count: number;
+  wrap_up_count?: number;
   offline_count: number;
 }
 
 interface PresenceContextType {
   nowTicker: number;
-  myStatus: "ready" | "paused" | "in_call" | "offline";
-  displayStatus: "AVAILABLE" | "ON_BREAK" | "IN_CALL" | "OFFLINE";
+  myStatus: "ready" | "paused" | "in_call" | "offline" | "checked_in" | "ringing" | "wrap_up";
+  displayStatus: "AVAILABLE" | "ON_BREAK" | "IN_CALL" | "OFFLINE" | "CHECKED_IN" | "RINGING" | "WRAP_UP";
   pauseReason: string | null;
   breakType: "LUNCH" | "TEA" | "PERSONAL" | string | null;
   breakStartedAt: string | null;
@@ -106,7 +121,11 @@ interface PresenceContextType {
   remainingBreakSeconds: number;
 
   isCheckedInToday: boolean;
-  setPresenceStatus: (newStatus: "ready" | "paused" | "in_call" | "offline", pauseReason?: string, forceOffline?: boolean) => Promise<void>;
+  isLiveModalOpen: boolean;
+  setIsLiveModalOpen: (open: boolean) => void;
+  openLiveModal: () => void;
+  closeLiveModal: () => void;
+  setPresenceStatus: (newStatus: "ready" | "paused" | "in_call" | "offline" | "checked_in" | "ringing" | "wrap_up", pauseReason?: string, forceOffline?: boolean) => Promise<void>;
   checkIn: (location?: string) => Promise<void>;
   checkOut: () => Promise<void>;
   startBreak: (breakType: string) => Promise<void>;
@@ -116,6 +135,98 @@ interface PresenceContextType {
   refreshPresence: () => Promise<void>;
   updateCallTelemetry: (stats: { ringing_seconds?: number; setup_seconds?: number; talk_seconds?: number; dispose_seconds?: number; calls_handled?: number }) => void;
 }
+
+export const getStatusBadgeDetails = (status: string, pauseReason?: string | null, isCheckedIn?: boolean) => {
+  const st = (status || "").toLowerCase().trim();
+  if (isCheckedIn === false || st === "offline" || !st) {
+    return {
+      label: "Offline",
+      colorClass: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30",
+      dotClass: "bg-rose-500"
+    };
+  }
+  switch (st) {
+    case "ready":
+    case "available":
+      return {
+        label: "Ready",
+        colorClass: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30",
+        dotClass: "bg-emerald-500"
+      };
+    case "checked_in":
+      return {
+        label: "Checked In",
+        colorClass: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/30",
+        dotClass: "bg-blue-500"
+      };
+    case "ringing":
+      return {
+        label: "Ringing",
+        colorClass: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30",
+        dotClass: "bg-rose-500 animate-ping"
+      };
+    case "in_call":
+    case "talking":
+    case "on_call":
+    case "busy":
+      return {
+        label: "In Call",
+        colorClass: "bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/40",
+        dotClass: "bg-emerald-600 animate-pulse"
+      };
+    case "wrap_up":
+    case "wrapup":
+      return {
+        label: "Wrap-Up",
+        colorClass: "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/15 dark:text-purple-400 dark:border-purple-500/30",
+        dotClass: "bg-purple-500"
+      };
+    case "paused":
+    case "break":
+    case "on_break":
+      return {
+        label: pauseReason ? `On Break (${pauseReason})` : "On Break",
+        colorClass: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30",
+        dotClass: "bg-amber-500"
+      };
+    default:
+      return {
+        label: "Offline",
+        colorClass: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30",
+        dotClass: "bg-rose-500"
+      };
+  }
+};
+
+export const computeSummaryFromAgents = (agentsList: AgentPresence[]): PresenceSummary => {
+  let ready = 0;
+  let paused = 0;
+  let ringing = 0;
+  let inCall = 0;
+  let wrapUp = 0;
+  let offline = 0;
+
+  agentsList.forEach((a) => {
+    const st = (a.status || "").toLowerCase().trim();
+    if (st === "ready" || st === "available") ready++;
+    else if (st === "paused" || st === "break" || st === "on_break") paused++;
+    else if (st === "ringing") ringing++;
+    else if (st === "in_call" || st === "talking" || st === "on_call" || st === "busy") inCall++;
+    else if (st === "wrap_up" || st === "wrapup") wrapUp++;
+    else offline++;
+  });
+
+  return {
+    total_agents: agentsList.length,
+    online_count: ready + paused + ringing + inCall + wrapUp,
+    ready_count: ready,
+    paused_count: paused,
+    ringing_count: ringing,
+    in_call_count: inCall,
+    wrap_up_count: wrapUp,
+    offline_count: offline,
+  };
+};
 
 const defaultSummary: PresenceSummary = {
   total_agents: 0,
@@ -130,12 +241,16 @@ const PresenceContext = createContext<PresenceContextType | undefined>(undefined
 
 export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [myStatus, setMyStatus] = useState<"ready" | "paused" | "in_call" | "offline">("offline");
+  const [myStatus, setMyStatus] = useState<"ready" | "paused" | "in_call" | "offline" | "checked_in" | "ringing" | "wrap_up">("offline");
   const [pauseReason, setPauseReason] = useState<string | null>(null);
   const [agents, setAgents] = useState<AgentPresence[]>([]);
   const [summary, setSummary] = useState<PresenceSummary>(defaultSummary);
   const [wsConnected, setWsConnected] = useState<boolean>(false);
   const [myPresence, setMyPresence] = useState<AgentPresence | null>(null);
+  const [isLiveModalOpen, setIsLiveModalOpen] = useState<boolean>(false);
+
+  const openLiveModal = useCallback(() => setIsLiveModalOpen(true), []);
+  const closeLiveModal = useCallback(() => setIsLiveModalOpen(false), []);
 
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -252,19 +367,23 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const activeWaitingSeconds = useMemo(() => {
     if (!isCheckedInToday || !myPresence?.login_at) return 0;
+    const isTodayShift = myPresence?.shift_date ? myPresence.shift_date === new Date().toISOString().split("T")[0] : true;
+    if (!isTodayShift) return 0;
     if (myStatus === "ready" && myPresence?.waiting_started_at && !(myPresence as any)?.currentCallId) {
       try {
         const start = new Date(myPresence.waiting_started_at).getTime();
-        return Math.max(0, Math.floor((nowTicker - start) / 1000));
+        const diff = Math.floor((nowTicker - start) / 1000);
+        if (diff < 0 || diff > 43200) return 0;
+        return diff;
       } catch {
         return 0;
       }
     }
     return 0;
-  }, [isCheckedInToday, myPresence?.login_at, myStatus, myPresence?.waiting_started_at, (myPresence as any)?.currentCallId, nowTicker]);
+  }, [isCheckedInToday, myPresence?.login_at, myPresence?.shift_date, myStatus, myPresence?.waiting_started_at, (myPresence as any)?.currentCallId, nowTicker]);
 
   const waitingSeconds = isCheckedInToday ? (myPresence?.waiting_seconds || 0) : 0;
-  const totalWaitingSeconds = isCheckedInToday ? (waitingSeconds + activeWaitingSeconds) : 0;
+  const totalWaitingSeconds = isCheckedInToday ? Math.min(43200, waitingSeconds + activeWaitingSeconds) : 0;
   const currentWaitingSeconds = activeWaitingSeconds;
 
   const stopCount = isCheckedInToday ? ((myPresence?.break_logs || []).length + (myPresence?.status === "paused" || myStatus === "paused" ? 1 : 0)) : 0;
@@ -302,6 +421,11 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setIsCheckedInToday(hasCheckedIn);
 
       if (Array.isArray(agentList)) {
+        setAgents(agentList);
+        // Recalculate summary strictly from latest agent snapshot
+        const calculatedSummary = computeSummaryFromAgents(agentList);
+        setSummary(calculatedSummary);
+
         const uid = user.id || (user as any)._id;
         const meFromList = agentList.find((a: AgentPresence) => a.id === uid || a.user_id === uid || (a as any).agentId === uid);
         const me = meData || meFromList;
@@ -322,19 +446,8 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             break_logs: hasCheckedIn ? (activeSession?.breakLogs || me?.break_logs) : [],
           };
           setMyPresence((prev) => ({ ...prev, ...fullMe }));
-          setAgents((prev) => {
-            const idx = prev.findIndex((a) => a.id === uid || a.user_id === uid || (a as any).agentId === uid);
-            if (idx !== -1) {
-              const updated = [...prev];
-              updated[idx] = { ...updated[idx], ...fullMe };
-              return updated;
-            }
-            return [...prev, fullMe];
-          });
         }
-      }
-
-      if (summaryData && typeof summaryData.ready_count === "number") {
+      } else if (summaryData && typeof summaryData.ready_count === "number") {
         setSummary(summaryData);
       }
     } catch (err) {
@@ -350,6 +463,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       if (!event.data) return;
       const payload = JSON.parse(event.data);
+      window.dispatchEvent(new CustomEvent("forge_global_ws_msg", { detail: payload }));
 
       if (
         payload.event === "attendance:checked-in" ||
@@ -429,44 +543,74 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
 
-      if ((payload.type === "agent_presence_updated" || payload.event === "agent.status.changed") && (payload.data || payload.presence)) {
-        const updated = (payload.data || payload.presence) as AgentPresence;
-        const rawStatus = updated.status || payload.status || "offline";
-        const normalizedStatus = (rawStatus.toLowerCase().trim()) as "ready" | "paused" | "in_call" | "offline";
+      if (
+        payload.type === "agent_presence_updated" ||
+        payload.event === "agent.status.changed" ||
+        payload.event === "agent:status-changed" ||
+        payload.type === "agent_status_changed"
+      ) {
+        const data = payload.data || payload.presence || payload;
+        const targetId = payload.agentId || payload.user_id || payload.agent_id || data.agentId || data.user_id || data.id;
+        
+        if (targetId) {
+          const rawStatus = payload.status || data.status || data.raw_status || "offline";
+          const normalizedStatus = (rawStatus.toLowerCase().trim()) as "ready" | "paused" | "in_call" | "offline" | "checked_in" | "ringing" | "wrap_up";
+          const incomingVersion = typeof payload.version === "number" ? payload.version : (typeof data.version === "number" ? data.version : null);
 
-        setAgents((prevAgents) => {
-          let updatedList: AgentPresence[];
-          const index = prevAgents.findIndex((a) => a.id === updated.id || a.user_id === updated.user_id);
-          if (index !== -1) {
-            updatedList = [...prevAgents];
-            updatedList[index] = { ...updatedList[index], ...updated, status: normalizedStatus };
-          } else {
-            updatedList = [...prevAgents, { ...updated, status: normalizedStatus }];
-          }
+          setAgents((prevAgents) => {
+            const index = prevAgents.findIndex((a) => a.id === targetId || a.user_id === targetId || a.agentId === targetId);
+            let updatedList: AgentPresence[];
 
-          const total = updatedList.length;
-          const ready = updatedList.filter((a) => a.status === "ready").length;
-          const paused = updatedList.filter((a) => a.status === "paused").length;
-          const inCall = updatedList.filter((a) => a.status === "in_call").length;
-          const offline = updatedList.filter((a) => a.status === "offline").length;
-          const online = ready + paused + inCall;
+            if (index !== -1) {
+              const existing = prevAgents[index];
+              // Requirement 11: Ignore duplicate/outdated events using version number
+              if (incomingVersion !== null && existing.version !== undefined && existing.version !== null && incomingVersion <= existing.version) {
+                console.log(`[PRESENCE WS STALE] Ignored event version ${incomingVersion} <= existing version ${existing.version} for agent ${targetId}`);
+                return prevAgents;
+              }
 
-          setSummary({
-            total_agents: total,
-            online_count: online,
-            ready_count: ready,
-            paused_count: paused,
-            in_call_count: inCall,
-            offline_count: offline,
+              updatedList = [...prevAgents];
+              updatedList[index] = {
+                ...existing,
+                ...data,
+                id: targetId,
+                user_id: targetId,
+                agentId: targetId,
+                status: normalizedStatus,
+                version: incomingVersion ?? ((existing.version || 0) + 1),
+                statusSince: payload.statusSince || data.statusSince || data.status_since || existing.statusSince || new Date().toISOString(),
+                status_since: payload.statusSince || data.statusSince || data.status_since || existing.status_since || new Date().toISOString(),
+              };
+            } else {
+              updatedList = [
+                ...prevAgents,
+                {
+                  ...data,
+                  id: targetId,
+                  user_id: targetId,
+                  agentId: targetId,
+                  status: normalizedStatus,
+                  version: incomingVersion ?? 1,
+                  ready_seconds: data.ready_seconds || 0,
+                  paused_seconds: data.paused_seconds || 0,
+                  statusSince: payload.statusSince || data.statusSince || data.status_since || new Date().toISOString(),
+                  status_since: payload.statusSince || data.statusSince || data.status_since || new Date().toISOString(),
+                }
+              ];
+            }
+
+            // Requirement 10: Recalculate Ready/Pause/Off counts from latest agent store
+            const newSummary = computeSummaryFromAgents(updatedList);
+            setSummary(newSummary);
+
+            return updatedList;
           });
 
-          return updatedList;
-        });
-
-        if (user && (updated.id === user.id || updated.user_id === user.id || payload.agentId === user.id)) {
-          setMyStatus(normalizedStatus);
-          setPauseReason(updated.pause_reason || null);
-          setMyPresence((prev) => ({ ...prev, ...updated, status: normalizedStatus }));
+          if (user && (user.id === targetId || (user as any)._id === targetId)) {
+            setMyStatus(normalizedStatus);
+            setPauseReason(data.pause_reason || payload.reason || null);
+            setMyPresence((prev: any) => prev ? { ...prev, ...data, status: normalizedStatus } : null);
+          }
         }
       }
     } catch {
@@ -497,7 +641,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return;
       }
 
-      console.log("[SESSION WS] Connecting to:", wsUrl);
+      console.log("[SESSION WS] Connecting to:", sanitizeUrl(wsUrl));
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 
@@ -549,7 +693,12 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           return;
         }
 
+        const MAX_RECONNECT_ATTEMPTS = 10;
         const attempt = reconnectAttemptsRef.current + 1;
+        if (attempt > MAX_RECONNECT_ATTEMPTS) {
+          console.warn("[SESSION WS] Max reconnection attempts (10) reached. Halting auto-reconnect.");
+          return;
+        }
         reconnectAttemptsRef.current = attempt;
         const delay = Math.min(3000 * Math.pow(1.5, attempt - 1), 30000);
 
@@ -639,7 +788,7 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [myStatus, myPresence?.current_break?.start_time, myPresence?.last_status_change]);
 
   const setPresenceStatus = async (
-    newStatus: "ready" | "paused" | "in_call" | "offline",
+    newStatus: "ready" | "paused" | "in_call" | "offline" | "checked_in" | "ringing" | "wrap_up",
     newPauseReason?: string,
     forceOffline: boolean = false
   ) => {
@@ -839,6 +988,10 @@ export const PresenceProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         wsConnected,
         isSubmittingStatus,
         isCheckedInToday,
+        isLiveModalOpen,
+        setIsLiveModalOpen,
+        openLiveModal,
+        closeLiveModal,
         netWorkingSeconds: calculatedWorkingSeconds,
         grossLoginSeconds,
         totalBreakSeconds,

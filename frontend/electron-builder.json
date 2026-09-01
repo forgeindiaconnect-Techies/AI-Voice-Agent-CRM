@@ -12,7 +12,6 @@
     "dist-electron/**/*"
   ],
   "win": {
-    "executableName": "ForgeCRM",
     "target": [
       "nsis"
     ],

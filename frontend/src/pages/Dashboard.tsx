@@ -3,11 +3,12 @@ import { motion } from "framer-motion";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { usePresence } from "../context/PresenceContext";
+import { usePresence, getStatusBadgeDetails } from "../context/PresenceContext";
 import PauseBreakModal from "../components/PauseBreakModal";
 import ShiftSummaryModal from "../components/ShiftSummaryModal";
 import EarlyLogoutWarningModal from "../components/EarlyLogoutWarningModal";
 import TodayAttendanceCard from "../components/TodayAttendanceCard";
+import LiveAgentPoolModal from "../components/LiveAgentPoolModal";
 import {
   Users,
   Phone,
@@ -211,6 +212,9 @@ export default function Dashboard() {
     summary: presenceSummary,
     wsConnected,
     isSubmittingStatus,
+    isLiveModalOpen,
+    setIsLiveModalOpen,
+    openLiveModal,
     isCheckedInToday,
     setPresenceStatus,
     checkIn,
@@ -617,42 +621,15 @@ export default function Dashboard() {
                 </h1>
                 
                 {/* Real-Time Presence Badge */}
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${
-                    !isCheckedInToday
-                      ? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
-                      : myStatus === "ready"
-                      ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-[#22C55E] border-emerald-200 dark:border-emerald-500/30"
-                      : myStatus === "paused"
-                      ? "bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/30"
-                      : myStatus === "in_call"
-                      ? "bg-purple-50 dark:bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/30"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
-                  }`}
-                >
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      !isCheckedInToday
-                        ? "bg-slate-400"
-                        : myStatus === "ready"
-                        ? "bg-emerald-500 animate-pulse"
-                        : myStatus === "paused"
-                        ? "bg-amber-500"
-                        : myStatus === "in_call"
-                        ? "bg-purple-500 animate-pulse"
-                        : "bg-slate-400"
-                    }`}
-                  />
-                  {!isCheckedInToday
-                    ? "Not Checked In"
-                    : myStatus === "ready"
-                    ? "Present + Ready"
-                    : myStatus === "paused"
-                    ? `Present + Paused (${pauseReason || "Break"})`
-                    : myStatus === "in_call"
-                    ? "Present + In Call"
-                    : "Present + Offline"}
-                </span>
+                {(() => {
+                  const badge = getStatusBadgeDetails(myStatus, pauseReason, isCheckedInToday);
+                  return (
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all duration-200 ${badge.colorClass}`}>
+                      <span className={`h-2 w-2 rounded-full ${badge.dotClass}`} />
+                      {badge.label}
+                    </span>
+                  );
+                })()}
 
                 {/* WebSocket Stream Badge */}
                 <span
@@ -1064,13 +1041,18 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">
-          {/* Live Agent Presence Stream Counters */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 shadow-2xs">
-            <Users className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+          {/* Live Agent Presence Stream Counters - Clickable to open Live Agent Pool View */}
+          <button
+            type="button"
+            onClick={openLiveModal}
+            title="Click to view Live Agent Details"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 hover:bg-blue-50 dark:hover:bg-blue-900/30 border border-slate-200/80 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-500/30 shadow-2xs transition cursor-pointer active:scale-95 group"
+          >
+            <Users className="h-3.5 w-3.5 text-blue-500 shrink-0 group-hover:scale-110 transition" />
             <span className="font-semibold text-slate-700 dark:text-slate-200">
               Agents: <strong className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{presenceSummary.ready_count} Ready</strong> / <strong className="font-mono text-amber-500">{presenceSummary.paused_count} Pause</strong> / <strong className="font-mono text-slate-400">{presenceSummary.offline_count} Off</strong>
             </span>
-          </div>
+          </button>
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/10 shadow-2xs">
             <DollarSign className="h-3.5 w-3.5 text-amber-500 shrink-0" />
@@ -1592,7 +1574,11 @@ export default function Dashboard() {
         agentName={user?.name || "Agent"}
       />
 
-
+      {/* Live Agent Pool Modal for Admin & Supervisor */}
+      <LiveAgentPoolModal
+        isOpen={isLiveModalOpen}
+        onClose={() => setIsLiveModalOpen(false)}
+      />
     </motion.div>
   );
 }

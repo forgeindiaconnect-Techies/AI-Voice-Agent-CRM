@@ -11,7 +11,7 @@ export default defineConfig(({ command }) => ({
         vite: {
           build: {
             outDir: 'dist-electron',
-            emptyOutDir: true,
+            emptyOutDir: false,
             rollupOptions: {
               external: ['electron'],
               onwarn(warning, warn) {

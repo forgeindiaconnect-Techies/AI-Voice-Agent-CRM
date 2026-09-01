@@ -144,27 +144,19 @@ export default function AIAgents() {
     fetchAgents();
   }, [fetchAgents]);
 
-  // Real-time WebSocket updates
+  // Real-time WebSocket updates via global PresenceContext event stream
   useEffect(() => {
-    let socket: WebSocket | null = null;
-    try {
-      socket = new WebSocket(getWsUrl("/global"));
-      socket.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.event === "ai_agents_updated") {
-            fetchAgents();
-          }
-        } catch (e) {
-          // fallback
-        }
-      };
-    } catch (e) {
-      // WS fallback
-    }
+    const handleWsUpdate = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      const msg = customEvt.detail;
+      if (msg && msg.event === "ai_agents_updated") {
+        fetchAgents();
+      }
+    };
 
+    window.addEventListener("forge_global_ws_msg", handleWsUpdate);
     return () => {
-      if (socket) socket.close();
+      window.removeEventListener("forge_global_ws_msg", handleWsUpdate);
     };
   }, [fetchAgents]);
 

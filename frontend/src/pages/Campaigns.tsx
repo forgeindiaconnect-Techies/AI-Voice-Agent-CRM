@@ -715,33 +715,25 @@ export default function Campaigns() {
   useEffect(() => {
     loadData();
 
-    let ws: WebSocket | null = null;
-    try {
-      const wsUrl = getWsUrl("/global");
-      ws = new WebSocket(wsUrl);
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (
-            data.event === "campaigns_updated" ||
-            data.event === "leads_updated" ||
-            data.event === "agent_status_changed" ||
-            data.event === "inbound_summary_updated" ||
-            data.event === "inbound_call_auto_answered" ||
-            data.event === "inbound_call_queued"
-          ) {
-            loadData();
-          }
-        } catch (err) {
-          console.warn("WS parse warning:", err);
-        }
-      };
-    } catch (err) {
-      console.warn("WS connection error:", err);
-    }
+    const handleWsUpdate = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      const data = customEvt.detail;
+      if (
+        data &&
+        (data.event === "campaigns_updated" ||
+          data.event === "leads_updated" ||
+          data.event === "agent_status_changed" ||
+          data.event === "inbound_summary_updated" ||
+          data.event === "inbound_call_auto_answered" ||
+          data.event === "inbound_call_queued")
+      ) {
+        loadData();
+      }
+    };
 
+    window.addEventListener("forge_global_ws_msg", handleWsUpdate);
     return () => {
-      if (ws) ws.close();
+      window.removeEventListener("forge_global_ws_msg", handleWsUpdate);
     };
   }, [loadData]);
 

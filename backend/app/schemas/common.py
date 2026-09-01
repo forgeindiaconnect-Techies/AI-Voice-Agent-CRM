@@ -41,6 +41,20 @@ class CallOutcome(str, Enum):
     NOT_INTERESTED = "not_interested"
     QUALIFIED = "qualified"
     FOLLOW_UP_REQUIRED = "follow_up_required"
+    WRONG_NUMBER = "wrong_number"
+    INTERESTED = "interested"
+    CALL_BACK = "call_back"
+    CALLBACK = "callback"
+    CALLBACK_SCHEDULED = "callback_scheduled"
+    CONVERTED = "converted"
+    DNC = "dnc"
+    DO_NOT_CALL = "do_not_call"
+    INVALID_NUMBER = "invalid_number"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+    PENDING = "pending"
+    COMPLETED = "completed"
+    OTHER = "other"
 
 
 class MonitorAction(str, Enum):
@@ -189,7 +203,7 @@ class LeadAssign(BaseModel):
 
 
 class DispositionUpdate(BaseModel):
-    status: LeadStatus
+    status: str
     sub_disposition: Optional[str] = None
     notes: Optional[str] = None
     follow_up_at: Optional[datetime] = None
@@ -202,7 +216,7 @@ class CallStart(BaseModel):
 
 class CallEnd(BaseModel):
     call_id: str
-    outcome: CallOutcome
+    outcome: str
     duration_seconds: int
     notes: Optional[str] = None
     ai_summary: Optional[str] = None

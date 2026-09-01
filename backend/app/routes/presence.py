@@ -1,10 +1,19 @@
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from bson import ObjectId
-from app.core.database import users_col, agent_shifts_col, agent_presence_col, agent_status_history_col, attendance_col, calls_col
+from app.core.database import (
+    users_col,
+    pools_col,
+    campaigns_col,
+    agent_shifts_col,
+    agent_presence_col,
+    agent_status_history_col,
+    attendance_col,
+    calls_col
+)
 from app.core.utils import utcnow, oid_str
 from app.core.deps import get_current_user
 from app.services.ws_manager import ws_manager
@@ -14,6 +23,82 @@ logger = logging.getLogger("uvicorn.error")
 router = APIRouter(prefix="/api/presence", tags=["presence"])
 agent_router = APIRouter(prefix="/api/agent", tags=["agent-presence"])
 agents_router = APIRouter(prefix="/api/agents", tags=["agents-status"])
+
+
+async def get_supervisor_assigned_pool_ids(current_user: dict) -> list[str] | None:
+    """
+    Resolves the list of requirement pools assigned to a Supervisor (Team Leader).
+    Admins get None (unrestricted access to all requirement pools).
+    """
+    role = (current_user.get("role") or "").lower().strip()
+    if role == "admin":
+        return None  # All pools permitted
+
+    uid_str = str(current_user.get("id") or current_user.get("_id", ""))
+
+    # Fetch active pools mapping name <-> _id
+    pools_cursor = pools_col.find({"is_deleted": {"$ne": True}})
+    pool_map = {}
+    async for p in pools_cursor:
+        pid = str(p["_id"])
+        pname = p.get("name")
+        if pname:
+            pool_map[pname] = pid
+            pool_map[pid] = pname
+
+    permitted_set = set()
+
+    # 1. Pools from assigned_pools / assigned_pool_ids on supervisor document
+    assigned = current_user.get("assigned_pools") or current_user.get("assigned_pool_ids") or []
+    if isinstance(assigned, list):
+        for item in assigned:
+            item_str = str(item).strip()
+            permitted_set.add(item_str)
+            if item_str in pool_map:
+                permitted_set.add(pool_map[item_str])
+    elif isinstance(assigned, str) and assigned.strip():
+        item_str = assigned.strip()
+        permitted_set.add(item_str)
+        if item_str in pool_map:
+            permitted_set.add(pool_map[item_str])
+
+    # 2. Pool ID directly on supervisor document
+    sup_pool = current_user.get("pool_id")
+    if sup_pool:
+        sp_str = str(sup_pool).strip()
+        permitted_set.add(sp_str)
+        if sp_str in pool_map:
+            permitted_set.add(pool_map[sp_str])
+
+    # 3. Requirement pools of agents supervised by this user
+    sup_query_id = ObjectId(uid_str) if ObjectId.is_valid(uid_str) else uid_str
+    agents_cursor = users_col.find(
+        {"$or": [{"supervisor_id": uid_str}, {"supervisor_id": sup_query_id}]},
+        {"pool_id": 1}
+    )
+    async for a in agents_cursor:
+        apool = a.get("pool_id")
+        if apool:
+            ap_str = str(apool).strip()
+            permitted_set.add(ap_str)
+            if ap_str in pool_map:
+                permitted_set.add(pool_map[ap_str])
+
+    # 4. Requirement pools of campaigns managed by this supervisor
+    campaigns_cursor = campaigns_col.find(
+        {"$or": [{"supervisor_id": uid_str}, {"supervisor_id": sup_query_id}]},
+        {"pool_id": 1}
+    )
+    async for c in campaigns_cursor:
+        cpool = c.get("pool_id")
+        if cpool:
+            cp_str = str(cpool).strip()
+            permitted_set.add(cp_str)
+            if cp_str in pool_map:
+                permitted_set.add(pool_map[cp_str])
+
+    return list(permitted_set)
+
 
 # State machine allowed transition rules
 ALLOWED_TRANSITIONS = {
@@ -79,6 +164,7 @@ class StatusUpdateRequest(BaseModel):
     pause_reason: Optional[str] = Field(None, description="Optional pause reason e.g. Lunch, Tea Break, Personal Reason")
     break_type: Optional[str] = Field(None, description="Break type code: LUNCH, TEA, PERSONAL")
     force_offline: Optional[bool] = Field(False, description="Force offline even if 8 hours incomplete")
+    forceOffline: Optional[bool] = Field(False, description="Force offline alias")
 
 
 class PauseRequest(BaseModel):
@@ -214,6 +300,7 @@ async def record_presence_change(
             "pool_id": user.get("pool_id"),
             "status": map_status_to_enum(current_status),
             "raw_status": current_status,
+            "version": user.get("version", 1),
             "breakType": get_break_type_code(user.get("pause_reason")) if current_status == "paused" else None,
             "breakStartedAt": current_break.get("start_time") if current_break else None,
             "pause_reason": user.get("pause_reason"),
@@ -383,12 +470,15 @@ async def record_presence_change(
                 logger.warning(f"[WAITING TIME] Error calculating elapsed waiting time: {e}")
             new_waiting_started = None
 
-    # 2. If transitioning INTO 'ready' (e.g. offline -> ready, paused -> ready, wrap_up -> ready, check_in -> ready):
-    # Start a new active waiting timer if agent is not currently in a call
+    # 2. If transitioning INTO 'ready' (or remaining in 'ready'):
+    # Preserve existing waiting_started_at if already ready to avoid wiping idle progress
     if new_status == "ready":
         curr_call_id = user.get("currentCallId")
         if not curr_call_id:
-            new_waiting_started = now_iso
+            if current_status == "ready" and curr_waiting_started:
+                new_waiting_started = curr_waiting_started
+            else:
+                new_waiting_started = now_iso
         else:
             new_waiting_started = None
 
@@ -428,10 +518,15 @@ async def record_presence_change(
     }
 
 
-    await users_col.update_one(query, {"$set": update_fields})
+    await users_col.update_one(query, {"$set": update_fields, "$inc": {"version": 1}})
 
+    # Fetch updated user document to get current version
+    updated_user = await users_col.find_one(query)
+    current_version = updated_user.get("version", 1) if updated_user else 1
 
-    # Record presence state in agent_presence collection
+    session_id = f"session_{uid_str}_{shift_date}"
+
+    # Record presence state in agent_presence collection with versioning
     presence_doc = {
         "id": uid_str,
         "agent_id": uid_str,
@@ -443,7 +538,8 @@ async def record_presence_change(
         "break_reason": pause_reason if new_status == "paused" else None,
         "status_since": now_iso,
         "last_activity_at": now_iso,
-        "session_id": f"session_{uid_str}_{shift_date}",
+        "session_id": session_id,
+        "version": current_version,
         "updated_at": now_iso
     }
     await agent_presence_col.update_one({"agent_id": uid_str}, {"$set": presence_doc}, upsert=True)
@@ -465,7 +561,8 @@ async def record_presence_change(
         "started_at": prev_status_start,
         "ended_at": now_iso,
         "duration_seconds": dur_sec,
-        "session_id": f"session_{uid_str}_{shift_date}",
+        "session_id": session_id,
+        "version": current_version,
         "created_at": now_iso
     }
     await agent_status_history_col.insert_one(history_doc)
@@ -478,6 +575,7 @@ async def record_presence_change(
         "pause_reason": pause_reason,
         "timestamp": now_iso,
         "source": source,
+        "version": current_version,
     }
 
     if not shift_doc:
@@ -521,10 +619,13 @@ async def record_presence_change(
 
         await agent_shifts_col.update_one({"_id": shift_doc["_id"]}, shift_update)
 
-    # Broadcast real-time WebSocket event globally across all dashboards
+    # Broadcast standardized real-time WebSocket event containing:
+    # agentId, sessionId, status, timestamp, version (Req 8)
     data_payload = {
+        "agentId": uid_str,
         "user_id": uid_str,
         "id": uid_str,
+        "sessionId": session_id,
         "name": user.get("name"),
         "email": user.get("email"),
         "role": user.get("role"),
@@ -551,30 +652,31 @@ async def record_presence_change(
         "completed_8_hours": gross_seconds >= 28800,
         "eightHourCompleted": gross_seconds >= 28800,
         "session_status": "COMPLETED" if gross_seconds >= 28800 else "INCOMPLETE",
-
         "waiting_seconds": new_waiting_seconds,
         "active_waiting_seconds": active_waiting_seconds,
         "total_waiting_seconds": total_waiting_seconds,
         "waiting_started_at": new_waiting_started,
-        "last_waiting_started_at": new_waiting_started,
         "last_status_change": now_iso,
+        "statusSince": now_iso,
         "status_since": now_iso,
         "last_activity": now_iso,
         "timestamp": now_iso,
+        "version": current_version,
     }
-
-
 
     presence_payload = {
         "event": "agent.status.changed",
         "type": "agent_presence_updated",
         "agentId": uid_str,
         "user_id": uid_str,
+        "sessionId": session_id,
         "previousStatus": current_status,
         "status": new_status,
+        "raw_status": new_status,
         "reason": pause_reason if new_status == "paused" else None,
         "statusSince": now_iso,
         "timestamp": now_iso,
+        "version": current_version,
         "data": data_payload
     }
 
@@ -673,12 +775,13 @@ async def update_status(payload: StatusUpdateRequest, current_user: dict = Depen
     """Update current agent status (Ready, Paused, Offline) and broadcast to all dashboards."""
     uid = str(current_user["_id"])
     target_status = payload.status.lower().strip()
+    force_flag = bool(payload.force_offline or payload.forceOffline)
     result = await record_presence_change(
         user_id=uid,
         new_status=target_status,
         pause_reason=payload.pause_reason,
         source="user_action",
-        force_offline=bool(payload.force_offline)
+        force_offline=force_flag
     )
     if not result:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Failed to update presence status")
@@ -687,20 +790,44 @@ async def update_status(payload: StatusUpdateRequest, current_user: dict = Depen
 
 @router.get("/agents")
 async def get_agents_presence(current_user: dict = Depends(get_current_user)):
-    """Fetch live presence details for all agents/users for TL and Admin dashboards."""
-    role = current_user.get("role")
-    pool_id = current_user.get("pool_id")
+    """Fetch live presence details for agents based on role-based requirement pool access control."""
+    role = (current_user.get("role") or "").lower().strip()
+    uid_str = str(current_user.get("id") or current_user.get("_id", ""))
 
     query = {}
-    if role == "team_leader" and pool_id:
-        query["$or"] = [{"pool_id": pool_id}, {"role": "agent"}]
-    elif role == "agent":
-        query["_id"] = current_user["_id"]
+    if role == "agent":
+        query["_id"] = current_user["_id"] if ObjectId.is_valid(uid_str) else uid_str
+    elif role == "team_leader":
+        permitted_pools = await get_supervisor_assigned_pool_ids(current_user)
+        if permitted_pools is not None:
+            query["$or"] = [
+                {"pool_id": {"$in": permitted_pools}},
+                {"supervisor_id": uid_str},
+                {"_id": current_user["_id"]}
+            ]
 
     cursor = users_col.find(query, {"password": 0})
+
+    # Fetch pool documents for name resolution
+    pools_cursor = pools_col.find({"is_deleted": {"$ne": True}})
+    pools_map = {}
+    async for p in pools_cursor:
+        pid = str(p["_id"])
+        pname = p.get("name", "General")
+        # Format pool name e.g. credit_card_sales -> Credit Card Sales
+        formatted_name = " ".join([word.capitalize() for word in pname.replace("_", " ").split()])
+        pools_map[pid] = formatted_name
+        pools_map[pname] = formatted_name
+
+    # Fetch supervisor names
+    supervisors_cursor = users_col.find({"role": {"$in": ["team_leader", "admin"]}}, {"name": 1})
+    supervisors_map = {}
+    async for sup in supervisors_cursor:
+        supervisors_map[str(sup["_id"])] = sup.get("name", "Supervisor")
+
     agents = []
     now = utcnow()
-
+    now_iso = now.isoformat()
     today_str = now.strftime("%Y-%m-%d")
 
     async for u in cursor:
@@ -742,16 +869,50 @@ async def get_agents_presence(current_user: dict = Depends(get_current_user)):
             except Exception:
                 pass
         tot_waiting_sec = waiting_sec + act_waiting_sec
+        ready_sec = max(0, gross_sec - tot_break_sec)
+
+        raw_stats = u.get("break_stats") or {}
+        break_stats = {
+            "tea_break": {"count": raw_stats.get("tea_break", {}).get("count", 0), "total_seconds": raw_stats.get("tea_break", {}).get("total_seconds", 0)},
+            "lunch_break": {"count": raw_stats.get("lunch_break", {}).get("count", 0), "total_seconds": raw_stats.get("lunch_break", {}).get("total_seconds", 0)},
+            "personal_reason": {"count": raw_stats.get("personal_reason", {}).get("count", 0), "total_seconds": raw_stats.get("personal_reason", {}).get("total_seconds", 0)},
+        } if is_today else {
+            "tea_break": {"count": 0, "total_seconds": 0},
+            "lunch_break": {"count": 0, "total_seconds": 0},
+            "personal_reason": {"count": 0, "total_seconds": 0},
+        }
+
+        pid_raw = u.get("pool_id") or "unassigned"
+        pool_name_display = pools_map.get(str(pid_raw), pools_map.get(pid_raw, "General Pool"))
+
+        sup_id_raw = u.get("supervisor_id")
+        sup_name_display = supervisors_map.get(str(sup_id_raw), "N/A") if sup_id_raw else "N/A"
+
+        status_since_val = u.get("last_status_change") if is_today else login_val or now_iso
 
         agents.append({
+            # Standardized Central Realtime Pool State Fields
+            "agentId": uid,
+            "agentName": u.get("name", "Unknown Agent"),
+            "requirementPoolId": str(pid_raw),
+            "requirementPoolName": pool_name_display,
+            "supervisorId": str(sup_id_raw) if sup_id_raw else None,
+            "supervisorName": sup_name_display,
+            "status": st,
+            "statusSince": status_since_val,
+            "currentCallId": u.get("currentCallId") if is_today else None,
+            "currentCallType": u.get("currentCallType") if is_today else None,
+            "loginAt": login_val,
+            "lastUpdatedAt": now_iso,
+
+            # Legacy compatibility fields
             "id": uid,
             "user_id": uid,
             "name": u.get("name", "Unknown Agent"),
             "email": u.get("email"),
             "role": u.get("role", "agent"),
             "employee_id": u.get("employee_id"),
-            "pool_id": u.get("pool_id"),
-            "status": st,
+            "pool_id": str(pid_raw),
             "pause_reason": u.get("pause_reason") if is_today else None,
             "login_at": login_val,
             "logout_at": logout_val,
@@ -776,36 +937,39 @@ async def get_agents_presence(current_user: dict = Depends(get_current_user)):
             "shift_target_reached": gross_sec >= 28800,
             "completed_8_hours": gross_sec >= 28800,
             "remaining_seconds": max(0, 28800 - gross_sec),
-            "last_status_change": u.get("last_status_change") if is_today else None,
-            "last_activity": u.get("last_status_change") if is_today else u.get("updated_at") or u.get("created_at"),
+            "last_status_change": status_since_val,
+            "last_activity": status_since_val or u.get("updated_at") or u.get("created_at"),
             "is_active": u.get("is_active", True)
         })
 
     return agents
 
 
-
 @router.get("/summary")
 async def get_presence_summary(current_user: dict = Depends(get_current_user)):
-    """Fetch aggregate presence counts for top dashboard summary cards."""
-    total_agents = await users_col.count_documents({"role": "agent"})
-    ready_count = await users_col.count_documents({"role": "agent", "status": "ready"})
-    paused_count = await users_col.count_documents({"role": "agent", "status": "paused"})
-    in_call_count = await users_col.count_documents({"role": "agent", "status": "in_call"})
-    offline_count = await users_col.count_documents({
-        "role": "agent",
-        "$or": [{"status": "offline"}, {"status": {"$exists": False}}]
-    })
-    online_count = ready_count + paused_count + in_call_count
+    """Fetch aggregate presence counts for top dashboard summary cards, strictly authorized for the user's role/pools."""
+    agents_list = await get_agents_presence(current_user=current_user)
+
+    total_agents = len(agents_list)
+    ready_count = sum(1 for a in agents_list if a.get("status") in ("ready", "available"))
+    paused_count = sum(1 for a in agents_list if a.get("status") in ("paused", "break", "on_break"))
+    ringing_count = sum(1 for a in agents_list if a.get("status") == "ringing")
+    in_call_count = sum(1 for a in agents_list if a.get("status") in ("in_call", "talking", "on_call", "busy"))
+    wrap_up_count = sum(1 for a in agents_list if a.get("status") in ("wrap_up", "wrapup"))
+    offline_count = sum(1 for a in agents_list if a.get("status") in ("offline", None) or not a.get("status"))
+    online_count = ready_count + paused_count + ringing_count + in_call_count + wrap_up_count
 
     return {
         "total_agents": total_agents,
         "online_count": online_count,
         "ready_count": ready_count,
         "paused_count": paused_count,
+        "ringing_count": ringing_count,
         "in_call_count": in_call_count,
+        "wrap_up_count": wrap_up_count,
         "offline_count": offline_count,
     }
+
 
 
 @router.get("/shifts")
@@ -882,6 +1046,9 @@ async def get_current_shift_summary(
     ready_sec = max(0, gross_seconds - tot_break_sec)
     completed_8_hours = gross_seconds >= 28800
     remaining_sec = max(0, 28800 - gross_seconds)
+
+    talk_sec = user.get("talk_seconds", 0) if is_today else (shift_doc.get("talk_seconds", 0) if shift_doc else 0)
+    calls_count = user.get("total_calls_handled", 0) if is_today else (shift_doc.get("total_calls_handled", 0) if shift_doc else 0)
 
     waiting_sec = user.get("waiting_seconds", 0) if is_today else 0
     w_started = user.get("waiting_started_at") if is_today else None
@@ -1023,6 +1190,19 @@ async def get_my_presence_endpoint(current_user: dict = Depends(get_current_user
     ready_sec = max(0, gross_sec - tot_break_sec)
     eight_completed = gross_sec >= 28800
 
+    waiting_sec = user.get("waiting_seconds", 0) if is_today else 0
+    w_started = user.get("waiting_started_at") if is_today else None
+    act_waiting_sec = 0
+    if st == "ready" and w_started:
+        try:
+            w_dt = datetime.fromisoformat(w_started.replace("Z", "+00:00"))
+            elapsed = max(0, int((now - w_dt).total_seconds()))
+            if elapsed < 43200:
+                act_waiting_sec = elapsed
+        except Exception:
+            pass
+    tot_waiting_sec = waiting_sec + act_waiting_sec
+
     # Session-specific call telemetry (only calls in active attendance session)
     check_in_dt_naive = None
     try:
@@ -1070,6 +1250,11 @@ async def get_my_presence_endpoint(current_user: dict = Depends(get_current_user
         "loginSeconds": gross_sec,
         "remainingSeconds": max(0, 28800 - gross_sec),
         "eightHourCompleted": eight_completed,
+
+        "waiting_seconds": waiting_sec,
+        "active_waiting_seconds": act_waiting_sec,
+        "total_waiting_seconds": tot_waiting_sec,
+        "waiting_started_at": w_started if st == "ready" else None,
 
         "pause_reason": user.get("pause_reason") if is_today else None,
         "statusSince": user.get("last_status_change") if is_today else now_iso,

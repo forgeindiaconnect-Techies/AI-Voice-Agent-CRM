@@ -72,6 +72,38 @@ async def list_pools(user: dict = Depends(get_current_user)):
     return pools
 
 
+@router.get("/assigned")
+async def list_assigned_pools(user: dict = Depends(get_current_user)):
+    """Fetch assigned requirement pools for current user (Admin gets all pools, Supervisor gets assigned pools)."""
+    from app.routes.presence import get_supervisor_assigned_pool_ids
+    
+    pools = []
+    async for p in pools_col.find({"is_deleted": {"$ne": True}}):
+        doc = oid_str(p)
+        # Format display name e.g. credit_card_sales -> Credit Card Sales
+        pname = doc.get("name", "")
+        doc["display_name"] = " ".join([w.capitalize() for w in pname.replace("_", " ").split()])
+        pools.append(doc)
+
+    role = (user.get("role") or "").lower().strip()
+    if role == "admin":
+        return pools
+
+    permitted = await get_supervisor_assigned_pool_ids(user)
+    if permitted is None:
+        return pools
+
+    permitted_set = set(permitted)
+    filtered = []
+    for p in pools:
+        pid = str(p.get("id") or p.get("_id") or "")
+        pname = p.get("name") or ""
+        if pid in permitted_set or pname in permitted_set:
+            filtered.append(p)
+    return filtered
+
+
+
 @router.delete("/{pool_id}", dependencies=[Depends(require_roles(Role.ADMIN))])
 async def delete_pool(pool_id: str, user: dict = Depends(get_current_user)):
     pool = await pools_col.find_one({"_id": ObjectId(pool_id)})

@@ -30,10 +30,12 @@ function sleep(ms) {
 if (process.platform === 'win32') {
   const processNames = [
     'ForgeCRM.exe',
+    'forge-india-connect-crm.exe',
     'Forge CRM Desktop.exe',
     'Forge CRM Desktop 0.1.0.exe',
     'Forge CRM.exe',
-    'electron.exe'
+    'electron.exe',
+    'app-builder.exe'
   ];
 
   let killedAny = false;
@@ -83,10 +85,11 @@ function forceCleanDir(dirPath) {
   }
 }
 
-// 2. Clean build output directories (dist & dist-electron)
+// 2. Clean build output directories (dist, dist-electron, and release)
 const dirsToClean = [
   path.join(frontendDir, 'dist'),
-  path.join(frontendDir, 'dist-electron')
+  path.join(frontendDir, 'dist-electron'),
+  path.join(frontendDir, 'release')
 ];
 
 for (const dir of dirsToClean) {

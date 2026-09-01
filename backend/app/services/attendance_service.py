@@ -82,38 +82,19 @@ async def sync_user_presence(
     pause_reason: str | None = None,
     current_break: dict | None = None,
 ):
-    """Synchronize user presence records in users_col and agent_presence_col."""
-    now_dt = utcnow()
-    today_str = get_local_date_str(now_dt)
-    user_query = {"_id": ObjectId(agent_id)} if ObjectId.is_valid(agent_id) else {"id": agent_id}
+    """Synchronize user presence records in users_col and agent_presence_col via record_presence_change."""
+    from app.routes.presence import record_presence_change
+    try:
+        await record_presence_change(
+            user_id=agent_id,
+            new_status=status_str,
+            pause_reason=pause_reason,
+            source="attendance_service",
+            force_offline=True
+        )
+    except Exception as e:
+        logger.warning(f"[ATTENDANCE SYNC PRESENCE] Call to record_presence_change failed: {e}")
 
-    update_doc: dict = {
-        "status": status_str,
-        "last_status_change": now_dt.isoformat(),
-        "updated_at": now_dt,
-    }
-    if login_at is not None:
-        update_doc["login_at"] = login_at
-        update_doc["shift_date"] = today_str
-    if logout_at is not None:
-        update_doc["logout_at"] = logout_at
-    if pause_reason is not None or status_str == "ready":
-        update_doc["pause_reason"] = pause_reason
-    if current_break is not None or status_str == "ready":
-        update_doc["current_break"] = current_break
-
-    await users_col.update_one(user_query, {"$set": update_doc})
-
-    presence_doc = {
-        "agent_id": agent_id,
-        "user_id": agent_id,
-        **update_doc,
-    }
-    await agent_presence_col.update_one(
-        {"agent_id": agent_id},
-        {"$set": presence_doc},
-        upsert=True
-    )
 
 
 async def get_today_attendance(agent_id: str) -> dict:

@@ -100,6 +100,11 @@ export const getWsUrl = (roomPath: string = ""): string => {
   }
 };
 
+export const sanitizeUrl = (url: string): string => {
+  if (!url) return "";
+  return url.replace(/([?&]token=)[^&]+/g, "$1***");
+};
+
 
 export type ApiFetchOptions = RequestInit & {
   timeoutMs?: number;
