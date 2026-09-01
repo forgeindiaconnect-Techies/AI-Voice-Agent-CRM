@@ -1854,6 +1854,30 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
     except Exception as e:
         print(f"Failed to initiate Twilio call: {e}")
 
+    # Plivo Outbound PSTN Call trigger if configured
+    plivo_auth_id = getattr(settings, 'PLIVO_AUTH_ID', '') or os.getenv('PLIVO_AUTH_ID', '')
+    plivo_auth_token = getattr(settings, 'PLIVO_AUTH_TOKEN', '') or os.getenv('PLIVO_AUTH_TOKEN', '')
+    plivo_phone_number = getattr(settings, 'PLIVO_PHONE_NUMBER', '+918031826757')
+    base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
+
+    if plivo_auth_id and plivo_auth_token:
+        try:
+            plivo_url = f"https://api.plivo.com/v1/Account/{plivo_auth_id}/Call/"
+            plivo_body = {
+                "from": plivo_phone_number.replace("+", ""),
+                "to": normalized_phone.replace("+", ""),
+                "answer_url": f"{base_url}/api/calls/plivo/answer",
+                "answer_method": "POST",
+            }
+            client = get_http_client()
+            res = await client.post(plivo_url, json=plivo_body, auth=(plivo_auth_id, plivo_auth_token), timeout=10.0)
+            if res.status_code in (200, 201, 202):
+                print(f"[Plivo] Outbound Call initiated successfully: {res.json()}")
+            else:
+                print(f"[Plivo] API Error: {res.status_code} - {res.text}")
+        except Exception as plivo_err:
+            print(f"[Plivo] Exception initiating outbound call: {plivo_err}")
+
     sip_logs = [
         f"[{utcnow().isoformat()}] [SIP] INVITE sip:{payload.pool_id}@forge-pbx.local SIP/2.0",
         f"[{utcnow().isoformat()}] [SIP] From: <sip:{normalized_phone}@sip-carrier.net>;tag=as312df5",

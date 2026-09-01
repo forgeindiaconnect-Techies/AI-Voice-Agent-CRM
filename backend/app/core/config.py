@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     PLIVO_APP_ID: str = "42024221415255694"
     PLIVO_PHONE_NUMBER: str = "+918031826757"
     PLIVO_SIP_URI: str = "sip:42024221415255694@app.plivo.com"
+    PLIVO_AUTH_ID: str = ""
+    PLIVO_AUTH_TOKEN: str = ""
     BASE_URL: str = "https://ai-voice-agent-crm.onrender.com"
 
     class Config:
