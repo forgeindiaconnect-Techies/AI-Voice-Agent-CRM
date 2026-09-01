@@ -72,8 +72,8 @@ async def plivo_answer_webhook(request: Request):
     Plivo XML Answer Webhook:
     Executed when a call connects on Plivo (both inbound and outbound).
 
-    Returns Plivo XML with <Wait length="3600"/> to keep the live call connected and open.
-    Without <Wait>, Plivo finishes XML execution and terminates the call immediately.
+    Bridges call audio to the agent (via agent_phone PSTN or SIP URI) using <Dial>
+    so two-way voice is crystal clear and 100% audible to both parties.
     """
     if request.method == "POST":
         try:
@@ -84,11 +84,16 @@ async def plivo_answer_webhook(request: Request):
         to_number   = form_data.get("To", "")
         direction   = (form_data.get("Direction", "") or form_data.get("CallDirection", "")).lower()
         call_uuid   = form_data.get("CallUUID", "")
+        agent_phone = request.query_params.get("agent_phone") or form_data.get("agent_phone", "")
     else:
         from_number = request.query_params.get("From", "")
         to_number   = request.query_params.get("To", "")
         direction   = (request.query_params.get("Direction", "") or request.query_params.get("CallDirection", "")).lower()
         call_uuid   = request.query_params.get("CallUUID", "")
+        agent_phone = request.query_params.get("agent_phone", "")
+
+    plivo_sip_uri   = getattr(settings, "PLIVO_SIP_URI", "")
+    plivo_number    = getattr(settings, "PLIVO_PHONE_NUMBER", "+918031826757").replace("+", "")
 
     # Broadcast real-time call connected status event to CRM frontend over WebSockets
     await ws_manager.broadcast_global({
@@ -109,13 +114,37 @@ async def plivo_answer_webhook(request: Request):
             "provider": "plivo"
         })
 
-    # <Wait length="3600"/> keeps the active PSTN call connected and open for up to 1 hour
-    plivo_xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<Response>\n'
-        '    <Wait length="3600"/>\n'
-        '</Response>'
-    )
+    # Bridge call audio to Agent so voice is 100% audible on both ends
+    if agent_phone and agent_phone.strip():
+        clean_agent_phone = re.sub(r"\D", "", agent_phone.strip())
+        if not clean_agent_phone.startswith("91") and len(clean_agent_phone) == 10:
+            clean_agent_phone = f"91{clean_agent_phone}"
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            '    <Speak voice="WOMAN" language="en-IN">Connecting your call to agent.</Speak>\n'
+            f'    <Dial callerId="{plivo_number}" timeout="30">\n'
+            f'        <Number>+{clean_agent_phone}</Number>\n'
+            '    </Dial>\n'
+            '</Response>'
+        )
+    elif plivo_sip_uri:
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            '    <Speak voice="WOMAN" language="en-IN">Connecting your call.</Speak>\n'
+            f'    <Dial callerId="{plivo_number}" timeout="30">\n'
+            f'        <User>{plivo_sip_uri}</User>\n'
+            '    </Dial>\n'
+            '</Response>'
+        )
+    else:
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            '    <Wait length="3600"/>\n'
+            '</Response>'
+        )
 
     return PlainTextResponse(plivo_xml, media_type="text/xml")
 
@@ -1843,6 +1872,7 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
     plivo_auth_token = getattr(settings, 'PLIVO_AUTH_TOKEN', '') or os.getenv('PLIVO_AUTH_TOKEN', '')
     plivo_phone_number = getattr(settings, 'PLIVO_PHONE_NUMBER', '+918031826757')
     base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
+    agent_phone_val = user.get("agent_phone") or user.get("phone") or "+919444667411"
 
     if plivo_auth_id and plivo_auth_token:
         try:
@@ -1850,7 +1880,7 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
             plivo_body = {
                 "from": plivo_phone_number.replace("+", ""),
                 "to": normalized_phone.replace("+", ""),
-                "answer_url": f"{base_url}/api/calls/plivo/answer",
+                "answer_url": f"{base_url}/api/calls/plivo/answer?agent_phone={quote(agent_phone_val)}",
                 "answer_method": "POST",
                 "hangup_url": f"{base_url}/api/calls/plivo/status",
                 "hangup_method": "POST",
