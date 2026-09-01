@@ -114,17 +114,37 @@ async def plivo_answer_webhook(request: Request):
             "provider": "plivo"
         })
 
-    # Bridge call audio to Agent so voice is 100% audible on both ends
-    if agent_phone and agent_phone.strip():
-        clean_agent_phone = re.sub(r"\D", "", agent_phone.strip())
-        if not clean_agent_phone.startswith("91") and len(clean_agent_phone) == 10:
-            clean_agent_phone = f"91{clean_agent_phone}"
+    clean_from  = re.sub(r"\D", "", from_number)
+    clean_to    = re.sub(r"\D", "", to_number)
+    clean_agent = re.sub(r"\D", "", agent_phone.strip()) if agent_phone else ""
+
+    is_same = False
+    if clean_agent:
+        if clean_agent == clean_to or clean_agent == clean_from or clean_agent in clean_to or clean_to in clean_agent:
+            is_same = True
+
+    # ── Single Call Connection ────────────────────────────────────────────────
+    # For outbound calls or when agent phone matches target number, connect in ONE call only.
+    # Do not execute <Dial> to avoid triggering a second incoming call.
+    if is_same or direction in ("outbound", "outbound-api", "outboundapi", "out"):
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            '    <Wait length="3600"/>\n'
+            '</Response>'
+        )
+        return PlainTextResponse(plivo_xml, media_type="text/xml")
+
+    # ── Inbound Call Bridging ──────────────────────────────────────────────────
+    if clean_agent:
+        if not clean_agent.startswith("91") and len(clean_agent) == 10:
+            clean_agent = f"91{clean_agent}"
         plivo_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<Response>\n'
             '    <Speak voice="WOMAN" language="en-IN">Connecting your call to agent.</Speak>\n'
             f'    <Dial callerId="{plivo_number}" timeout="30">\n'
-            f'        <Number>+{clean_agent_phone}</Number>\n'
+            f'        <Number>+{clean_agent}</Number>\n'
             '    </Dial>\n'
             '</Response>'
         )
