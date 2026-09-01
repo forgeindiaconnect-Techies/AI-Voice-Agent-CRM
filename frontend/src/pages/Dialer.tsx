@@ -772,7 +772,7 @@ export default function Dialer() {
           // Plivo-only: unmute handled server-side
         }
       }
-      if (data.event === "call_status_update" && data.call_sid) {
+      if (data.event === "call_status_update") {
         const status: string = (data.call_status || "").toLowerCase();
         if (status === "busy") {
           callEndReasonRef.current = "busy";
@@ -792,13 +792,22 @@ export default function Dialer() {
           setAgentStatus("ready");
           isDialingRef.current = false;
           setIsDialing(false);
-        } else if (status === "in-progress") {
+        } else if (status === "in-progress" || status === "answered") {
           setCallStatus("connected");
           setAgentStatus("on_call");
-        } else if (status === "completed" || status === "canceled") {
-          if (callStatus === "connected" || callStatus === "hold") {
+          isDialingRef.current = false;
+          setIsDialing(false);
+          setCallDuration(0);
+        } else if (status === "ringing" || status === "initiated") {
+          setCallStatus("ringing");
+        } else if (status === "completed" || status === "canceled" || status === "hangup") {
+          // Transition to wrapup from any active call state
+          const cur = callStatusRef.current;
+          if (cur === "connected" || cur === "hold" || cur === "ringing" || cur === "dialing") {
             setCallStatus("wrapup");
             setAgentStatus("wrap_up");
+            isDialingRef.current = false;
+            setIsDialing(false);
           }
         }
       }

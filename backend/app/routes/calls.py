@@ -157,9 +157,12 @@ async def plivo_answer_webhook(request: Request):
 @router.api_route("/plivo/hangup", methods=["GET", "POST"])
 async def plivo_hangup_callback(request: Request):
     """
-    Plivo Dial callbackUrl – fired when the <Dial> leg ends (agent hangs up
-    or the bridged call finishes).  We broadcast the completed event so the
-    frontend transitions to wrapup.
+    Plivo Hangup URL callback.
+    Fired when ANY Plivo call ends (set as the Application Hangup URL
+    and as hangup_url in the outbound REST API call).
+
+    Plivo posts these fields on hangup:
+      CallUUID, CallStatus, HangupCause, From, To, Duration, Direction, etc.
     """
     try:
         if request.method == "POST":
@@ -170,19 +173,39 @@ async def plivo_hangup_callback(request: Request):
         else:
             form_data = request.query_params
 
-        dial_status = (form_data.get("DialStatus", "") or form_data.get("DialHangupCause", "")).lower()
-        call_uuid   = form_data.get("CallUUID", "")
-        from_number = form_data.get("From", "")
-        to_number   = form_data.get("To", "")
+        # Plivo real field names
+        call_uuid    = form_data.get("CallUUID", "")
+        call_status  = (form_data.get("CallStatus", "") or "completed").lower()
+        hangup_cause = form_data.get("HangupCause", "")
+        from_number  = form_data.get("From", "")
+        to_number    = form_data.get("To", "")
+        duration     = form_data.get("Duration", "0")
+        direction    = form_data.get("Direction", "")
+
+        print(f"[Plivo Hangup] uuid={call_uuid} status={call_status} cause={hangup_cause} from={from_number} to={to_number} dur={duration}s dir={direction}")
+
+        # Map Plivo terminal statuses
+        status_map = {
+            "completed":  "completed",
+            "hangup":     "completed",
+            "busy":       "busy",
+            "no-answer":  "no-answer",
+            "failed":     "failed",
+            "rejected":   "failed",
+            "canceled":   "canceled",
+            "answered":   "in-progress",   # rare but possible
+        }
+        mapped = status_map.get(call_status, "completed")
 
         await ws_manager.broadcast_global({
-            "event": "call_status_update",
-            "call_status": "completed",
-            "call_sid": call_uuid,
-            "from": from_number,
-            "to": to_number,
-            "provider": "plivo",
-            "dial_status": dial_status,
+            "event":        "call_status_update",
+            "call_status":  mapped,
+            "call_sid":     call_uuid,
+            "from":         from_number,
+            "to":           to_number,
+            "duration":     duration,
+            "hangup_cause": hangup_cause,
+            "provider":     "plivo",
         })
     except Exception as e:
         print(f"[Plivo Hangup Callback] Error: {e}")
