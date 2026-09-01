@@ -298,6 +298,17 @@ export default function Dialer() {
   const [autoAnswerEnabled, setAutoAnswerEnabled] = useState<boolean>(false);
   const [ringingDuration, setRingingDuration] = useState<number>(0);
   const processedCallIdsRef = useRef<Set<string>>(new Set());
+  const autoDialTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoDialLockRef = useRef<string>("");
+
+  const handleKeypadPress = (digit: string) => {
+    if (callStatus !== "ready" || isDialing || isDialingRef.current) return;
+    if (digit === "*" || digit === "#") return;
+    if (outboundPhone.length < 10) {
+      const nextPhone = sanitizeMobileNumber(outboundPhone + digit);
+      setOutboundPhone(nextPhone);
+    }
+  };
 
   const ringingStartTimeRef = useRef<number | null>(null);
   const answeredStartTimeRef = useRef<number | null>(null);
@@ -309,6 +320,34 @@ export default function Dialer() {
   useEffect(() => {
     callStatusRef.current = callStatus;
   }, [callStatus]);
+
+  // Auto-Dial Outbound Call Trigger on 10th Digit
+  useEffect(() => {
+    if (autoDialTimerRef.current) {
+      clearTimeout(autoDialTimerRef.current);
+      autoDialTimerRef.current = null;
+    }
+
+    if (dialerMode !== "outbound") return;
+
+    if (outboundPhone !== autoDialLockRef.current) {
+      autoDialLockRef.current = "";
+    }
+
+    if (outboundPhone.length === 10) {
+      const isValid = /^[6-9]\d{9}$/.test(outboundPhone);
+      if (!isValid) return;
+
+      if (callStatus !== "ready" || isDialingRef.current || isDialing) return;
+      if (autoDialLockRef.current === outboundPhone) return;
+
+      autoDialLockRef.current = outboundPhone;
+      autoDialTimerRef.current = setTimeout(() => {
+        if (isDialingRef.current || callStatusRef.current !== "ready") return;
+        handleDial();
+      }, 200);
+    }
+  }, [outboundPhone, dialerMode, callStatus, isDialing, handleDial]);
 
   const totalRingingSecs = (ringingSeconds || 0) + (callStatus === "ringing" ? ringingDuration : 0);
   const ringingTimeFormatted = formatSecsToHMS(totalRingingSecs);
@@ -1169,10 +1208,10 @@ export default function Dialer() {
   };
 
   // Call Initiation
-  const handleDial = async (overrideMode?: "human" | "ai", simSlot: "sim1" | "sim2" = "sim1") => {
+  const handleDial = useCallback(async (overrideMode?: "human" | "ai", simSlot: "sim1" | "sim2" = "sim1") => {
     if (!isValidMobile) return;
     if (isDialingRef.current || isDialing) return;
-    if (callStatus === "dialing" || callStatus === "ringing" || callStatus === "connected" || callStatus === "hold") return;
+    if (callStatusRef.current !== "ready") return;
 
     const targetMode = overrideMode || callMode;
     setCallMode(targetMode);
@@ -1185,17 +1224,13 @@ export default function Dialer() {
       }
     }
 
-    if (callStatus !== "ready") {
-      setCallStatus("ready");
-      setCurrentCallId(null);
-    }
-
     isDialingRef.current = true;
     setIsDialing(true);
     callEndReasonRef.current = "";
 
-    const idempotencyKey = `${user?.id || 'agent'}_${outboundPhone}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
+    const cleanNumber = sanitizeMobileNumber(outboundPhone);
+    const fullPhoneNumber = `+91${cleanNumber}`;
+    const idempotencyKey = `${user?.id || 'agent'}_${cleanNumber}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     setIsCreatingLead(true);
     setCallStatus("dialing");
@@ -1204,7 +1239,6 @@ export default function Dialer() {
     setIsMuted(false);
     setIsSpeaker(false);
 
-    const fullPhoneNumber = `+91${outboundPhone}`;
     let matchedLead = selectedLead || leads.find(l => {
       const cleanL = l.phone.replace(/\D/g, "");
       const cleanTarget = fullPhoneNumber.replace(/\D/g, "");
@@ -1214,7 +1248,7 @@ export default function Dialer() {
     if (!matchedLead) {
       try {
         const res = await api.post("/api/leads", {
-          name: `Manual Lead - ${outboundPhone}`,
+          name: `Manual Lead - ${cleanNumber}`,
           phone: fullPhoneNumber,
           pool_id: user?.pool_id || leads[0]?.pool_id || "6a6b40b7841e208e1cb69469",
           source: "Manual Dialer"
@@ -1236,7 +1270,7 @@ export default function Dialer() {
       try {
         const res = await api.post("/api/calls/vapi-dial", {
           phone: fullPhoneNumber,
-          name: matchedLead?.name || `Manual Lead - ${outboundPhone}`,
+          name: matchedLead?.name || `Manual Lead - ${cleanNumber}`,
           pool_id: matchedLead?.pool_id || user?.pool_id || "general",
           idempotency_key: idempotencyKey,
           sim_slot: simSlot
@@ -1245,24 +1279,26 @@ export default function Dialer() {
         setCallStatus("connected");
         setAgentStatus("on_call");
         setCallDuration(0);
-        isDialingRef.current = false;
-        setIsDialing(false);
+        setOutboundPhone(""); // Reset number ONLY after call request is successfully created
+        autoDialLockRef.current = "";
         fetchLeads();
         fetchCallHistory();
         showToast(`Vapi AI Voice Agent call initiated on ${simSlot === "sim2" ? "SIM 2" : "SIM 1"}`, "success");
         return;
       } catch (err: any) {
-        const msg = typeof err.message === "string" ? err.message : JSON.stringify(err.message || "");
-        showToast(msg || "Vapi AI Call Failed", "error");
+        const msg = err?.response?.data?.detail || (typeof err.message === "string" ? err.message : "Vapi AI Call Failed");
+        showToast(msg, "error");
         setCallStatus("ready");
         setAgentStatus("ready");
+        autoDialLockRef.current = "";
+        return;
+      } finally {
         isDialingRef.current = false;
         setIsDialing(false);
-        return;
       }
     }
 
-    // Human Agent WebRTC Softphone Call
+    // Human Agent PSTN Call via Plivo
     try {
       const res = await api.post("/api/calls/manual-dial", {
         phone: fullPhoneNumber,
@@ -1278,53 +1314,23 @@ export default function Dialer() {
         sim_slot: simSlot
       });
       setCurrentCallId(res.id || res._id || res.call_id || null);
+      setCallStatus("ringing");
+      setOutboundPhone(""); // Reset number ONLY after call request is successfully created
+      autoDialLockRef.current = "";
+      showToast(`Calling ${fullPhoneNumber} via Plivo…`, "info");
+      fetchLeads();
+      fetchCallHistory();
     } catch (err: any) {
-      const msg = typeof err.message === "string" ? err.message : JSON.stringify(err.message || "");
-      if (err.status === 409 || msg.includes("already in progress") || msg.includes("active call")) {
-        try {
-          if (currentCallId) {
-            await api.post(`/api/calls/${currentCallId}/force-end`).catch(() => {});
-          }
-          const retryRes = await api.post("/api/calls/manual-dial", {
-            phone: fullPhoneNumber,
-            pool_id: matchedLead?.pool_id || user?.pool_id || "general",
-            language: "english",
-            agent_assign_mode: "manual",
-            assigned_agent_id: user?.id,
-            priority: "high",
-            notes: "",
-            initiate_pstn: true,
-            idempotency_key: `retry_${idempotencyKey}`,
-            call_mode: callMode
-          });
-          setCurrentCallId(retryRes.id || retryRes._id || retryRes.call_id || null);
-        } catch (retryErr: any) {
-          showToast("Previous session conflict resolved. Ready to dial.", "info");
-          setCallStatus("ready");
-          setAgentStatus("ready");
-          isDialingRef.current = false;
-          setIsDialing(false);
-          return;
-        }
-      } else {
-        showToast(msg || "Failed to start call", "error");
-        setCallStatus("ready");
-        setAgentStatus("ready");
-        isDialingRef.current = false;
-        setIsDialing(false);
-        return;
-      }
+      const msg = err?.response?.data?.detail || (typeof err.message === "string" ? err.message : "Failed to start call");
+      showToast(msg, "error");
+      setCallStatus("ready");
+      setAgentStatus("ready");
+      autoDialLockRef.current = "";
+    } finally {
+      isDialingRef.current = false;
+      setIsDialing(false);
     }
-
-    // Plivo Outbound: backend already triggered the Plivo REST call in /api/calls/manual-dial.
-    // Transition to ringing – real status updates arrive via WebSocket (call_status_update events).
-    setCallStatus("ringing");
-    isDialingRef.current = false;
-    setIsDialing(false);
-    showToast(`Calling ${fullPhoneNumber} via Plivo…`, "info");
-    fetchLeads();
-    fetchCallHistory();
-  };
+  }, [isValidMobile, isDialing, callMode, myStatus, setPresenceStatus, outboundPhone, selectedLead, leads, fetchLeads, user, fetchCallHistory, showToast, sanitizeMobileNumber]);
 
   const handleHangup = useCallback(() => {
     if (callStatus === "ready") return;
@@ -2310,10 +2316,11 @@ export default function Dialer() {
                               maxLength={10}
                               value={outboundPhone}
                               onChange={(e) => {
-                                if (callStatus !== "ready") return;
+                                if (callStatus !== "ready" || isDialing) return;
                                 setOutboundPhone(sanitizeMobileNumber(e.target.value));
                               }}
-                              readOnly={callStatus !== "ready"}
+                              disabled={callStatus !== "ready" || isDialing}
+                              readOnly={callStatus !== "ready" || isDialing}
                               placeholder="Enter 10-digit mobile number"
                               className="w-full bg-transparent font-mono font-extrabold text-sm text-slate-900 dark:text-white outline-none tracking-widest placeholder:text-slate-400 placeholder:text-xs placeholder:font-sans placeholder:font-medium placeholder:tracking-normal"
                             />

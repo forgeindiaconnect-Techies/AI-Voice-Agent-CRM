@@ -1768,9 +1768,21 @@ async def start_vapi_dial(payload: VapiDialPayload, user: dict = Depends(get_cur
 
 @router.post("/manual-dial", dependencies=[Depends(require_roles(Role.ADMIN, Role.TEAM_LEADER, Role.AGENT))])
 async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get_current_user)):
-    normalized_phone = normalize_phone(payload.phone)
-    if not normalized_phone:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid phone number provided")
+    raw_phone = (payload.phone or "").strip()
+    digits = re.sub(r"\D", "", raw_phone)
+
+    # Server-side strict validation for 10-digit Indian mobile numbers
+    if len(digits) == 10 and digits[0] in "6789":
+        normalized_phone = f"+91{digits}"
+    elif len(digits) == 12 and digits.startswith("91") and digits[2] in "6789":
+        normalized_phone = f"+91{digits[2:]}"
+    elif raw_phone.startswith("+91") and len(digits) == 12 and digits[2] in "6789":
+        normalized_phone = f"+91{digits[2:]}"
+    else:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid Indian mobile number. Must be 10 digits starting with 6, 7, 8, or 9."
+        )
 
     print(f"[MANUAL] phone normalized: success ({normalized_phone})")
 
