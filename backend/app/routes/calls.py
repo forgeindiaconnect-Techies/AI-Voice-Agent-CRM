@@ -265,6 +265,15 @@ async def twilio_status_callback(request: Request):
     return PlainTextResponse("OK", media_type="text/plain")
 
 
+@router.api_route("/plivo/ucc", methods=["GET", "POST"])
+async def plivo_ucc_callback(request: Request):
+    """
+    Plivo UCC (Unsolicited Commercial Communication) Callback Webhook.
+    Receives compliance status updates for Indian DND / UCC regulations.
+    """
+    return JSONResponse(status_code=200, content={"status": "received"})
+
+
 def _uid(user: dict) -> str:
     return user.get("id") or str(user["_id"])
 
