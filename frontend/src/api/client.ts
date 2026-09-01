@@ -7,42 +7,15 @@ const RENDER_PROD_URL = "https://ai-voice-agent-crm.onrender.com";
 let currentBaseUrl: string | null = null;
 
 export const getBaseUrl = (): string => {
-  const isElectron =
-    typeof window !== "undefined" &&
-    (Boolean((window as any).electronAPI) ||
-      navigator.userAgent.toLowerCase().includes("electron") ||
-      window.location.protocol === "file:" ||
-      window.location.protocol.includes("electron"));
-
-  const isLocalEnv =
-    isElectron ||
-    (typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1" ||
-        window.location.hostname === "" ||
-        window.location.hostname.endsWith(".local")));
-
-  const isDev = Boolean(import.meta.env.DEV) || isLocalEnv;
-
-  // 1. In local dev or electron environment, clear stale remote Render URLs
+  // 1. User configured custom API URL in localStorage takes precedence
   if (typeof localStorage !== "undefined") {
     const savedUrl = localStorage.getItem("custom_api_url");
     if (savedUrl && savedUrl.trim() !== "") {
-      const cleanSaved = savedUrl.trim().replace(/\/+$/, "");
-      if (cleanSaved === RENDER_PROD_URL || (isDev && cleanSaved.includes("onrender.com"))) {
-        localStorage.removeItem("custom_api_url");
-      } else {
-        return cleanSaved;
-      }
+      return savedUrl.trim().replace(/\/+$/, "");
     }
   }
 
-  // 2. Localhost / Dev / Electron Environment default fallback to local backend
-  if (isDev) {
-    return "http://localhost:8000";
-  }
-
-  // 3. Check environment variable VITE_API_URL if configured
+  // 2. Check environment variable VITE_API_URL if configured
   if (import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL.trim() !== "") {
     let url = import.meta.env.VITE_API_URL.trim().replace(/\/+$/, "");
     if (url.startsWith(":")) {
@@ -51,6 +24,16 @@ export const getBaseUrl = (): string => {
       url = `${protocol}//${hostname}${url}`;
     }
     return url;
+  }
+
+  // 3. In Vite development mode on localhost, fallback to local backend if running
+  const isViteDev = Boolean(import.meta.env.DEV);
+  const isLocalHost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+  if (isViteDev && isLocalHost) {
+    return "http://localhost:8000";
   }
 
   // 4. Default Target: Production Render Backend
