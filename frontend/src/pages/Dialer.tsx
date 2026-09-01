@@ -766,30 +766,40 @@ export default function Dialer() {
       if (data.event === "manual_call_action") {
         if (data.action === "hold") {
           setCallStatus("hold");
-          if (callRef.current) {
-            try { callRef.current.mute(true); } catch {}
-          }
+          // Plivo-only: mute handled server-side
         } else if (data.action === "resume") {
           setCallStatus("connected");
-          if (callRef.current) {
-            try { callRef.current.mute(false); } catch {}
-          }
+          // Plivo-only: unmute handled server-side
         }
       }
       if (data.event === "call_status_update" && data.call_sid) {
         const status: string = (data.call_status || "").toLowerCase();
         if (status === "busy") {
           callEndReasonRef.current = "busy";
-          if (callRef.current) callRef.current.disconnect();
+          setCallStatus("busy");
+          setAgentStatus("ready");
+          isDialingRef.current = false;
+          setIsDialing(false);
         } else if (status === "no-answer" || status === "no_answer") {
           callEndReasonRef.current = "no-answer";
-          if (callRef.current) callRef.current.disconnect();
+          setCallStatus("no-answer");
+          setAgentStatus("ready");
+          isDialingRef.current = false;
+          setIsDialing(false);
         } else if (status === "failed") {
           callEndReasonRef.current = "failed";
-          if (callRef.current) callRef.current.disconnect();
+          setCallStatus("failed");
+          setAgentStatus("ready");
+          isDialingRef.current = false;
+          setIsDialing(false);
         } else if (status === "in-progress") {
           setCallStatus("connected");
           setAgentStatus("on_call");
+        } else if (status === "completed" || status === "canceled") {
+          if (callStatus === "connected" || callStatus === "hold") {
+            setCallStatus("wrapup");
+            setAgentStatus("wrap_up");
+          }
         }
       }
     };
@@ -1365,13 +1375,8 @@ export default function Dialer() {
     setIsMuteLoading(true);
     setIsMuted(nextMuted);
 
-    if (callRef.current) {
-      try {
-        callRef.current.mute(nextMuted);
-      } catch (err) {
-        console.warn("Local mic mute error:", err);
-      }
-    }
+    // Plivo-only: mic mute is handled via the backend mute action API.
+    // Local WebRTC stream is not available since we use Plivo PSTN.
 
     pushCallTimelineEvent(
       "mute",
