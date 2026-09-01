@@ -185,6 +185,41 @@ async def get_twiml_dial(request: Request):
     return PlainTextResponse(str(response), media_type="text/xml")
 
 
+@router.api_route("/plivo/answer", methods=["GET", "POST"])
+async def plivo_answer_webhook(request: Request):
+    """
+    Plivo XML Answer Webhook:
+    Executed when an inbound or outbound call connects on Plivo.
+    Returns valid Plivo XML (<Speak>, <Dial>, etc.).
+    """
+    if request.method == "POST":
+        try:
+            form_data = await request.form()
+        except Exception:
+            form_data = {}
+        from_number = form_data.get("From", "")
+        to_number = form_data.get("To", "")
+    else:
+        from_number = request.query_params.get("From", "")
+        to_number = request.query_params.get("To", "")
+
+    # Broadcast incoming call event to CRM frontend over WebSockets
+    await ws_manager.broadcast_global({
+        "event": "inbound_call",
+        "from": from_number,
+        "to": to_number,
+        "provider": "plivo"
+    })
+
+    plivo_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<Response>\n'
+        '    <Speak voice="WOMAN" language="en-IN">Welcome to Forge India Connect. Connecting your call to our agent dashboard now.</Speak>\n'
+        '</Response>'
+    )
+    return PlainTextResponse(plivo_xml, media_type="text/xml")
+
+
 @router.api_route("/status-callback", methods=["GET", "POST"])
 async def twilio_status_callback(request: Request):
     """
