@@ -300,15 +300,7 @@ export default function Dialer() {
   const processedCallIdsRef = useRef<Set<string>>(new Set());
   const autoDialTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoDialLockRef = useRef<string>("");
-
-  const handleKeypadPress = (digit: string) => {
-    if (callStatus !== "ready" || isDialing || isDialingRef.current) return;
-    if (digit === "*" || digit === "#") return;
-    if (outboundPhone.length < 10) {
-      const nextPhone = sanitizeMobileNumber(outboundPhone + digit);
-      setOutboundPhone(nextPhone);
-    }
-  };
+  const handleDialRef = useRef<() => void>();
 
   const ringingStartTimeRef = useRef<number | null>(null);
   const answeredStartTimeRef = useRef<number | null>(null);
@@ -344,10 +336,10 @@ export default function Dialer() {
       autoDialLockRef.current = outboundPhone;
       autoDialTimerRef.current = setTimeout(() => {
         if (isDialingRef.current || callStatusRef.current !== "ready") return;
-        handleDial();
+        handleDialRef.current?.();
       }, 200);
     }
-  }, [outboundPhone, dialerMode, callStatus, isDialing, handleDial]);
+  }, [outboundPhone, dialerMode, callStatus, isDialing]);
 
   const totalRingingSecs = (ringingSeconds || 0) + (callStatus === "ringing" ? ringingDuration : 0);
   const ringingTimeFormatted = formatSecsToHMS(totalRingingSecs);
@@ -1331,6 +1323,8 @@ export default function Dialer() {
       setIsDialing(false);
     }
   }, [isValidMobile, isDialing, callMode, myStatus, setPresenceStatus, outboundPhone, selectedLead, leads, fetchLeads, user, fetchCallHistory, showToast, sanitizeMobileNumber]);
+
+  handleDialRef.current = handleDial;
 
   const handleHangup = useCallback(() => {
     if (callStatus === "ready") return;
