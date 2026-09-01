@@ -70,8 +70,14 @@ from app.core.config import settings
 async def plivo_answer_webhook(request: Request):
     """
     Plivo XML Answer Webhook:
-    Executed when an inbound or outbound call connects on Plivo.
-    Returns valid Plivo XML (<Speak>, <Dial>, etc.).
+    Executed when a call connects on Plivo (both inbound and outbound).
+
+    - Outbound (agent dialled customer): call is already live between Plivo and the
+      customer's PSTN number. We just broadcast a connected event and return an empty
+      <Response> so the call stays alive and audio flows normally.
+
+    - Inbound (customer calling our Plivo number): we play a brief greeting and then
+      <Dial> into the agent SIP endpoint to bridge the two legs.
     """
     if request.method == "POST":
         try:
@@ -79,26 +85,160 @@ async def plivo_answer_webhook(request: Request):
         except Exception:
             form_data = {}
         from_number = form_data.get("From", "")
-        to_number = form_data.get("To", "")
+        to_number   = form_data.get("To", "")
+        direction   = (form_data.get("Direction", "") or form_data.get("CallDirection", "")).lower()
+        call_uuid   = form_data.get("CallUUID", "")
     else:
         from_number = request.query_params.get("From", "")
-        to_number = request.query_params.get("To", "")
+        to_number   = request.query_params.get("To", "")
+        direction   = (request.query_params.get("Direction", "") or request.query_params.get("CallDirection", "")).lower()
+        call_uuid   = request.query_params.get("CallUUID", "")
 
-    # Broadcast incoming call event to CRM frontend over WebSockets
+    base_url        = getattr(settings, "BASE_URL", "https://ai-voice-agent-crm.onrender.com")
+    plivo_sip_uri   = getattr(settings, "PLIVO_SIP_URI", "")   # e.g. sip:42024221415255694@app.plivo.com
+    plivo_number    = getattr(settings, "PLIVO_PHONE_NUMBER", "").replace("+", "")
+    hangup_url      = f"{base_url}/api/calls/plivo/hangup"
+
+    # ── OUTBOUND: agent initiated the call to the customer ──────────────────────
+    # Plivo hits this URL when the customer *answers*. The two legs (agent browser
+    # leg is NOT WebRTC here – Plivo dials the customer directly) are already
+    # bridged by Plivo. Just return an empty <Response> to keep the call alive.
+    if direction in ("outbound", "outbound-api", "outboundapi", "out"):
+        await ws_manager.broadcast_global({
+            "event": "call_status_update",
+            "call_status": "in-progress",
+            "from": from_number,
+            "to": to_number,
+            "call_sid": call_uuid,
+            "provider": "plivo"
+        })
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            '</Response>'
+        )
+        return PlainTextResponse(plivo_xml, media_type="text/xml")
+
+    # ── INBOUND: customer called our Plivo number ────────────────────────────────
+    # Bridge the call to the agent SIP endpoint (Plivo WebRTC / SIP app).
     await ws_manager.broadcast_global({
         "event": "inbound_call",
         "from": from_number,
         "to": to_number,
+        "call_sid": call_uuid,
         "provider": "plivo"
     })
 
-    plivo_xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<Response>\n'
-        '    <Speak voice="WOMAN" language="en-IN">Welcome to Forge India Connect. Connecting your call to our agent dashboard now.</Speak>\n'
-        '</Response>'
-    )
+    if plivo_sip_uri:
+        # Dial into the Plivo SIP/WebRTC application so the browser agent can answer
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            '    <Speak voice="WOMAN" language="en-IN">Please hold while we connect your call.</Speak>\n'
+            f'    <Dial callerId="{plivo_number}" callerName="Forge CRM" timeout="30" hangupOnStar="true" callbackUrl="{hangup_url}">\n'
+            f'        <User>{plivo_sip_uri}</User>\n'
+            '    </Dial>\n'
+            '</Response>'
+        )
+    else:
+        # Fallback: just keep the call alive if no SIP URI configured
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            '    <Speak voice="WOMAN" language="en-IN">Welcome to Forge India Connect. An agent will assist you shortly.</Speak>\n'
+            '    <Wait length="30"/>\n'
+            '</Response>'
+        )
+
     return PlainTextResponse(plivo_xml, media_type="text/xml")
+
+
+
+@router.api_route("/plivo/hangup", methods=["GET", "POST"])
+async def plivo_hangup_callback(request: Request):
+    """
+    Plivo Dial callbackUrl – fired when the <Dial> leg ends (agent hangs up
+    or the bridged call finishes).  We broadcast the completed event so the
+    frontend transitions to wrapup.
+    """
+    try:
+        if request.method == "POST":
+            try:
+                form_data = await request.form()
+            except Exception:
+                form_data = {}
+        else:
+            form_data = request.query_params
+
+        dial_status = (form_data.get("DialStatus", "") or form_data.get("DialHangupCause", "")).lower()
+        call_uuid   = form_data.get("CallUUID", "")
+        from_number = form_data.get("From", "")
+        to_number   = form_data.get("To", "")
+
+        await ws_manager.broadcast_global({
+            "event": "call_status_update",
+            "call_status": "completed",
+            "call_sid": call_uuid,
+            "from": from_number,
+            "to": to_number,
+            "provider": "plivo",
+            "dial_status": dial_status,
+        })
+    except Exception as e:
+        print(f"[Plivo Hangup Callback] Error: {e}")
+
+    return PlainTextResponse("OK", media_type="text/plain")
+
+
+@router.api_route("/plivo/status", methods=["GET", "POST"])
+async def plivo_status_callback(request: Request):
+    """
+    Plivo Call Status Callback – receives status updates for all Plivo calls
+    (initiated, ringing, answered, completed, busy, failed, etc.)
+    """
+    try:
+        if request.method == "POST":
+            try:
+                form_data = await request.form()
+            except Exception:
+                form_data = {}
+        else:
+            form_data = request.query_params
+
+        call_status = (form_data.get("CallStatus", "") or form_data.get("Event", "")).lower()
+        call_uuid   = form_data.get("CallUUID", "")
+        from_number = form_data.get("From", "")
+        to_number   = form_data.get("To", "")
+        duration    = form_data.get("Duration", "0")
+
+        # Map Plivo statuses to our internal format
+        status_map = {
+            "answer":    "in-progress",
+            "answered":  "in-progress",
+            "initiated": "ringing",
+            "ringing":   "ringing",
+            "hangup":    "completed",
+            "completed": "completed",
+            "busy":      "busy",
+            "failed":    "failed",
+            "no-answer": "no-answer",
+            "canceled":  "canceled",
+        }
+        mapped_status = status_map.get(call_status, call_status)
+
+        await ws_manager.broadcast_global({
+            "event": "call_status_update",
+            "call_status": mapped_status,
+            "call_sid": call_uuid,
+            "from": from_number,
+            "to": to_number,
+            "duration": duration,
+            "provider": "plivo",
+        })
+    except Exception as e:
+        print(f"[Plivo Status Callback] Error: {e}")
+
+    return PlainTextResponse("OK", media_type="text/plain")
 
 
 @router.api_route("/status-callback", methods=["GET", "POST"])
@@ -1723,6 +1863,8 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
                 "to": normalized_phone.replace("+", ""),
                 "answer_url": f"{base_url}/api/calls/plivo/answer",
                 "answer_method": "POST",
+                "hangup_url": f"{base_url}/api/calls/plivo/status",
+                "hangup_method": "POST",
             }
             client = get_http_client()
             res = await client.post(plivo_url, json=plivo_body, auth=(plivo_auth_id, plivo_auth_token), timeout=10.0)
