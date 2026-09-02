@@ -308,6 +308,36 @@ export default function Dialer() {
   useEffect(() => {
     myStatusRef.current = myStatus;
   }, [myStatus]);
+  // WebRTC & Media Diagnostics State
+  const [webrtcState, setWebrtcState] = useState<string>("IDLE");
+  const [mediaDiagnostics, setMediaDiagnostics] = useState<any>(plivoWebRTC.getDiagnostics());
+  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false);
+  const [audioInputDevices, setAudioInputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedAudioInput, setSelectedAudioInput] = useState<string>("default");
+  const [selectedAudioOutput, setSelectedAudioOutput] = useState<string>("default");
+
+  useEffect(() => {
+    const handleWebRTCState = (e: any) => {
+      const { state, diagnostics } = e.detail || {};
+      if (state) setWebrtcState(state);
+      if (diagnostics) setMediaDiagnostics(diagnostics);
+    };
+
+    window.addEventListener("plivo_webrtc_state_change", handleWebRTCState);
+
+    plivoWebRTC.getAudioDevices().then(({ inputs, outputs }) => {
+      setAudioInputDevices(inputs);
+      setAudioOutputDevices(outputs);
+    });
+
+    plivoWebRTC.initializeMicrophone();
+
+    return () => {
+      window.removeEventListener("plivo_webrtc_state_change", handleWebRTCState);
+    };
+  }, []);
+
   const callStatusRef = useRef(callStatus);
   useEffect(() => {
     callStatusRef.current = callStatus;
@@ -1745,15 +1775,99 @@ export default function Dialer() {
             </h2>
           </div>
 
-          <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
-            agentStatus === "ready" ? "bg-emerald-50 text-emerald-600 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-400" :
-            agentStatus === "on_call" ? "bg-amber-50 text-amber-600 border-amber-300 dark:bg-amber-500/15 dark:text-amber-400 animate-pulse" :
-            agentStatus === "wrap_up" ? "bg-purple-50 text-purple-600 border-purple-300 dark:bg-purple-500/15 dark:text-purple-400" :
-            "bg-rose-50 text-rose-600 border-rose-300 dark:bg-rose-500/15 dark:text-rose-400"
-          }`}>
-            {agentStatus === "ready" ? "READY" : agentStatus.replace("_", " ")}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {/* Microphone Connection Status Badge */}
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+              mediaDiagnostics?.micPermission && mediaDiagnostics?.localTrackLive
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+            }`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${
+                mediaDiagnostics?.micPermission && mediaDiagnostics?.localTrackLive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+              }`} />
+              <span>{mediaDiagnostics?.micPermission && mediaDiagnostics?.localTrackLive ? "Mic: Connected" : "Mic: Not available"}</span>
+            </div>
+
+            {/* Call Media Debug Panel Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowDebugPanel(!showDebugPanel)}
+              className="p-1 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              title="Toggle Call Media Debug Panel"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+            </button>
+
+            <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
+              agentStatus === "ready" ? "bg-emerald-50 text-emerald-600 border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-400" :
+              agentStatus === "on_call" ? "bg-amber-50 text-amber-600 border-amber-300 dark:bg-amber-500/15 dark:text-amber-400 animate-pulse" :
+              agentStatus === "wrap_up" ? "bg-purple-50 text-purple-600 border-purple-300 dark:bg-purple-500/15 dark:text-purple-400" :
+              "bg-rose-50 text-rose-600 border-rose-300 dark:bg-rose-500/15 dark:text-rose-400"
+            }`}>
+              {agentStatus === "ready" ? "READY" : agentStatus.replace("_", " ")}
+            </span>
+          </div>
         </div>
+
+        {/* Audio Device Selection Dropdowns */}
+        {showDebugPanel && (
+          <div className="mb-3 p-2.5 bg-slate-50 dark:bg-[#172033] rounded-xl border border-slate-200 dark:border-white/10 space-y-2 text-xs">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Microphone Input</label>
+              <select
+                value={selectedAudioInput}
+                onChange={(e) => {
+                  setSelectedAudioInput(e.target.value);
+                  plivoWebRTC.setAudioInputDevice(e.target.value);
+                }}
+                className="w-full h-7 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 text-xs px-2"
+              >
+                <option value="default">Default Microphone</option>
+                {audioInputDevices.map((dev) => (
+                  <option key={dev.deviceId} value={dev.deviceId}>
+                    {dev.label || `Microphone ${dev.deviceId.slice(0, 5)}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Speaker Output</label>
+              <select
+                value={selectedAudioOutput}
+                onChange={(e) => {
+                  setSelectedAudioOutput(e.target.value);
+                  plivoWebRTC.setAudioOutputDevice(e.target.value);
+                }}
+                className="w-full h-7 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 text-xs px-2"
+              >
+                <option value="default">Default Speaker</option>
+                {audioOutputDevices.map((dev) => (
+                  <option key={dev.deviceId} value={dev.deviceId}>
+                    {dev.label || `Speaker ${dev.deviceId.slice(0, 5)}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* CALL MEDIA DEBUG DRAWER */}
+            <div className="pt-2 border-t border-slate-200 dark:border-white/10 font-mono text-[11px] space-y-1.5">
+              <div className="flex items-center justify-between font-bold text-amber-500">
+                <span>CALL MEDIA DEBUG</span>
+                <span>WebRTC: {webrtcState}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                <div>Mic Perm: {mediaDiagnostics?.micPermission ? "✓ Granted" : "✗ Denied"}</div>
+                <div>Local Stream: {mediaDiagnostics?.localStream ? "✓ Active" : "✗ None"}</div>
+                <div>Local Track: {mediaDiagnostics?.localAudioTracks > 0 ? "✓ Live" : "✗ 0"}</div>
+                <div>Remote Stream: {mediaDiagnostics?.remoteStream ? "✓ Received" : "⏳ Waiting"}</div>
+                <div>Remote Track: {mediaDiagnostics?.remoteAudioTracks > 0 ? "✓ Live" : "⏳ 0"}</div>
+                <div>Playback: {mediaDiagnostics?.audioElementPlaying ? "✓ Playing" : "⏳ Ready"}</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Selected Customer Info */}
         {selectedLead && (
