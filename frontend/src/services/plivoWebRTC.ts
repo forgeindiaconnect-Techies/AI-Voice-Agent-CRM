@@ -244,7 +244,9 @@ class PlivoWebRTCService {
           if (typeof target.addListener === "function") {
             try { target.addListener(event, handler); } catch {}
           }
-          target[event] = handler;
+          if (event.startsWith("on") && typeof target[event] !== "function") {
+            target[event] = handler;
+          }
         };
 
         bindEvent(this.client, "onIncomingCall", (data: any) => {
