@@ -245,7 +245,12 @@ class PlivoWebRTCService {
           codecs: ["OPUS", "PCMU"],
         };
 
-        this.client = new PlivoConstructor(options);
+        let rawClient = new PlivoConstructor(options);
+        if (rawClient && rawClient.client && typeof rawClient.on !== "function") {
+          rawClient = rawClient.client;
+        }
+        this.client = rawClient;
+
         console.log("[PLIVO] SDK initialized");
         console.log(`[PLIVO] SDK version: ${this.client?.version || "2.1.4"}`);
         console.log(`[PLIVO] Client type: ${typeof this.client}`);
