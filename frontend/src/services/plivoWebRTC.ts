@@ -175,6 +175,12 @@ class PlivoWebRTCService {
         return false;
       }
 
+      if (typeof window !== "undefined") {
+        try {
+          delete (window as any)._PlivoInstance;
+        } catch {}
+      }
+
       const PlivoSDK = (window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo;
       let ClientClass: any = null;
 
@@ -190,10 +196,17 @@ class PlivoWebRTCService {
         return false;
       }
 
-      this.client = new ClientClass({
+      const clientOptions = {
         debug: "ALL",
         permOnClick: true,
-      });
+        codecs: ["OPUS", "PCMU"],
+      };
+
+      this.client = new ClientClass(clientOptions);
+
+      if (this.client && !this.client.options) {
+        this.client.options = clientOptions;
+      }
 
       console.log("[PLIVO] SDK initialized");
 
