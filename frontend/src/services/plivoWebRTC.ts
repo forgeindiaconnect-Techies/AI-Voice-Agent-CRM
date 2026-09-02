@@ -176,7 +176,13 @@ class PlivoWebRTCService {
       }
 
       const PlivoSDK = (window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo;
-      const ClientClass = PlivoSDK?.Client || (typeof PlivoSDK === "function" ? PlivoSDK : null);
+      let ClientClass: any = null;
+
+      if (typeof PlivoSDK === "function") {
+        ClientClass = PlivoSDK;
+      } else if (PlivoSDK && typeof PlivoSDK.Client === "function") {
+        ClientClass = PlivoSDK.Client;
+      }
 
       if (!ClientClass || typeof ClientClass !== "function") {
         console.warn("[PLIVO] Plivo Client constructor missing on window object.");
@@ -187,8 +193,6 @@ class PlivoWebRTCService {
       this.client = new ClientClass({
         debug: "ALL",
         permOnClick: true,
-        audioDevice: true,
-        enableMedia: true,
       });
 
       console.log("[PLIVO] SDK initialized");
@@ -324,7 +328,14 @@ class PlivoWebRTCService {
           resolve(this.isConnected);
         }, 5000);
 
-        this.client.login(bareUsername, creds.password);
+        const loginFn = this.client?.login || (this.client as any)?.client?.login;
+        if (typeof loginFn === "function") {
+          loginFn.call(this.client, bareUsername, creds.password);
+        } else {
+          console.warn("[PLIVO] client.login function not found on SDK instance:", this.client);
+          this.setCallState("FAILED");
+          resolve(false);
+        }
       });
     } catch (err) {
       console.warn("[PLIVO] Initialization exception:", err);
@@ -351,9 +362,10 @@ class PlivoWebRTCService {
       const formattedNumber = cleanPhone.length === 10 ? `+91${cleanPhone}` : `+${cleanPhone}`;
       const callerId = this.credentials?.plivo_number || "+918031826757";
 
-      if (this.client && typeof this.client.call === "function") {
+      const callFn = this.client?.call || (this.client as any)?.client?.call;
+      if (typeof callFn === "function") {
         console.log(`[PLIVO] Dialing WebRTC stream to ${formattedNumber} (CallerID: ${callerId})...`);
-        this.client.call(formattedNumber, { callerId });
+        callFn.call(this.client, formattedNumber, { callerId });
         return true;
       }
       this.setCallState("FAILED");
@@ -366,9 +378,10 @@ class PlivoWebRTCService {
   }
 
   public hangup(): void {
-    if (this.client && typeof this.client.hangup === "function") {
+    const hangupFn = this.client?.hangup || (this.client as any)?.client?.hangup;
+    if (typeof hangupFn === "function") {
       try {
-        this.client.hangup();
+        hangupFn.call(this.client);
       } catch (err) {
         console.warn("[PLIVO] Hangup error:", err);
       }
@@ -379,14 +392,16 @@ class PlivoWebRTCService {
   }
 
   public mute(): void {
-    if (this.client && typeof this.client.mute === "function") {
-      this.client.mute();
+    const muteFn = this.client?.mute || (this.client as any)?.client?.mute;
+    if (typeof muteFn === "function") {
+      muteFn.call(this.client);
     }
   }
 
   public unmute(): void {
-    if (this.client && typeof this.client.unmute === "function") {
-      this.client.unmute();
+    const unmuteFn = this.client?.unmute || (this.client as any)?.client?.unmute;
+    if (typeof unmuteFn === "function") {
+      unmuteFn.call(this.client);
     }
   }
 
