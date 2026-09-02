@@ -357,11 +357,21 @@ class PlivoWebRTCService {
 
         bindEvent(this.client, "onLogin", onLoginSuccess);
         bindEvent(this.client, "onLoginFailed", onLoginError);
+        bindEvent(this.client, "onConnectionChange", (data: any) => {
+          console.log("[PLIVO] Connection change:", data);
+          if (data?.state === "connected" || data?.state === "registered") {
+            onLoginSuccess();
+          }
+        });
 
         timeoutTimer = setTimeout(() => {
-          console.warn("[PLIVO] Login timeout");
-          resolve(this.isConnected);
-        }, 5000);
+          if (this.isConnected) {
+            resolve(true);
+          } else {
+            console.warn("[PLIVO] Login timeout after 20s");
+            resolve(false);
+          }
+        }, 20000);
 
         const loginFn = this.client?.login || (this.client as any)?.client?.login;
         if (typeof loginFn === "function") {
