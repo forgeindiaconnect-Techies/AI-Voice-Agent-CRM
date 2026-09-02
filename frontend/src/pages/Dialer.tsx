@@ -812,13 +812,13 @@ export default function Dialer() {
           setAgentStatus("ready");
           isDialingRef.current = false;
           setIsDialing(false);
-        } else if (status === "in-progress" || status === "answered") {
+        } else if (status === "in-progress" || status === "answered" || status.includes("answer") || status.includes("progress")) {
           setCallStatus("connected");
           setAgentStatus("on_call");
           isDialingRef.current = false;
           setIsDialing(false);
           setCallDuration(0);
-        } else if (status === "ringing" || status === "initiated") {
+        } else if (status === "ringing" || status === "initiated" || status.includes("ring")) {
           setCallStatus("ringing");
         } else if (status === "completed" || status === "canceled" || status === "hangup") {
           // Transition to wrapup from any active call state

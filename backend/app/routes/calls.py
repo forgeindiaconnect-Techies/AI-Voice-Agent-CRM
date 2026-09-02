@@ -159,6 +159,7 @@ async def plivo_answer_webhook(request: Request):
             f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
             f'        <Number>{dial_digits}</Number>\n'
             '    </Dial>\n'
+            '    <Wait length="3600"/>\n'
             '</Response>'
         )
     else:
