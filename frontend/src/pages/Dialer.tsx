@@ -313,33 +313,13 @@ export default function Dialer() {
     callStatusRef.current = callStatus;
   }, [callStatus]);
 
-  // Auto-Dial Outbound Call Trigger on 10th Digit
+  // Manual dialer requires explicit user click on the Call button (no auto-dial on typing)
   useEffect(() => {
     if (autoDialTimerRef.current) {
       clearTimeout(autoDialTimerRef.current);
       autoDialTimerRef.current = null;
     }
-
-    if (dialerMode !== "outbound") return;
-
-    if (outboundPhone !== autoDialLockRef.current) {
-      autoDialLockRef.current = "";
-    }
-
-    if (outboundPhone.length === 10) {
-      const isValid = /^[6-9]\d{9}$/.test(outboundPhone);
-      if (!isValid) return;
-
-      if (callStatus !== "ready" || isDialingRef.current || isDialing) return;
-      if (autoDialLockRef.current === outboundPhone) return;
-
-      autoDialLockRef.current = outboundPhone;
-      autoDialTimerRef.current = setTimeout(() => {
-        if (isDialingRef.current || callStatusRef.current !== "ready") return;
-        handleDialRef.current?.();
-      }, 200);
-    }
-  }, [outboundPhone, dialerMode, callStatus, isDialing]);
+  }, [outboundPhone]);
 
   const totalRingingSecs = (ringingSeconds || 0) + (callStatus === "ringing" ? ringingDuration : 0);
   const ringingTimeFormatted = formatSecsToHMS(totalRingingSecs);

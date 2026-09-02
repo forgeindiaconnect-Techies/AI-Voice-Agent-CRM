@@ -157,6 +157,9 @@ async def plivo_answer_webhook(request: Request):
         '    </Dial>\n'
         '</Response>'
     )
+    return Response(content=plivo_xml, media_type="application/xml")
+
+
 @router.get("/plivo/endpoint")
 async def get_plivo_endpoint(user: dict = Depends(get_current_user)):
     """
