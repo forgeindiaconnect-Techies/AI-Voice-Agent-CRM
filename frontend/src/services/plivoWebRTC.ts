@@ -96,39 +96,55 @@ class PlivoWebRTCService {
       }
       this.client = new PlivoSDK.Client();
 
-      this.client.on("onIncomingCall", (data: any) => {
-        console.log("[Plivo WebRTC] Incoming Call:", data);
-        window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: data }));
-      });
+      // 4. Log in to Plivo Endpoint with Promise awaiting onLogin
+      const bareUsername = creds.username.split("@")[0];
+      
+      return new Promise<boolean>((resolve) => {
+        let timeoutTimer: any = null;
 
-      this.client.on("onCallAnswered", (data: any) => {
-        console.log("[Plivo WebRTC] Call Answered:", data);
-        this.currentCall = data;
-        window.dispatchEvent(new CustomEvent("plivo_webrtc_answered", { detail: data }));
-      });
+        const onLoginSuccess = () => {
+          if (timeoutTimer) clearTimeout(timeoutTimer);
+          console.log("[Plivo WebRTC] Successfully logged into Plivo WebRTC Endpoint!");
+          this.isConnected = true;
+          this.isInitialized = true;
+          window.dispatchEvent(new CustomEvent("plivo_webrtc_connected"));
+          resolve(true);
+        };
 
-      this.client.on("onCallTerminated", (data: any) => {
-        console.log("[Plivo WebRTC] Call Terminated:", data);
-        this.currentCall = null;
-        window.dispatchEvent(new CustomEvent("plivo_webrtc_terminated", { detail: data }));
-      });
+        const onLoginError = (reason: any) => {
+          if (timeoutTimer) clearTimeout(timeoutTimer);
+          console.warn("[Plivo WebRTC] Login failed:", reason);
+          this.isConnected = false;
+          resolve(false);
+        };
 
-      this.client.on("onLogin", () => {
-        console.log("[Plivo WebRTC] Successfully logged into Plivo WebRTC Endpoint!");
-        this.isConnected = true;
-        window.dispatchEvent(new CustomEvent("plivo_webrtc_connected"));
-      });
+        this.client.on("onIncomingCall", (data: any) => {
+          console.log("[Plivo WebRTC] Incoming Call:", data);
+          window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: data }));
+        });
 
-      this.client.on("onLoginFailed", (reason: any) => {
-        console.warn("[Plivo WebRTC] Login failed:", reason);
-        this.isConnected = false;
-      });
+        this.client.on("onCallAnswered", (data: any) => {
+          console.log("[Plivo WebRTC] Call Answered:", data);
+          this.currentCall = data;
+          window.dispatchEvent(new CustomEvent("plivo_webrtc_answered", { detail: data }));
+        });
 
-      // 4. Log in to Plivo Endpoint
-      const fullUsername = creds.username.includes("@") ? creds.username : `${creds.username}@phone.plivo.com`;
-      this.client.login(fullUsername, creds.password);
-      this.isInitialized = true;
-      return true;
+        this.client.on("onCallTerminated", (data: any) => {
+          console.log("[Plivo WebRTC] Call Terminated:", data);
+          this.currentCall = null;
+          window.dispatchEvent(new CustomEvent("plivo_webrtc_terminated", { detail: data }));
+        });
+
+        this.client.on("onLogin", onLoginSuccess);
+        this.client.on("onLoginFailed", onLoginError);
+
+        timeoutTimer = setTimeout(() => {
+          console.warn("[Plivo WebRTC] Timeout waiting for Plivo WebRTC onLogin.");
+          resolve(this.isConnected);
+        }, 5000);
+
+        this.client.login(bareUsername, creds.password);
+      });
     } catch (err) {
       console.warn("[Plivo WebRTC] Initialization error:", err);
       return false;
