@@ -197,13 +197,17 @@ async def get_plivo_endpoint(user: dict = Depends(get_current_user)):
     endpoint_username = user_doc.get("plivo_endpoint_username") if user_doc else None
     endpoint_password = user_doc.get("plivo_endpoint_password") if user_doc else None
 
+    # Plivo requires username to be strictly alphanumeric (no underscores or non-alphanumeric chars)
+    if endpoint_username:
+        endpoint_username = re.sub(r"[^a-zA-Z0-9]", "", endpoint_username)
+
     if not endpoint_username or not endpoint_password:
         import random, string
         rand_suffix = "".join(random.choices(string.digits, k=6))
-        clean_name = re.sub(r"\W+", "", user.get("name", "agent")).lower()
-        endpoint_username = f"forge_{clean_name}_{rand_suffix}"
-        endpoint_password = f"ForgePass_{rand_suffix}!"
-        alias_name = f"Forge_{clean_name}_{rand_suffix}"
+        clean_name = re.sub(r"[^a-zA-Z0-9]", "", user.get("name", "agent")).lower()
+        endpoint_username = f"forge{clean_name}{rand_suffix}"
+        endpoint_password = f"ForgePass{rand_suffix}!"
+        alias_name = f"Forge{clean_name}{rand_suffix}"
 
         if plivo_auth_id and plivo_auth_token:
             try:
