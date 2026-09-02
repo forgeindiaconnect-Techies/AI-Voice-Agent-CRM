@@ -177,11 +177,19 @@ class PlivoWebRTCService {
 
       if (typeof window !== "undefined") {
         try {
+          if (!(window as any).Plivo && typeof exports !== "undefined" && (exports as any)?.Plivo) {
+            (window as any).Plivo = (exports as any).Plivo;
+          }
           delete (window as any)._PlivoInstance;
         } catch {}
       }
 
-      const PlivoSDK = (window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo;
+      const PlivoSDK =
+        (window as any).Plivo ||
+        (window as any).plivoWebSDK ||
+        (window as any).plivo ||
+        (typeof exports !== "undefined" && (exports as any)?.Plivo);
+
       let ClientClass: any = null;
 
       if (typeof PlivoSDK === "function") {
@@ -206,6 +214,18 @@ class PlivoWebRTCService {
 
       if (this.client && !this.client.options) {
         this.client.options = clientOptions;
+      }
+
+      // Guarantee .emit exists on instance so internal PlivoSDK calls never throw
+      if (this.client && typeof this.client.emit !== "function") {
+        (this.client as any)._eventHandlers = (this.client as any)._eventHandlers || {};
+        this.client.emit = (event: string, ...args: any[]) => {
+          console.log(`[PLIVO EMIT] Event: ${event}`, ...args);
+          const handlers = (this.client as any)._eventHandlers[event] || [];
+          handlers.forEach((fn: Function) => {
+            try { fn(...args); } catch (e) { console.warn(e); }
+          });
+        };
       }
 
       console.log("[PLIVO] SDK initialized");
