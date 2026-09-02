@@ -121,6 +121,10 @@ class PlivoWebRTCService {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       this.localStream = stream;
 
+      // CRITICAL: Plivo SDK reads window.localStream for outbound call audio.
+      // Without this, the SDK sends silence to the remote party.
+      (window as any).localStream = stream;
+
       const tracks = stream.getAudioTracks();
       const firstTrack = tracks[0];
 
@@ -207,6 +211,11 @@ class PlivoWebRTCService {
           this.setCallState("FAILED");
           return false;
         }
+
+        // CRITICAL: Pre-create the SDK's expected remote audio element.
+        // The SDK internally looks for 'plivo_webrtc_remoteview' to pipe remote audio.
+        // If it doesn't exist, the SDK creates it hidden, but Electron may block autoplay.
+        this.ensureRemoteAudioElement();
 
         if (!this.client) {
           if (typeof window !== "undefined") {
@@ -426,6 +435,16 @@ class PlivoWebRTCService {
         }
       }
 
+      // Ensure window.localStream is fresh before each call
+      if (this.localStream) {
+        (window as any).localStream = this.localStream;
+      } else {
+        await this.initializeMicrophone();
+      }
+
+      // Ensure the SDK's remote audio element exists and is ready
+      this.ensureRemoteAudioElement();
+
       const cleanPhone = destinationNumber.replace(/\D/g, "");
       const formattedNumber = cleanPhone.length === 10 ? `+91${cleanPhone}` : `+${cleanPhone}`;
       const callerId = this.credentials?.plivo_number || "+918031826757";
@@ -433,7 +452,11 @@ class PlivoWebRTCService {
       const callFn = this.client?.call || (this.client as any)?.client?.call;
       if (typeof callFn === "function") {
         console.log(`[PLIVO] Dialing WebRTC stream to ${formattedNumber} (CallerID: ${callerId})...`);
+        console.log(`[MEDIA] window.localStream present: ${!!(window as any).localStream}`);
         callFn.call(this.client, formattedNumber, { callerId });
+
+        // After call() is invoked, start monitoring the SDK's remote audio element
+        this.monitorRemoteAudio();
         return true;
       }
       this.setCallState("FAILED");
@@ -516,6 +539,102 @@ class PlivoWebRTCService {
       console.warn("[MEDIA] Output device change failed:", err);
       return false;
     }
+  }
+
+  /**
+   * Pre-create the SDK's internal remote audio element (plivo_webrtc_remoteview)
+   * so that when the SDK assigns srcObject to it, audio plays immediately.
+   */
+  private ensureRemoteAudioElement(): void {
+    if (typeof document === "undefined") return;
+
+    const SDK_REMOTE_ID = "plivo_webrtc_remoteview";
+    let elem = document.getElementById(SDK_REMOTE_ID) as HTMLAudioElement;
+    if (!elem) {
+      elem = document.createElement("audio");
+      elem.id = SDK_REMOTE_ID;
+      elem.autoplay = true;
+      elem.setAttribute("playsinline", "true");
+      elem.setAttribute("data-devicetype", "speakerDevice");
+      document.body.appendChild(elem);
+      console.log(`[MEDIA] Created SDK remote audio element #${SDK_REMOTE_ID}`);
+    }
+    // Ensure autoplay is always on and element is not paused
+    elem.autoplay = true;
+    elem.muted = false;
+    elem.volume = 1.0;
+  }
+
+  /**
+   * After call() is invoked, poll the SDK's remoteView element until it has a stream,
+   * then ensure it's playing and pipe the stream to our backup audio elements.
+   */
+  private monitorRemoteAudio(): void {
+    let attempts = 0;
+    const maxAttempts = 300; // 30 seconds at 100ms intervals
+
+    const poller = setInterval(() => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(poller);
+        return;
+      }
+
+      // Check the SDK's own remote audio element
+      const sdkElem = document.getElementById("plivo_webrtc_remoteview") as HTMLAudioElement;
+      if (sdkElem && sdkElem.srcObject) {
+        const stream = sdkElem.srcObject as MediaStream;
+        const tracks = stream.getAudioTracks();
+
+        if (tracks.length > 0) {
+          clearInterval(poller);
+          console.log(`[MEDIA] SDK remoteView has ${tracks.length} audio track(s), state: ${tracks[0].readyState}`);
+
+          // Force the SDK element to play
+          sdkElem.muted = false;
+          sdkElem.volume = 1.0;
+          sdkElem.autoplay = true;
+          sdkElem.play().then(() => {
+            console.log("[MEDIA] SDK remoteView audio playback confirmed");
+          }).catch(err => {
+            console.warn("[MEDIA] SDK remoteView play() failed:", err);
+          });
+
+          // Also pipe stream to our backup audio elements for redundancy
+          this.remoteStream = stream;
+          this.diagnostics.remoteStream = true;
+          this.diagnostics.remoteAudioTracks = tracks.length;
+          this.diagnostics.remoteTrackLive = tracks[0].readyState === "live";
+
+          const backupIds = ["plivo_audio", "remoteAudio", "plivo-remote-audio"];
+          backupIds.forEach(id => {
+            const el = document.getElementById(id) as HTMLAudioElement;
+            if (el) {
+              el.srcObject = stream;
+              el.muted = false;
+              el.volume = 1.0;
+              el.play().catch(() => {});
+            }
+          });
+
+          this.diagnostics.audioElementExists = true;
+          this.diagnostics.audioElementPlaying = true;
+          this.setCallState("MEDIA_CONNECTED");
+          this.notifyStateChange();
+        }
+      }
+
+      // Also check the client's internal remoteView property
+      if (this.client) {
+        const clientRemoteView = (this.client as any).remoteView;
+        if (clientRemoteView && clientRemoteView.srcObject && clientRemoteView !== sdkElem) {
+          clientRemoteView.muted = false;
+          clientRemoteView.volume = 1.0;
+          clientRemoteView.autoplay = true;
+          clientRemoteView.play().catch(() => {});
+        }
+      }
+    }, 100);
   }
 
   private setCallState(state: WebRTCCallState) {
