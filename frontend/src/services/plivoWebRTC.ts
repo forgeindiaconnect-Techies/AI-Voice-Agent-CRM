@@ -15,12 +15,55 @@ class PlivoWebRTCService {
   private currentCall: any = null;
   private credentials: PlivoEndpointCredentials | null = null;
 
+  private async ensureScriptLoaded(): Promise<boolean> {
+    if (typeof window === "undefined") return false;
+    if ((window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo) {
+      return true;
+    }
+
+    return new Promise((resolve) => {
+      let script = document.querySelector('script[src*="plivo.min.js"]') as HTMLScriptElement;
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "https://cdn.plivo.com/sdk/v2/plivo.min.js";
+        script.async = true;
+        document.head.appendChild(script);
+      }
+
+      const checkInterval = setInterval(() => {
+        if ((window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo) {
+          clearInterval(checkInterval);
+          resolve(true);
+        }
+      }, 100);
+
+      script.onload = () => {
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          resolve(!!((window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo));
+        }, 100);
+      };
+
+      script.onerror = () => {
+        clearInterval(checkInterval);
+        console.warn("[Plivo WebRTC] Failed to load Plivo Browser SDK script.");
+        resolve(false);
+      };
+
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        resolve(!!((window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo));
+      }, 4000);
+    });
+  }
+
   public async initialize(): Promise<boolean> {
     if (typeof window === "undefined") return false;
 
-    // Check if Plivo SDK script is loaded
-    if (!(window as any).Plivo) {
-      console.warn("[Plivo WebRTC] Plivo SDK not found on window object. Ensure script is loaded.");
+    // Check & wait if Plivo SDK script is loaded
+    const hasSDK = await this.ensureScriptLoaded();
+    if (!hasSDK) {
+      console.warn("[Plivo WebRTC] Plivo SDK not found on window object. Proceeding with REST fallback.");
       return false;
     }
 
@@ -46,7 +89,11 @@ class PlivoWebRTCService {
       }
 
       // 3. Initialize Plivo Client
-      const PlivoSDK = (window as any).Plivo;
+      const PlivoSDK = (window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo;
+      if (!PlivoSDK || typeof PlivoSDK.Client !== "function") {
+        console.warn("[Plivo WebRTC] Plivo.Client constructor missing on SDK object.");
+        return false;
+      }
       this.client = new PlivoSDK.Client();
 
       this.client.on("onIncomingCall", (data: any) => {

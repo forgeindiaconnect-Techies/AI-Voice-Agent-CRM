@@ -1946,6 +1946,10 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
 
 
     # Plivo is the sole PSTN provider – Twilio removed
+    plivo_auth_id = getattr(settings, 'PLIVO_AUTH_ID', '') or os.getenv('PLIVO_AUTH_ID', '')
+    plivo_auth_token = getattr(settings, 'PLIVO_AUTH_TOKEN', '') or os.getenv('PLIVO_AUTH_TOKEN', '')
+    plivo_phone_number = getattr(settings, 'PLIVO_PHONE_NUMBER', '+918031826757')
+    base_url = getattr(settings, 'BASE_URL', '') or os.getenv('BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
 
     # Plivo Outbound PSTN Call trigger (Agent-First Click-to-Call 2-Way Audio Bridging)
     agent_phone_val = user.get("agent_phone") or user.get("phone") or ""
