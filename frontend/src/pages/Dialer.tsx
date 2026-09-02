@@ -1272,7 +1272,7 @@ export default function Dialer() {
 
     // Human Agent Call via Plivo WebRTC Browser SDK (Direct Web Microphone)
     try {
-      plivoWebRTC.makeCall(fullPhoneNumber);
+      const webrtcSuccess = await plivoWebRTC.makeCall(fullPhoneNumber);
       const res = await api.post("/api/calls/manual-dial", {
         phone: fullPhoneNumber,
         pool_id: matchedLead?.pool_id || user?.pool_id || "general",
@@ -1281,7 +1281,7 @@ export default function Dialer() {
         assigned_agent_id: user?.id,
         priority: "high",
         notes: "",
-        initiate_pstn: true,
+        initiate_pstn: !webrtcSuccess,
         idempotency_key: idempotencyKey,
         call_mode: targetMode,
         sim_slot: simSlot
@@ -1290,7 +1290,11 @@ export default function Dialer() {
       setCallStatus("ringing");
       setOutboundPhone(""); // Reset number ONLY after call request is successfully created
       autoDialLockRef.current = "";
-      showToast(`In-browser WebRTC call initiated to ${fullPhoneNumber} via Plivo…`, "info");
+      if (webrtcSuccess) {
+        showToast(`In-browser WebRTC call initiated to ${fullPhoneNumber} via Plivo…`, "info");
+      } else {
+        showToast(`PSTN call initiated to ${fullPhoneNumber} via Plivo…`, "info");
+      }
       fetchLeads();
       fetchCallHistory();
     } catch (err: any) {

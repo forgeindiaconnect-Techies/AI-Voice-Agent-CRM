@@ -1,9 +1,13 @@
-import { app, BrowserWindow, ipcMain, Notification, shell, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, Notification, shell, dialog, session } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+
+// Enable WebRTC user media flags
+app.commandLine.appendSwitch('enable-usermedia-screen-capturing');
+app.commandLine.appendSwitch('allow-http-screen-capture');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -76,6 +80,17 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    // Explicitly grant microphone and WebRTC media permissions in Electron
+    session.defaultSession.setPermissionRequestHandler((_, permission, callback) => {
+      const allowedPermissions = ['media', 'audioCapture', 'mediaKeySystem', 'notifications'];
+      callback(allowedPermissions.includes(permission));
+    });
+
+    session.defaultSession.setPermissionCheckHandler((_, permission) => {
+      const allowedPermissions = ['media', 'audioCapture', 'mediaKeySystem', 'notifications'];
+      return allowedPermissions.includes(permission);
+    });
+
     createWindow();
 
     app.on('activate', () => {

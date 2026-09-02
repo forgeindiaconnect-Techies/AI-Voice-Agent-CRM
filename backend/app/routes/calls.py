@@ -1982,7 +1982,7 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
 
     clean_agent_phone = normalize_e164(agent_phone_val) if agent_phone_val else ""
 
-    if not is_ai_call and plivo_auth_id and plivo_auth_token:
+    if not is_ai_call and getattr(payload, "initiate_pstn", True) and plivo_auth_id and plivo_auth_token:
         try:
             plivo_url = f"https://api.plivo.com/v1/Account/{plivo_auth_id}/Call/"
             
