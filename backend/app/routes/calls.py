@@ -117,17 +117,22 @@ async def plivo_answer_webhook(request: Request):
     clean_agent = normalize_e164(agent_phone) if agent_phone else ""
     clean_dial  = normalize_e164(dial_to) if dial_to else ""
 
-    # Determine bridge target: only dial if target is valid and distinct from current connected leg
+    is_webrtc_call = from_number.lower().startswith("sip:") or "sip" in from_number.lower()
+
+    # Determine bridge target
     target_to_dial = ""
     clean_to_digits = clean_to.replace("+", "")
 
-    if clean_dial and clean_dial.replace("+", "") != clean_to_digits:
+    if is_webrtc_call and clean_to_digits:
+        # Browser WebRTC call: From is SIP endpoint, To is Customer number
+        target_to_dial = clean_to
+    elif clean_dial and clean_dial.replace("+", "") != clean_to_digits:
         target_to_dial = clean_dial
     elif clean_agent and clean_agent.replace("+", "") != clean_to_digits:
         target_to_dial = clean_agent
 
-    # Fallback lookup in DB if no query params provided
-    if not target_to_dial:
+    # Fallback lookup in DB if no query params provided and not WebRTC
+    if not target_to_dial and not is_webrtc_call:
         search_phone = clean_to or clean_from
         if search_phone:
             raw_digits = re.sub(r"\D", "", search_phone)
@@ -167,7 +172,6 @@ async def plivo_answer_webhook(request: Request):
         plivo_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<Response>\n'
-            '    <Speak>Call connected via Forge India Connect.</Speak>\n'
             '    <Wait length="3600"/>\n'
             '</Response>'
         )
