@@ -216,7 +216,21 @@ class PlivoWebRTCService {
           resolve(false);
         };
 
-        this.client.on("onIncomingCall", (data: any) => {
+        const bindEvent = (target: any, event: string, handler: Function) => {
+          if (!target) return;
+          if (typeof target.on === "function") {
+            try { target.on(event, handler); } catch {}
+          }
+          if (typeof target.client?.on === "function") {
+            try { target.client.on(event, handler); } catch {}
+          }
+          if (typeof target.addListener === "function") {
+            try { target.addListener(event, handler); } catch {}
+          }
+          target[event] = handler;
+        };
+
+        bindEvent(this.client, "onIncomingCall", (data: any) => {
           console.log("[PLIVO] Incoming call:", data);
           window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: data }));
         });
@@ -269,11 +283,11 @@ class PlivoWebRTCService {
           this.notifyStateChange();
         };
 
-        this.client.on("onMediaStream", (stream: any) => {
+        bindEvent(this.client, "onMediaStream", (stream: any) => {
           bindStreamToAudio(stream);
         });
 
-        this.client.on("onCallAnswered", (data: any) => {
+        bindEvent(this.client, "onCallAnswered", (data: any) => {
           console.log("[PLIVO] Call answered");
           this.currentCall = data;
           this.setCallState("CONNECTED");
@@ -284,12 +298,12 @@ class PlivoWebRTCService {
           window.dispatchEvent(new CustomEvent("plivo_webrtc_answered", { detail: data }));
         });
 
-        this.client.on("onCallRinging", () => {
+        bindEvent(this.client, "onCallRinging", () => {
           console.log("[PLIVO] Call ringing");
           this.setCallState("RINGING");
         });
 
-        this.client.on("onCallTerminated", (data: any) => {
+        bindEvent(this.client, "onCallTerminated", (data: any) => {
           console.log("[PLIVO] Call terminated");
           this.currentCall = null;
           this.remoteStream = null;
@@ -302,8 +316,8 @@ class PlivoWebRTCService {
           window.dispatchEvent(new CustomEvent("plivo_webrtc_terminated", { detail: data }));
         });
 
-        this.client.on("onLogin", onLoginSuccess);
-        this.client.on("onLoginFailed", onLoginError);
+        bindEvent(this.client, "onLogin", onLoginSuccess);
+        bindEvent(this.client, "onLoginFailed", onLoginError);
 
         timeoutTimer = setTimeout(() => {
           console.warn("[PLIVO] Login timeout");
