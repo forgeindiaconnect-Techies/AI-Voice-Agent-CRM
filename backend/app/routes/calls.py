@@ -5,7 +5,7 @@ import os
 from urllib.parse import quote
 # pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, HTTPException, Query, Body, status, Request
-from fastapi.responses import PlainTextResponse, JSONResponse
+from fastapi.responses import PlainTextResponse, JSONResponse, Response
 # pyrefly: ignore [missing-import]
 from bson import ObjectId
 from app.core.database import calls_col, leads_col, users_col, audit_logs_col, campaigns_col
