@@ -117,9 +117,16 @@ async def plivo_answer_webhook(request: Request):
     clean_agent = normalize_e164(agent_phone) if agent_phone else ""
     clean_dial  = normalize_e164(dial_to) if dial_to else ""
 
-    target_to_dial = clean_dial or clean_agent
+    # Determine bridge target: only dial if target is valid and distinct from current connected leg
+    target_to_dial = ""
+    clean_to_digits = clean_to.replace("+", "")
 
-    # If missing, query active call in DB to find assigned agent phone
+    if clean_dial and clean_dial.replace("+", "") != clean_to_digits:
+        target_to_dial = clean_dial
+    elif clean_agent and clean_agent.replace("+", "") != clean_to_digits:
+        target_to_dial = clean_agent
+
+    # Fallback lookup in DB if no query params provided
     if not target_to_dial:
         search_phone = clean_to or clean_from
         if search_phone:
@@ -140,23 +147,30 @@ async def plivo_answer_webhook(request: Request):
                     ]
                 })
                 if agent_user and (agent_user.get("phone") or agent_user.get("agent_phone")):
-                    target_to_dial = normalize_e164(agent_user.get("phone") or agent_user.get("agent_phone"))
+                    possible_target = normalize_e164(agent_user.get("phone") or agent_user.get("agent_phone"))
+                    if possible_target.replace("+", "") != clean_to_digits:
+                        target_to_dial = possible_target
 
-    if not target_to_dial:
-        default_phone = getattr(settings, "DEFAULT_AGENT_PHONE", "")
-        if default_phone:
-            target_to_dial = normalize_e164(default_phone)
+    if target_to_dial:
+        dial_digits = target_to_dial.replace("+", "")
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+            f'        <Number>{dial_digits}</Number>\n'
+            '    </Dial>\n'
+            '</Response>'
+        )
+    else:
+        # Connected single leg: keep session alive & active continuously without hanging up
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            '    <Speak>Call connected via Forge India Connect.</Speak>\n'
+            '    <Wait length="3600"/>\n'
+            '</Response>'
+        )
 
-    dial_number = target_to_dial if target_to_dial else clean_to
-
-    plivo_xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<Response>\n'
-        f'    <Dial callerId="{plivo_caller_id}" timeout="30">\n'
-        f'        <Number>{dial_number}</Number>\n'
-        '    </Dial>\n'
-        '</Response>'
-    )
     return Response(content=plivo_xml, media_type="application/xml")
 
 
