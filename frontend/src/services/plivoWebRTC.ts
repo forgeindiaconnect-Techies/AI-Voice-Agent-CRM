@@ -176,13 +176,15 @@ class PlivoWebRTCService {
       }
 
       const PlivoSDK = (window as any).Plivo || (window as any).plivoWebSDK || (window as any).plivo;
-      if (!PlivoSDK || typeof PlivoSDK.Client !== "function") {
-        console.warn("[PLIVO] Plivo.Client missing on SDK object.");
+      const ClientClass = PlivoSDK?.Client || (typeof PlivoSDK === "function" ? PlivoSDK : null);
+
+      if (!ClientClass || typeof ClientClass !== "function") {
+        console.warn("[PLIVO] Plivo Client constructor missing on window object.");
         this.setCallState("FAILED");
         return false;
       }
 
-      this.client = new PlivoSDK.Client({
+      this.client = new ClientClass({
         debug: "ALL",
         permOnClick: true,
         audioDevice: true,
