@@ -25,7 +25,7 @@ class PlivoWebRTCService {
       let script = document.querySelector('script[src*="plivo.min.js"]') as HTMLScriptElement;
       if (!script) {
         script = document.createElement("script");
-        script.src = "https://cdn.plivo.com/sdk/v2/plivo.min.js";
+        script.src = "/plivo.min.js";
         script.async = true;
         document.head.appendChild(script);
       }
