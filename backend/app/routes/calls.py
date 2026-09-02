@@ -197,17 +197,27 @@ async def get_plivo_endpoint(user: dict = Depends(get_current_user)):
     endpoint_username = user_doc.get("plivo_endpoint_username") if user_doc else None
     endpoint_password = user_doc.get("plivo_endpoint_password") if user_doc else None
 
-    # Plivo requires username to be strictly alphanumeric (no underscores or non-alphanumeric chars)
+    force_create = False
     if endpoint_username:
         endpoint_username = re.sub(r"[^a-zA-Z0-9]", "", endpoint_username)
+        if plivo_auth_id and plivo_auth_token:
+            try:
+                client = get_http_client()
+                check_url = f"https://api.plivo.com/v1/Account/{plivo_auth_id}/Endpoint/?username={endpoint_username}"
+                check_res = await client.get(check_url, auth=(plivo_auth_id, plivo_auth_token), timeout=5.0)
+                if check_res.status_code != 200 or not check_res.json().get("objects"):
+                    print(f"[Plivo Endpoint Check] Username {endpoint_username} not found on Plivo API. Forcing creation...")
+                    force_create = True
+            except Exception as check_err:
+                print(f"[Plivo Endpoint Check Error] {check_err}")
 
-    if not endpoint_username or not endpoint_password:
+    if not endpoint_username or not endpoint_password or force_create:
         import random, string
         rand_suffix = "".join(random.choices(string.digits, k=6))
         clean_name = re.sub(r"[^a-zA-Z0-9]", "", user.get("name", "agent")).lower()
-        endpoint_username = f"forge{clean_name}{rand_suffix}"
-        endpoint_password = f"ForgePass{rand_suffix}!"
-        alias_name = f"Forge{clean_name}{rand_suffix}"
+        endpoint_username = f"crm{clean_name}{rand_suffix}"
+        endpoint_password = f"CrmPass{rand_suffix}!"
+        alias_name = f"CRM{clean_name}{rand_suffix}"
 
         if plivo_auth_id and plivo_auth_token:
             try:
@@ -223,7 +233,7 @@ async def get_plivo_endpoint(user: dict = Depends(get_current_user)):
                 if res.status_code in (200, 201):
                     res_data = res.json()
                     endpoint_username = res_data.get("username", endpoint_username)
-                    print(f"[Plivo Endpoint] Created Endpoint for user {uid}: {endpoint_username}")
+                    print(f"[Plivo Endpoint] Successfully Created Endpoint on Plivo API: {endpoint_username}")
                     if user_doc:
                         await users_col.update_one(
                             {"_id": user_doc["_id"]},
