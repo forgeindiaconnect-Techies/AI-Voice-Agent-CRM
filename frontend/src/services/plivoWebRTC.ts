@@ -123,9 +123,36 @@ class PlivoWebRTCService {
           window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: data }));
         });
 
+        const bindStreamToAudio = (stream: any) => {
+          if (!stream) return;
+          try {
+            const elementIds = ["plivo_audio", "remoteAudio"];
+            elementIds.forEach((id) => {
+              let elem = document.getElementById(id) as HTMLAudioElement;
+              if (!elem) {
+                elem = document.createElement("audio");
+                elem.id = id;
+                elem.autoplay = true;
+                document.body.appendChild(elem);
+              }
+              elem.srcObject = stream;
+              elem.play().catch((err) => console.warn(`[Plivo WebRTC] Play error on #${id}:`, err));
+            });
+          } catch (e) {
+            console.warn("[Plivo WebRTC] Stream binding exception:", e);
+          }
+        };
+
+        this.client.on("onMediaStream", (stream: any) => {
+          console.log("[Plivo WebRTC] Received Remote Media Stream:", stream);
+          bindStreamToAudio(stream);
+        });
+
         this.client.on("onCallAnswered", (data: any) => {
           console.log("[Plivo WebRTC] Call Answered:", data);
           this.currentCall = data;
+          const stream = data?.stream || data?.mediaStream || (this.client as any)?.remoteStream;
+          if (stream) bindStreamToAudio(stream);
           window.dispatchEvent(new CustomEvent("plivo_webrtc_answered", { detail: data }));
         });
 
