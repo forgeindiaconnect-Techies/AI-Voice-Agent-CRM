@@ -243,10 +243,12 @@ class PlivoWebRTCService {
 
         return await new Promise<boolean>((resolve) => {
           let timeoutTimer: any = null;
+          let checkInterval: any = null;
 
           const onLoginSuccess = () => {
             if (timeoutTimer) clearTimeout(timeoutTimer);
-            console.log("[PLIVO] Endpoint registered");
+            if (checkInterval) clearInterval(checkInterval);
+            console.log("[PLIVO] Endpoint registered successfully");
             this.isConnected = true;
             this.isInitialized = true;
             this.setCallState("READY");
@@ -256,11 +258,18 @@ class PlivoWebRTCService {
 
           const onLoginError = (reason: any) => {
             if (timeoutTimer) clearTimeout(timeoutTimer);
+            if (checkInterval) clearInterval(checkInterval);
             console.warn("[PLIVO] Endpoint registration failed:", reason);
             this.isConnected = false;
             this.setCallState("FAILED");
             resolve(false);
           };
+
+          checkInterval = setInterval(() => {
+            if (this.client && (this.client.isLoggedIn || (this.client as any).client?.isLoggedIn)) {
+              onLoginSuccess();
+            }
+          }, 100);
 
           const bindEvent = (target: any, event: string, handler: Function) => {
             if (!target) return;
