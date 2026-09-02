@@ -73,23 +73,25 @@ async def plivo_answer_webhook(request: Request):
     Plivo XML Answer Webhook:
     Executed when a call connects on Plivo (both inbound and outbound).
 
-    Bridges call audio to the agent (via agent_phone PSTN or SIP URI) using <Dial>
-    so two-way voice is crystal clear and 100% audible to both parties.
+    Bridges call audio to the agent / recipient using <Dial><Number>...</Number></Dial>
+    so two-way voice is crystal clear and 100% audible to both parties without any TTS speech.
     """
+    form_data = {}
     if request.method == "POST":
         try:
             form_data = await request.form()
         except Exception:
             form_data = {}
-        from_number = form_data.get("From", "")
-        to_number   = form_data.get("To", "")
-        direction   = (form_data.get("Direction", "") or form_data.get("CallDirection", "")).lower()
-        call_uuid   = form_data.get("CallUUID", "")
+
+    from_number = form_data.get("From", "") or request.query_params.get("From", "")
+    to_number   = form_data.get("To", "") or request.query_params.get("To", "")
+    direction   = (form_data.get("Direction", "") or form_data.get("CallDirection", "") or request.query_params.get("Direction", "")).lower()
+    call_uuid   = form_data.get("CallUUID", "") or request.query_params.get("CallUUID", "")
     dial_to     = request.query_params.get("dial_to") or form_data.get("dial_to", "")
     agent_phone = request.query_params.get("agent_phone") or form_data.get("agent_phone", "")
 
-    plivo_sip_uri   = getattr(settings, "PLIVO_SIP_URI", "")
-    plivo_number    = getattr(settings, "PLIVO_PHONE_NUMBER", "+918031826757").replace("+", "")
+    plivo_number_raw = getattr(settings, "PLIVO_PHONE_NUMBER", "+918031826757")
+    plivo_caller_id  = normalize_e164(plivo_number_raw)
 
     # Broadcast real-time call connected status event to CRM frontend over WebSockets
     await ws_manager.broadcast_global({
@@ -110,67 +112,110 @@ async def plivo_answer_webhook(request: Request):
             "provider": "plivo"
         })
 
-    clean_from  = re.sub(r"\D", "", from_number)
-    clean_to    = re.sub(r"\D", "", to_number)
-    clean_agent = re.sub(r"\D", "", agent_phone.strip()) if agent_phone else ""
-    clean_dial  = re.sub(r"\D", "", dial_to.strip()) if dial_to else ""
+    clean_from  = normalize_e164(from_number) if from_number else ""
+    clean_to    = normalize_e164(to_number) if to_number else ""
+    clean_agent = normalize_e164(agent_phone) if agent_phone else ""
+    clean_dial  = normalize_e164(dial_to) if dial_to else ""
 
-    # 1. Real-time 2-Way Voice Bridging: Dial recipient when call connects so both users converse in real-time
-    if clean_dial:
-        if not clean_dial.startswith("91") and len(clean_dial) == 10:
-            clean_dial = f"91{clean_dial}"
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '    <Speak voice="WOMAN" language="en-IN">Connecting your call to recipient. Please stay on the line.</Speak>\n'
-            f'    <Dial callerId="{plivo_number}" timeout="30">\n'
-            f'        <Number>+{clean_dial}</Number>\n'
-            '    </Dial>\n'
-            '</Response>'
-        )
-        return PlainTextResponse(plivo_xml, media_type="text/xml")
+    target_to_dial = clean_dial or clean_agent
 
-    is_same = False
-    if clean_agent:
-        if clean_agent == clean_to or clean_agent == clean_from or clean_agent in clean_to or clean_to in clean_agent:
-            is_same = True
+    # If missing, query active call in DB to find assigned agent phone
+    if not target_to_dial:
+        search_phone = clean_to or clean_from
+        if search_phone:
+            raw_digits = re.sub(r"\D", "", search_phone)
+            search_regex = raw_digits[-10:] if len(raw_digits) >= 10 else raw_digits
+            active_call = await calls_col.find_one({
+                "status": "live",
+                "$or": [
+                    {"phone": search_phone},
+                    {"phone": {"$regex": search_regex}}
+                ]
+            })
+            if active_call and active_call.get("agent_id"):
+                agent_user = await users_col.find_one({
+                    "$or": [
+                        {"_id": _safe_oid(active_call["agent_id"])},
+                        {"id": active_call["agent_id"]}
+                    ]
+                })
+                if agent_user and (agent_user.get("phone") or agent_user.get("agent_phone")):
+                    target_to_dial = normalize_e164(agent_user.get("phone") or agent_user.get("agent_phone"))
 
-    # 2. If calling agent's own test number, speak welcome greeting so voice audio is audible
-    if is_same:
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '    <Speak voice="WOMAN" language="en-IN">Welcome to Forge India Connect. Your call is connected successfully and live audio is active. You may speak now.</Speak>\n'
-            '    <Wait length="3600"/>\n'
-            '</Response>'
-        )
-        return PlainTextResponse(plivo_xml, media_type="text/xml")
+    if not target_to_dial:
+        default_phone = getattr(settings, "DEFAULT_AGENT_PHONE", "")
+        if default_phone:
+            target_to_dial = normalize_e164(default_phone)
 
-    # 3. If outbound call to customer and agent phone is provided, bridge customer to agent
-    if clean_agent and not is_same:
-        if not clean_agent.startswith("91") and len(clean_agent) == 10:
-            clean_agent = f"91{clean_agent}"
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '    <Speak voice="WOMAN" language="en-IN">Connecting your call to agent.</Speak>\n'
-            f'    <Dial callerId="{plivo_number}" timeout="30">\n'
-            f'        <Number>+{clean_agent}</Number>\n'
-            '    </Dial>\n'
-            '</Response>'
-        )
-        return PlainTextResponse(plivo_xml, media_type="text/xml")
+    dial_number = target_to_dial if target_to_dial else clean_to
 
-    # 4. Fallback: speak welcome message and keep active
     plivo_xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<Response>\n'
-        '    <Speak voice="WOMAN" language="en-IN">Welcome to Forge India Connect. Connecting your call now. You may speak.</Speak>\n'
-        '    <Wait length="3600"/>\n'
+        f'    <Dial callerId="{plivo_caller_id}" timeout="30">\n'
+        f'        <Number>{dial_number}</Number>\n'
+        '    </Dial>\n'
         '</Response>'
     )
-    return PlainTextResponse(plivo_xml, media_type="text/xml")
+@router.get("/plivo/endpoint")
+async def get_plivo_endpoint(user: dict = Depends(get_current_user)):
+    """
+    Returns Plivo WebRTC Endpoint credentials for the logged-in agent.
+    If no endpoint exists for this user, it creates one dynamically via Plivo REST API.
+    Allows the agent's browser (CRM Portal) to make and receive calls directly using WebRTC microphone audio.
+    """
+    plivo_auth_id = getattr(settings, 'PLIVO_AUTH_ID', '') or os.getenv('PLIVO_AUTH_ID', '')
+    plivo_auth_token = getattr(settings, 'PLIVO_AUTH_TOKEN', '') or os.getenv('PLIVO_AUTH_TOKEN', '')
+    plivo_app_id = getattr(settings, 'PLIVO_APP_ID', '42024221415255694')
+    plivo_number = getattr(settings, 'PLIVO_PHONE_NUMBER', '+918031826757')
 
+    uid = _uid(user)
+    user_doc = await users_col.find_one({"_id": _safe_oid(uid)}) or await users_col.find_one({"id": uid})
+    
+    endpoint_username = user_doc.get("plivo_endpoint_username") if user_doc else None
+    endpoint_password = user_doc.get("plivo_endpoint_password") if user_doc else None
+
+    if not endpoint_username or not endpoint_password:
+        import random, string
+        rand_suffix = "".join(random.choices(string.digits, k=6))
+        clean_name = re.sub(r"\W+", "", user.get("name", "agent")).lower()
+        endpoint_username = f"forge_{clean_name}_{rand_suffix}"
+        endpoint_password = f"ForgePass_{rand_suffix}!"
+        alias_name = f"Forge_{clean_name}_{rand_suffix}"
+
+        if plivo_auth_id and plivo_auth_token:
+            try:
+                client = get_http_client()
+                ep_url = f"https://api.plivo.com/v1/Account/{plivo_auth_id}/Endpoint/"
+                ep_body = {
+                    "username": endpoint_username,
+                    "password": endpoint_password,
+                    "alias": alias_name,
+                    "app_id": plivo_app_id
+                }
+                res = await client.post(ep_url, json=ep_body, auth=(plivo_auth_id, plivo_auth_token), timeout=10.0)
+                if res.status_code in (200, 201):
+                    res_data = res.json()
+                    endpoint_username = res_data.get("username", endpoint_username)
+                    print(f"[Plivo Endpoint] Created Endpoint for user {uid}: {endpoint_username}")
+                    if user_doc:
+                        await users_col.update_one(
+                            {"_id": user_doc["_id"]},
+                            {"$set": {"plivo_endpoint_username": endpoint_username, "plivo_endpoint_password": endpoint_password}}
+                        )
+                else:
+                    print(f"[Plivo Endpoint Error] {res.status_code} - {res.text}")
+            except Exception as ep_err:
+                print(f"[Plivo Endpoint Exception] {ep_err}")
+
+    sip_uri = f"sip:{endpoint_username}@phone.plivo.com" if "@" not in (endpoint_username or "") else f"sip:{endpoint_username}"
+    return {
+        "username": endpoint_username,
+        "password": endpoint_password,
+        "sip_uri": sip_uri,
+        "plivo_number": plivo_number,
+        "app_id": plivo_app_id
+    }
 
 
 @router.api_route("/plivo/hangup", methods=["GET", "POST"])
@@ -1902,21 +1947,31 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
 
     # Plivo is the sole PSTN provider – Twilio removed
 
-    # Plivo Outbound PSTN Call trigger if configured
-    plivo_auth_id = getattr(settings, 'PLIVO_AUTH_ID', '') or os.getenv('PLIVO_AUTH_ID', '')
-    plivo_auth_token = getattr(settings, 'PLIVO_AUTH_TOKEN', '') or os.getenv('PLIVO_AUTH_TOKEN', '')
-    plivo_phone_number = getattr(settings, 'PLIVO_PHONE_NUMBER', '+918031826757')
-    base_url = getattr(settings, 'BASE_URL', 'https://ai-voice-agent-crm.onrender.com')
+    # Plivo Outbound PSTN Call trigger (Agent-First Click-to-Call 2-Way Audio Bridging)
     agent_phone_val = user.get("agent_phone") or user.get("phone") or ""
+    if not agent_phone_val and assigned_agent_id:
+        assigned_agent = await users_col.find_one({"_id": _safe_oid(assigned_agent_id)}) or await users_col.find_one({"id": assigned_agent_id})
+        if assigned_agent:
+            agent_phone_val = assigned_agent.get("agent_phone") or assigned_agent.get("phone") or ""
 
-    if plivo_auth_id and plivo_auth_token:
+    clean_agent_phone = normalize_e164(agent_phone_val) if agent_phone_val else ""
+
+    if not is_ai_call and plivo_auth_id and plivo_auth_token:
         try:
             plivo_url = f"https://api.plivo.com/v1/Account/{plivo_auth_id}/Call/"
-            # Always call the entered number directly as the primary destination
+            
+            # If agent phone is present, call Agent phone first, then bridge to Customer upon answer
+            if clean_agent_phone:
+                primary_dest = clean_agent_phone.replace("+", "")
+                bridge_dest = normalized_phone
+            else:
+                primary_dest = normalized_phone.replace("+", "")
+                bridge_dest = ""
+
             plivo_body = {
                 "from": plivo_phone_number.replace("+", ""),
-                "to": normalized_phone.replace("+", ""),
-                "answer_url": f"{base_url}/api/calls/plivo/answer?agent_phone={quote(agent_phone_val)}",
+                "to": primary_dest,
+                "answer_url": f"{base_url}/api/calls/plivo/answer?dial_to={quote(bridge_dest)}&agent_phone={quote(clean_agent_phone)}",
                 "answer_method": "POST",
                 "hangup_url": f"{base_url}/api/calls/plivo/status",
                 "hangup_method": "POST",
@@ -1924,11 +1979,11 @@ async def start_manual_dial(payload: ManualDialPayload, user: dict = Depends(get
             client = get_http_client()
             res = await client.post(plivo_url, json=plivo_body, auth=(plivo_auth_id, plivo_auth_token), timeout=10.0)
             if res.status_code in (200, 201, 202):
-                print(f"[Plivo] Outbound Call initiated successfully to {normalized_phone}: {res.json()}")
+                print(f"[Plivo Audio Bridge] Outbound call placed to {primary_dest} (bridge to {bridge_dest}): {res.json()}")
             else:
-                print(f"[Plivo] API Error: {res.status_code} - {res.text}")
+                print(f"[Plivo Audio Bridge] API Error: {res.status_code} - {res.text}")
         except Exception as plivo_err:
-            print(f"[Plivo] Exception initiating outbound call: {plivo_err}")
+            print(f"[Plivo Audio Bridge] Exception: {plivo_err}")
 
     sip_logs = [
         f"[{utcnow().isoformat()}] [SIP] INVITE sip:{payload.pool_id}@forge-pbx.local SIP/2.0",

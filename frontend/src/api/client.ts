@@ -106,6 +106,25 @@ export async function apiFetch(
   const { timeoutMs = 35000, retries = 1, ...fetchOptions } = options;
   const token = getToken();
 
+  const isPublicPath =
+    path === "/health" ||
+    path === "/api/health" ||
+    path.startsWith("/api/auth/login") ||
+    path.startsWith("/api/auth/bootstrap-admin") ||
+    path.startsWith("/api/auth/refresh");
+
+  if (!token && !isPublicPath) {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+      window.location.hash = "#/login";
+    }
+    throw new Error("Session expired. Please sign in again.");
+  }
+
   const headers: Record<string, string> = {
     ...(fetchOptions.body && !(fetchOptions.body instanceof FormData)
       ? { "Content-Type": "application/json" }
@@ -135,10 +154,13 @@ export async function apiFetch(
       clearTimeout(timeoutId);
 
       // Handle token expiration safely for HashRouter/Electron
-      if (res.status === 401 && path !== "/api/auth/login") {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user");
+      if (res.status === 401 && !isPublicPath) {
+        if (typeof localStorage !== "undefined") {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("user");
+        }
         if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("auth:unauthorized"));
           window.location.hash = "#/login";
         }
         throw new Error("Session expired. Please sign in again.");

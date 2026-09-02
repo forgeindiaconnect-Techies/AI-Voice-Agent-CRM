@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self' file: data: blob: http: https: ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file: blob:; style-src 'self' 'unsafe-inline' file: https://fonts.googleapis.com; font-src 'self' file: https://fonts.gstatic.com data:; img-src 'self' data: blob: file: https:; connect-src 'self' file: http: https: ws: wss:; media-src 'self' blob: data: mediastream: file: https:;"
+      content="default-src 'self' file: data: blob: http: https: ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' file: blob: https://cdn.plivo.com; style-src 'self' 'unsafe-inline' file: https://fonts.googleapis.com; font-src 'self' file: https://fonts.gstatic.com data:; img-src 'self' data: blob: file: https:; connect-src 'self' file: http: https: ws: wss: *.plivo.com wss://*.plivo.com; media-src 'self' blob: data: mediastream: file: https:;"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +13,7 @@
     <link rel="icon" type="image/png" href="/logo-square.png" />
     <meta name="description" content="Forge India Connect — AI-powered Voice Calling CRM for recruitment, sales, and support teams." />
     <title>Forge India Connect — AI Voice Calling CRM</title>
+    <script src="https://cdn.plivo.com/sdk/v2/plivo.min.js"></script>
   </head>
   <body class="font-sans antialiased bg-[#f4f6fb] text-slate-900">
     <div id="root"></div>

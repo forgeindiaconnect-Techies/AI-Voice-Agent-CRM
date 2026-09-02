@@ -4,7 +4,7 @@ import { usePresence, getStatusBadgeDetails } from "../context/PresenceContext";
 import { api, getWsUrl } from "../api/client";
 import { useToast } from "../context/ToastContext";
 import { motion, AnimatePresence } from "framer-motion";
-// Plivo-only: Twilio SDK removed
+import { plivoWebRTC } from "../services/plivoWebRTC";
 import { CustomPauseIcon } from "../components/CustomPauseIcon";
 import { CustomSelect } from "../components/CustomSelect";
 import LeadFilterModal from "../components/LeadFilterModal";
@@ -1290,8 +1290,9 @@ export default function Dialer() {
       }
     }
 
-    // Human Agent PSTN Call via Plivo
+    // Human Agent Call via Plivo WebRTC Browser SDK (Direct Web Microphone)
     try {
+      plivoWebRTC.makeCall(fullPhoneNumber);
       const res = await api.post("/api/calls/manual-dial", {
         phone: fullPhoneNumber,
         pool_id: matchedLead?.pool_id || user?.pool_id || "general",
@@ -1309,7 +1310,7 @@ export default function Dialer() {
       setCallStatus("ringing");
       setOutboundPhone(""); // Reset number ONLY after call request is successfully created
       autoDialLockRef.current = "";
-      showToast(`Calling ${fullPhoneNumber} via Plivo…`, "info");
+      showToast(`In-browser WebRTC call initiated to ${fullPhoneNumber} via Plivo…`, "info");
       fetchLeads();
       fetchCallHistory();
     } catch (err: any) {
