@@ -68,6 +68,8 @@ type CallStatus =
   | "ready"
   | "dialing"
   | "ringing"
+  | "answering"
+  | "connecting_media"
   | "connected"
   | "hold"
   | "wrapup"
@@ -322,6 +324,20 @@ export default function Dialer() {
       const { state, diagnostics } = e.detail || {};
       if (state) setWebrtcState(state);
       if (diagnostics) setMediaDiagnostics(diagnostics);
+
+      if (state === "CONNECTED" && callStatusRef.current === "answering") {
+        setCallStatus("connecting_media");
+        console.log("[PLIVO] CALL ANSWERED");
+        console.log("[PLIVO] MEDIA CONNECTING");
+      }
+      if (state === "MEDIA_CONNECTED" && (callStatusRef.current === "answering" || callStatusRef.current === "connecting_media")) {
+        setCallStatus("connected");
+        setAgentStatus("on_call");
+        if (!answeredStartTimeRef.current) answeredStartTimeRef.current = Date.now();
+        setCallDuration(0);
+        setRingingDuration(0);
+        console.log("[PLIVO] MEDIA CONNECTED");
+      }
     };
 
     window.addEventListener("plivo_webrtc_state_change", handleWebRTCState);
@@ -331,7 +347,9 @@ export default function Dialer() {
       setAudioOutputDevices(outputs);
     });
 
-    plivoWebRTC.initializeMicrophone();
+    plivoWebRTC.initializeMicrophone().then(() => {
+      plivoWebRTC.initialize();
+    });
 
     return () => {
       window.removeEventListener("plivo_webrtc_state_change", handleWebRTCState);
@@ -697,6 +715,7 @@ export default function Dialer() {
         const cleanPhone = (data.phone || "9876543210").replace(/\D/g, "").slice(-10);
         setCurrentCallId(data.call_id);
         setOutboundPhone(cleanPhone);
+        setDialerMode("inbound");
         setCallStatus("connected");
         setAgentStatus("on_call");
         setCallDuration(0);
@@ -872,13 +891,10 @@ export default function Dialer() {
 
     const handlePlivoIncoming = (e: Event) => {
       const customEvt = e as CustomEvent;
-      const { callerName, extraHeaders } = customEvt.detail || {};
-      const callId = extraHeaders?.["X-Call-Id"] || `inc_${Date.now()}`;
+      const { callerName, extraHeaders, callInfo } = customEvt.detail || {};
+      const callId = extraHeaders?.["X-Call-Id"] || callInfo?.callUUID || `inc_${Date.now()}`;
       const phone = callerName || "Unknown";
       
-      const ringTs = Date.now();
-      ringingStartTimeRef.current = ringTs;
-
       setIncomingCall({
         id: callId,
         phone: phone,
@@ -887,8 +903,16 @@ export default function Dialer() {
       });
       setOutboundPhone(phone);
       setDialerMode("inbound");
-      setCallStatus("ringing");
-      setRingingDuration(0);
+      setCallStatus("answering");
+      
+      console.log(`[PLIVO] INCOMING CALL`);
+      console.log(`[PLIVO] CALL UUID: ${callInfo?.callUUID}`);
+      console.log(`[PLIVO] CALLER: +91${phone}`);
+      console.log(`[PLIVO] AUTO ANSWERING CALL`);
+      
+      // Automatically answer the WebRTC call
+      plivoWebRTC.answer(callInfo?.callUUID);
+      console.log(`[PLIVO] CALL ANSWER REQUEST SENT`);
     };
 
     const handlePlivoTerminated = () => {
@@ -2227,9 +2251,21 @@ export default function Dialer() {
                               );
                             })()}
 
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/15 dark:text-blue-400 dark:border-blue-500/30 flex items-center gap-1.5">
-                              <span className={`h-2 w-2 rounded-full ${wsConnected ? "bg-blue-500 animate-pulse" : "bg-slate-400"}`} />
-                              {wsConnected ? "WebSocket Stream Live" : "Reconnecting..."}
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
+                              webrtcState === "READY" || webrtcState === "CONNECTED" || webrtcState === "MEDIA_CONNECTED"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30"
+                                : webrtcState === "REGISTERING"
+                                ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30"
+                                : "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-500/15 dark:text-slate-400 dark:border-slate-500/30"
+                            }`}>
+                              <span className={`h-2 w-2 rounded-full ${
+                                webrtcState === "READY" || webrtcState === "CONNECTED" || webrtcState === "MEDIA_CONNECTED"
+                                  ? "bg-emerald-500 animate-pulse"
+                                  : webrtcState === "REGISTERING"
+                                  ? "bg-amber-500 animate-pulse"
+                                  : "bg-slate-400"
+                              }`} />
+                              {webrtcState === "READY" ? "READY FOR CALLS" : webrtcState === "REGISTERING" ? "REGISTERING SDK..." : webrtcState === "IDLE" ? "SDK IDLE" : webrtcState}
                             </span>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
@@ -2397,9 +2433,18 @@ export default function Dialer() {
                             }`}>
                               <PhoneIncoming className="h-4 w-4" />
                             </div>
-                            <div>
-                              <p className="text-xs tracking-tight font-extrabold">Inbound Call</p>
-                              <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500">Receive Incoming</p>
+                            <div className="flex flex-col items-center">
+                              <p className="text-xs tracking-tight font-extrabold">
+                                {dialerMode === "inbound" && incomingCall ? "INCOMING CALL" : dialerMode === "inbound" && callStatus === "connected" ? "INBOUND CALL" : "Inbound Call"}
+                              </p>
+                              <p className="text-[9px] font-medium text-slate-400 dark:text-slate-500">
+                                {dialerMode === "inbound" && incomingCall ? `Customer: +91 ${incomingCall.phone}` : (dialerMode === "inbound" && callStatus === "connected" ? `Customer: +91 ${outboundPhone}` : "Receive Incoming")}
+                              </p>
+                              {dialerMode === "inbound" && (callStatus === "answering" || callStatus === "connecting_media" || callStatus === "connected") && (
+                                <p className="text-[9px] font-bold text-emerald-500 mt-0.5">
+                                  Status: {callStatus === "answering" ? "CONNECTING..." : callStatus === "connecting_media" ? "CONNECTING MEDIA..." : "CONNECTED"}
+                                </p>
+                              )}
                             </div>
                           </button>
 

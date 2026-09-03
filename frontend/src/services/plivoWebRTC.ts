@@ -352,9 +352,9 @@ class PlivoWebRTCService {
       });
 
       // ── Call events ──
-      registerOn("onIncomingCall", (callerName: any, extraHeaders: any) => {
-        console.log("[PLIVO] Incoming call:", callerName);
-        window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: { callerName, extraHeaders } }));
+      registerOn("onIncomingCall", (callerName: any, extraHeaders: any, callInfo: any) => {
+        console.log("[PLIVO] Incoming call:", callerName, callInfo);
+        window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: { callerName, extraHeaders, callInfo } }));
       });
 
       registerOn("onCallRemoteRinging", (data: any) => {
@@ -589,14 +589,23 @@ class PlivoWebRTCService {
     }
   }
 
-  // ──────────────────────────────────────────────
-  // Call controls
-  // ──────────────────────────────────────────────
-  public answer(): void {
+  public async answer(callUUID?: string): Promise<void> {
     if (typeof this.client?.answer === "function") {
       try {
-        this.client.answer();
+        if (this.localStream) {
+          (window as any).localStream = this.localStream;
+        } else {
+          await this.initializeMicrophone();
+        }
+        this.ensureRemoteAudioElement();
+
+        if (callUUID) {
+          this.client.answer(callUUID);
+        } else {
+          this.client.answer();
+        }
         console.log("[PLIVO] client.answer() invoked successfully");
+        this.monitorRemoteAudio();
       } catch (err) {
         console.warn("[PLIVO] Answer error:", err);
       }
@@ -605,10 +614,14 @@ class PlivoWebRTCService {
     }
   }
 
-  public reject(): void {
+  public reject(callUUID?: string): void {
     if (typeof this.client?.reject === "function") {
       try {
-        this.client.reject();
+        if (callUUID) {
+          this.client.reject(callUUID);
+        } else {
+          this.client.reject();
+        }
         console.log("[PLIVO] client.reject() invoked successfully");
       } catch (err) {
         console.warn("[PLIVO] Reject error:", err);
