@@ -163,7 +163,9 @@ export async function apiFetch(
           window.dispatchEvent(new CustomEvent("auth:unauthorized"));
           window.location.hash = "#/login";
         }
-        throw new Error("Session expired. Please sign in again.");
+        const authErr = new Error("Session expired. Please sign in again.");
+        authErr.name = "AuthError";
+        throw authErr;
       }
 
       // Gracefully handle 403 Forbidden for active/live call polling on remote server
@@ -194,15 +196,18 @@ export async function apiFetch(
     } catch (err: any) {
       clearTimeout(timeoutId);
 
-      // Don't retry if aborted explicitly by user
+      // Don't retry if aborted explicitly by user, or if auth failed (401)
       if (err.name === "AbortError" && signal?.aborted) {
+        throw err;
+      }
+      if (err.name === "AuthError") {
         throw err;
       }
 
       lastError = err;
       attempt++;
 
-      if (attempt <= retries && err.name !== "AbortError") {
+      if (attempt <= retries && err.name !== "AbortError" && err.name !== "AuthError") {
         // Exponential backoff before retry
         await new Promise((resolve) => setTimeout(resolve, attempt * 500));
       }

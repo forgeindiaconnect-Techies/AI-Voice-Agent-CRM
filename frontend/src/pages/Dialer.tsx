@@ -870,9 +870,43 @@ export default function Dialer() {
       }
     };
 
+    const handlePlivoIncoming = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      const { callerName, extraHeaders } = customEvt.detail || {};
+      const callId = extraHeaders?.["X-Call-Id"] || `inc_${Date.now()}`;
+      const phone = callerName || "Unknown";
+      
+      const ringTs = Date.now();
+      ringingStartTimeRef.current = ringTs;
+
+      setIncomingCall({
+        id: callId,
+        phone: phone,
+        name: phone,
+        timestamp: new Date().toISOString()
+      });
+      setOutboundPhone(phone);
+      setDialerMode("inbound");
+      setCallStatus("ringing");
+      setRingingDuration(0);
+    };
+
+    const handlePlivoTerminated = () => {
+      setCallStatus("wrapup");
+      setAgentStatus("wrap_up");
+      isDialingRef.current = false;
+      setIsDialing(false);
+      setIncomingCall(null);
+    };
+
     window.addEventListener("forge_global_ws_msg", handleWsEvent);
+    window.addEventListener("plivo_webrtc_incoming", handlePlivoIncoming);
+    window.addEventListener("plivo_webrtc_terminated", handlePlivoTerminated);
+
     return () => {
       window.removeEventListener("forge_global_ws_msg", handleWsEvent);
+      window.removeEventListener("plivo_webrtc_incoming", handlePlivoIncoming);
+      window.removeEventListener("plivo_webrtc_terminated", handlePlivoTerminated);
     };
   }, [fetchLeads, fetchCallHistory]);
 
