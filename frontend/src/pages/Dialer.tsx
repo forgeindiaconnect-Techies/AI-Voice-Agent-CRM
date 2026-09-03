@@ -903,21 +903,13 @@ export default function Dialer() {
       });
       setOutboundPhone(phone);
       setDialerMode("inbound");
-      setCallStatus("answering");
+      setCallStatus("ringing"); // Wait for manual answer
+      setAgentStatus("on_call"); // Agent is tied up
       
-      console.log(`[PLIVO] INCOMING CALL RECEIVED`);
+      console.log(`[PLIVO] INCOMING CALL RECEIVED (Manual Answer)`);
       console.log(`[PLIVO] callerID: ${callerID}`);
       console.log(`[PLIVO] callUUID: ${callInfo?.callUUID}`);
-      console.log(`[PLIVO] direction: ${callInfo?.direction}`);
-      console.log(`[PLIVO] src: ${callInfo?.src}`);
-      console.log(`[PLIVO] dest: ${callInfo?.dest}`);
-      console.log(`[PLIVO] state: ${callInfo?.state}`);
-      console.log(`[PLIVO] AUTO ANSWER START`);
-      console.log(`[PLIVO] CALL UUID: ${callInfo?.callUUID}`);
-      
-      // Automatically answer the WebRTC call
-      plivoWebRTC.answer(callInfo?.callUUID);
-      console.log(`[PLIVO] AUTO ANSWER RESULT: ${callInfo?.callUUID}`);
+      console.log(`[PLIVO] Waiting for agent to click Accept...`);
     };
 
     const handlePlivoTerminated = () => {
@@ -1224,12 +1216,12 @@ export default function Dialer() {
   };
 
   const handleAnswerRingingCall = () => {
-    plivoWebRTC.answer();
+    plivoWebRTC.answer(incomingCall?.id);
     answeredStartTimeRef.current = Date.now();
-    setCallStatus("connected");
+    setCallStatus("answering");
     setAgentStatus("on_call");
     setCallDuration(0);
-    showToast(`Inbound Call Answered & Connected`, "success");
+    showToast(`Inbound Call Accepted`, "success");
   };
 
   const handleRejectRingingCall = () => {
