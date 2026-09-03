@@ -891,28 +891,33 @@ export default function Dialer() {
 
     const handlePlivoIncoming = (e: Event) => {
       const customEvt = e as CustomEvent;
-      const { callerName, extraHeaders, callInfo } = customEvt.detail || {};
+      const { callerID, callerName, extraHeaders, callInfo } = customEvt.detail || {};
       const callId = extraHeaders?.["X-Call-Id"] || callInfo?.callUUID || `inc_${Date.now()}`;
-      const phone = callerName || "Unknown";
+      const phone = callerID || callerName || "Unknown";
       
       setIncomingCall({
         id: callId,
         phone: phone,
-        name: phone,
+        name: callerName || phone,
         timestamp: new Date().toISOString()
       });
       setOutboundPhone(phone);
       setDialerMode("inbound");
       setCallStatus("answering");
       
-      console.log(`[PLIVO] INCOMING CALL`);
+      console.log(`[PLIVO] INCOMING CALL RECEIVED`);
+      console.log(`[PLIVO] callerID: ${callerID}`);
+      console.log(`[PLIVO] callUUID: ${callInfo?.callUUID}`);
+      console.log(`[PLIVO] direction: ${callInfo?.direction}`);
+      console.log(`[PLIVO] src: ${callInfo?.src}`);
+      console.log(`[PLIVO] dest: ${callInfo?.dest}`);
+      console.log(`[PLIVO] state: ${callInfo?.state}`);
+      console.log(`[PLIVO] AUTO ANSWER START`);
       console.log(`[PLIVO] CALL UUID: ${callInfo?.callUUID}`);
-      console.log(`[PLIVO] CALLER: +91${phone}`);
-      console.log(`[PLIVO] AUTO ANSWERING CALL`);
       
       // Automatically answer the WebRTC call
       plivoWebRTC.answer(callInfo?.callUUID);
-      console.log(`[PLIVO] CALL ANSWER REQUEST SENT`);
+      console.log(`[PLIVO] AUTO ANSWER RESULT: ${callInfo?.callUUID}`);
     };
 
     const handlePlivoTerminated = () => {

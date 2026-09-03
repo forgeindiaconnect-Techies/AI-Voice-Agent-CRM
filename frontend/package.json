@@ -15,7 +15,9 @@
     "electron:build": "node scripts/clean-build.js && tsc && vite build && electron-builder",
     "electron:preview": "tsc && vite build && electron ."
   },
-  "dependencies": {},
+  "dependencies": {
+    "plivo-browser-sdk": "^2.2.21"
+  },
   "devDependencies": {
     "@twilio/voice-sdk": "^2.18.3",
     "@types/node": "^26.2.0",

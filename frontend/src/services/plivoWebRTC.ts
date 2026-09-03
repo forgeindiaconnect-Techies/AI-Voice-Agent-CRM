@@ -1,4 +1,5 @@
 import { api } from "../api/client";
+import * as plivoBrowserSdk from "plivo-browser-sdk";
 
 export interface PlivoEndpointCredentials {
   username: string;
@@ -44,6 +45,7 @@ class PlivoWebRTCService {
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private initPromise: Promise<boolean> | null = null;
+  private isEventsRegistered = false;
   private audioInputDeviceId: string = "default";
   private audioOutputDeviceId: string = "default";
 
@@ -63,45 +65,14 @@ class PlivoWebRTCService {
   };
 
   // ──────────────────────────────────────────────
-  // SDK script loader
-  // ──────────────────────────────────────────────
-  private async ensureScriptLoaded(): Promise<boolean> {
-    if (typeof window === "undefined") return false;
-    if ((window as any).Plivo) return true;
-
-    return new Promise((resolve) => {
-      let script = document.querySelector('script[src*="plivo.min.js"]') as HTMLScriptElement;
-      if (!script) {
-        script = document.createElement("script");
-        script.src = "/plivo.min.js";
-        script.async = true;
-        document.head.appendChild(script);
-      }
-
-      const checkInterval = setInterval(() => {
-        if ((window as any).Plivo) {
-          clearInterval(checkInterval);
-          resolve(true);
-        }
-      }, 100);
-
-      script.onerror = () => {
-        clearInterval(checkInterval);
-        console.error("[PLIVO] Failed to load Plivo Browser SDK script.");
-        resolve(false);
-      };
-
-      setTimeout(() => {
-        clearInterval(checkInterval);
-        resolve(!!(window as any).Plivo);
-      }, 5000);
-    });
-  }
-
-  // ──────────────────────────────────────────────
   // Microphone
   // ──────────────────────────────────────────────
   public async initializeMicrophone(): Promise<boolean> {
+    if (this.localStream) {
+      console.log("[PLIVO] Microphone already initialized, reusing stream.");
+      return true;
+    }
+
     try {
       if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) return false;
 
@@ -200,19 +171,10 @@ class PlivoWebRTCService {
       this.setCallState("REGISTERING");
       console.log("[PLIVO] SDK initialization starting");
 
-      // 1. Load SDK
-      const hasSDK = await this.ensureScriptLoaded();
-      if (!hasSDK) {
-        console.error("[PLIVO] SDK script failed to load");
-        this.setCallState("FAILED");
-        return false;
-      }
-      console.log("[PLIVO] SDK script loaded");
-
-      // 2. Microphone
+      // 1. Microphone
       await this.initializeMicrophone();
 
-      // 3. Fetch endpoint credentials
+      // 2. Fetch endpoint credentials
       const creds: PlivoEndpointCredentials = await api.get("/api/calls/plivo/endpoint");
       this.credentials = creds;
       console.log(`[PLIVO] Endpoint credentials received: username=${creds.username}`);
@@ -223,18 +185,10 @@ class PlivoWebRTCService {
         return false;
       }
 
-      // 4. Pre-create remote audio element
+      // 3. Pre-create remote audio element
       this.ensureRemoteAudioElement();
 
-      // 5. Resolve the SDK constructor
-      const PlivoConstructor = (window as any).Plivo;
-      if (!PlivoConstructor || typeof PlivoConstructor !== "function") {
-        console.error("[PLIVO] window.Plivo is not a constructor");
-        this.setCallState("FAILED");
-        return false;
-      }
-
-      // 6. Create client instance (singleton)
+      // 4. Create client instance (singleton)
       if (!this.client) {
         // Clear cached instance to force fresh creation
         try { delete (window as any)._PlivoInstance; } catch {}
@@ -243,13 +197,12 @@ class PlivoWebRTCService {
           debug: "ALL",
           permOnClick: true,
           codecs: ["OPUS", "PCMU"],
+          enableTracking: false,
         };
 
-        let rawClient = new PlivoConstructor(options);
-        if (rawClient && rawClient.client && typeof rawClient.on !== "function") {
-          rawClient = rawClient.client;
-        }
-        this.client = rawClient;
+        const PlivoConstructor = (plivoBrowserSdk as any).default || plivoBrowserSdk;
+        let plivoWrapper = new PlivoConstructor(options);
+        this.client = plivoWrapper.client || plivoWrapper;
 
         console.log("[PLIVO] SDK initialized");
         console.log(`[PLIVO] SDK version: ${this.client?.version || "2.1.4"}`);
@@ -318,6 +271,9 @@ class PlivoWebRTCService {
         done(false);
         return;
       }
+      
+      if (!this.isEventsRegistered) {
+        this.isEventsRegistered = true;
 
       // ── onConnectionChange: WebSocket level ──
       registerOn("onConnectionChange", (data: any) => {
@@ -352,9 +308,9 @@ class PlivoWebRTCService {
       });
 
       // ── Call events ──
-      registerOn("onIncomingCall", (callerName: any, extraHeaders: any, callInfo: any) => {
-        console.log("[PLIVO] Incoming call:", callerName, callInfo);
-        window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: { callerName, extraHeaders, callInfo } }));
+      registerOn("onIncomingCall", (callerID: any, extraHeaders: any, callInfo: any, callerName: any) => {
+        console.log("[PLIVO] Incoming call:", callerID, callInfo);
+        window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: { callerID, extraHeaders, callInfo, callerName } }));
       });
 
       registerOn("onCallRemoteRinging", (data: any) => {
@@ -363,11 +319,9 @@ class PlivoWebRTCService {
       });
 
       registerOn("onCallAnswered", (data: any) => {
-        console.log("[PLIVO] Call answered");
+        console.log("[PLIVO] Call answered, waiting for media connection...");
         this.currentCall = data;
-        this.setCallState("CONNECTED");
         window.dispatchEvent(new CustomEvent("plivo_webrtc_answered", { detail: data }));
-
         // Start monitoring for remote audio
         this.monitorRemoteAudio();
       });
@@ -405,9 +359,12 @@ class PlivoWebRTCService {
       });
 
       registerOn("onMediaConnected", (stream: any) => {
-        console.log("[PLIVO] onMediaConnected — remote stream available");
+        console.log("[PLIVO] onMediaConnected — remote stream available, call is fully CONNECTED");
         this.bindRemoteStream(stream);
+        this.setCallState("CONNECTED");
       });
+      
+      }
 
       // ── Initiate login ──
       console.log(`[PLIVO] Calling client.login("${username}", "****")`);
