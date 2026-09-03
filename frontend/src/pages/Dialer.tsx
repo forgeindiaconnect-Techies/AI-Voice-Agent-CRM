@@ -1161,6 +1161,7 @@ export default function Dialer() {
   };
 
   const handleAnswerRingingCall = () => {
+    plivoWebRTC.answer();
     answeredStartTimeRef.current = Date.now();
     setCallStatus("connected");
     setAgentStatus("on_call");
@@ -1169,6 +1170,7 @@ export default function Dialer() {
   };
 
   const handleRejectRingingCall = () => {
+    plivoWebRTC.reject();
     setCallStatus("ready");
     setAgentStatus("ready");
     setIncomingCall(null);

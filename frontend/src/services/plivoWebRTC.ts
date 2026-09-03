@@ -592,6 +592,32 @@ class PlivoWebRTCService {
   // ──────────────────────────────────────────────
   // Call controls
   // ──────────────────────────────────────────────
+  public answer(): void {
+    if (typeof this.client?.answer === "function") {
+      try {
+        this.client.answer();
+        console.log("[PLIVO] client.answer() invoked successfully");
+      } catch (err) {
+        console.warn("[PLIVO] Answer error:", err);
+      }
+    } else {
+      console.warn("[PLIVO] client.answer is not a function");
+    }
+  }
+
+  public reject(): void {
+    if (typeof this.client?.reject === "function") {
+      try {
+        this.client.reject();
+        console.log("[PLIVO] client.reject() invoked successfully");
+      } catch (err) {
+        console.warn("[PLIVO] Reject error:", err);
+      }
+    }
+    this.currentCall = null;
+    this.setCallState("READY");
+  }
+
   public hangup(): void {
     if (typeof this.client?.hangup === "function") {
       try {
