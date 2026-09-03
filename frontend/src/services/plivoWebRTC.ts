@@ -388,10 +388,6 @@ class PlivoWebRTCService {
 
       registerOn("onMediaPermission", (data: any) => {
         console.log("[PLIVO] Media permission:", data?.status);
-        if (data?.stream) {
-          (window as any).localStream = data.stream;
-          console.log("[PLIVO] SDK acquired localStream via onMediaPermission");
-        }
       });
 
       registerOn("onMediaConnected", (stream: any) => {
@@ -544,10 +540,8 @@ class PlivoWebRTCService {
         return false;
       }
 
-      // Ensure window.localStream is set
-      if (this.localStream) {
-        (window as any).localStream = this.localStream;
-      } else {
+      // Ensure localStream is ready
+      if (!this.localStream) {
         await this.initializeMicrophone();
       }
 
@@ -561,7 +555,6 @@ class PlivoWebRTCService {
       console.log("[PLIVO] Starting outbound call");
       console.log(`[PLIVO] Destination: ${formattedNumber}`);
       console.log(`[PLIVO] CallerID: ${callerId}`);
-      console.log(`[MEDIA] window.localStream present: ${!!(window as any).localStream}`);
 
       if (typeof this.client.call !== "function") {
         console.error("[PLIVO] client.call is not a function");
@@ -585,9 +578,7 @@ class PlivoWebRTCService {
   public async answer(callUUID?: string): Promise<void> {
     if (typeof this.client?.answer === "function") {
       try {
-        if (this.localStream) {
-          (window as any).localStream = this.localStream;
-        } else {
+        if (!this.localStream) {
           await this.initializeMicrophone();
         }
         this.ensureRemoteAudioElement();
