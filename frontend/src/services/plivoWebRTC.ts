@@ -127,20 +127,48 @@ class PlivoWebRTCService {
     if (typeof document === "undefined") return;
 
     const SDK_REMOTE_ID = "plivo_webrtc_remoteview";
-    let elem = document.getElementById(SDK_REMOTE_ID) as HTMLAudioElement;
-    if (!elem) {
-      elem = document.createElement("audio");
-      elem.id = SDK_REMOTE_ID;
-      elem.autoplay = true;
-      elem.setAttribute("playsinline", "true");
-      elem.setAttribute("data-devicetype", "speakerDevice");
-      elem.hidden = true;
-      document.body.appendChild(elem);
+    let remoteElem = document.getElementById(SDK_REMOTE_ID) as HTMLAudioElement;
+    if (!remoteElem) {
+      remoteElem = document.createElement("audio");
+      remoteElem.id = SDK_REMOTE_ID;
+      remoteElem.autoplay = true;
+      remoteElem.setAttribute("playsinline", "true");
+      remoteElem.setAttribute("data-devicetype", "speakerDevice");
+      remoteElem.hidden = true;
+      document.body.appendChild(remoteElem);
       console.log(`[MEDIA] Created SDK remote audio element #${SDK_REMOTE_ID}`);
     }
-    elem.autoplay = true;
-    elem.muted = false;
-    elem.volume = 1.0;
+    remoteElem.autoplay = true;
+    remoteElem.muted = false;
+    remoteElem.volume = 1.0;
+
+    const SDK_REMOTE_AUDIO_ID = "remoteAudio";
+    let remoteAudioElem = document.getElementById(SDK_REMOTE_AUDIO_ID) as HTMLAudioElement;
+    if (!remoteAudioElem) {
+      remoteAudioElem = document.createElement("audio");
+      remoteAudioElem.id = SDK_REMOTE_AUDIO_ID;
+      remoteAudioElem.autoplay = true;
+      remoteAudioElem.setAttribute("playsinline", "true");
+      remoteAudioElem.hidden = true;
+      document.body.appendChild(remoteAudioElem);
+      console.log(`[MEDIA] Created SDK remote audio element #${SDK_REMOTE_AUDIO_ID}`);
+    }
+    remoteAudioElem.autoplay = true;
+    remoteAudioElem.muted = false;
+    remoteAudioElem.volume = 1.0;
+
+    const SDK_LOCAL_ID = "localAudio";
+    let localElem = document.getElementById(SDK_LOCAL_ID) as HTMLAudioElement;
+    if (!localElem) {
+      localElem = document.createElement("audio");
+      localElem.id = SDK_LOCAL_ID;
+      localElem.autoplay = true;
+      localElem.setAttribute("playsinline", "true");
+      localElem.muted = true;
+      localElem.hidden = true;
+      document.body.appendChild(localElem);
+      console.log(`[MEDIA] Created SDK local audio element #${SDK_LOCAL_ID}`);
+    }
   }
 
   // ──────────────────────────────────────────────
@@ -195,9 +223,10 @@ class PlivoWebRTCService {
 
         const options = {
           debug: "ALL",
-          permOnClick: true,
+          permOnClick: false,
           codecs: ["OPUS", "PCMU"],
           enableTracking: false,
+          audioConstraints: { optional: [{ googAutoGainControl: true }] }
         };
 
         const PlivoConstructor = (plivoBrowserSdk as any).default || plivoBrowserSdk;
@@ -308,8 +337,15 @@ class PlivoWebRTCService {
       });
 
       // ── Call events ──
-      registerOn("onIncomingCall", (callerID: any, extraHeaders: any, callInfo: any, callerName: any) => {
-        console.log("[PLIVO] Incoming call:", callerID, callInfo);
+      registerOn("onIncomingCall", (...args: any[]) => {
+        console.log("[PLIVO] Incoming call full args:", args);
+        // Safely extract callerName, extraHeaders, callInfo based on standard v2 signature
+        const callerName = args[0];
+        const extraHeaders = args[1];
+        const callInfo = args[2];
+        const callerID = callInfo?.src || callerName;
+        
+        console.log("[PLIVO] Extracted callInfo:", callInfo);
         window.dispatchEvent(new CustomEvent("plivo_webrtc_incoming", { detail: { callerID, extraHeaders, callInfo, callerName } }));
       });
 
