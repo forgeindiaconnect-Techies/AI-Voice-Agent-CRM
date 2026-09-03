@@ -158,23 +158,54 @@ async def plivo_answer_webhook(request: Request):
 
     if target_to_dial:
         dial_digits = target_to_dial.replace("+", "")
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
-            f'        <Number>{dial_digits}</Number>\n'
-            '    </Dial>\n'
-            '    <Wait length="3600"/>\n'
-            '</Response>'
-        )
+        
+        if "sip:" in target_to_dial.lower():
+            plivo_xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<Response>\n'
+                f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+                f'        <User>{target_to_dial}</User>\n'
+                '    </Dial>\n'
+                '    <Wait length="3600"/>\n'
+                '</Response>'
+            )
+        else:
+            plivo_xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<Response>\n'
+                f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+                f'        <Number>{dial_digits}</Number>\n'
+                '    </Dial>\n'
+                '    <Wait length="3600"/>\n'
+                '</Response>'
+            )
     else:
-        # Connected single leg: keep session alive & active continuously without hanging up
-        plivo_xml = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<Response>\n'
-            '    <Wait length="3600"/>\n'
-            '</Response>'
-        )
+        # Default inbound routing: Try to find an online agent and route to their Plivo WebRTC SIP endpoint
+        available_agent = await users_col.find_one({"status": {"$in": ["ready", "available"]}, "plivo_endpoint_username": {"$exists": True, "$ne": None}})
+        if not available_agent:
+            # Fallback to any agent if no one is explicitly "ready"
+            available_agent = await users_col.find_one({"plivo_endpoint_username": {"$exists": True, "$ne": None}})
+            
+        if available_agent and available_agent.get("plivo_endpoint_username"):
+            sip_username = available_agent["plivo_endpoint_username"]
+            sip_uri = f"sip:{sip_username}@phone.plivo.com" if "@" not in sip_username else f"sip:{sip_username}"
+            
+            plivo_xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<Response>\n'
+                f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+                f'        <User>{sip_uri}</User>\n'
+                '    </Dial>\n'
+                '</Response>'
+            )
+        else:
+            # Connected single leg: keep session alive & active continuously without hanging up
+            plivo_xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<Response>\n'
+                '    <Wait length="3600"/>\n'
+                '</Response>'
+            )
 
     return Response(content=plivo_xml, media_type="application/xml")
 
