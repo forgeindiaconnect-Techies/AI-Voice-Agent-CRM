@@ -191,7 +191,7 @@ async def plivo_answer_webhook(request: Request):
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<Response>\n'
                 f'    <GetInput action="{ivr_action_url}" method="POST" inputType="dtmf" numDigits="1">\n'
-                '        <Speak>Press 1 for Sales. Press 2 for Support.</Speak>\n'
+                '        <Speak>Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
                 '    </GetInput>\n'
                 '</Response>'
             )
@@ -265,15 +265,27 @@ async def ivr_callback(request: Request):
             '    </Dial>\n'
             '</Response>'
         )
-    else:
-        # Invalid or no input, replay menu
+    elif digits == "3":
+        # Replay menu without "Invalid input" prefix
         base_url = str(request.base_url).rstrip("/")
         ivr_action_url = f"{base_url}/api/calls/ivr-callback" 
         plivo_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<Response>\n'
             f'    <GetInput action="{ivr_action_url}" method="POST" inputType="dtmf" numDigits="1">\n'
-            '        <Speak>Invalid input. Press 1 for Sales. Press 2 for Support.</Speak>\n'
+            '        <Speak>Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
+            '    </GetInput>\n'
+            '</Response>'
+        )
+    else:
+        # Invalid or no input, replay menu with error prefix
+        base_url = str(request.base_url).rstrip("/")
+        ivr_action_url = f"{base_url}/api/calls/ivr-callback" 
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            f'    <GetInput action="{ivr_action_url}" method="POST" inputType="dtmf" numDigits="1">\n'
+            '        <Speak>Invalid input. Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
             '    </GetInput>\n'
             '</Response>'
         )
