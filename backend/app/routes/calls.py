@@ -180,33 +180,104 @@ async def plivo_answer_webhook(request: Request):
                 '</Response>'
             )
     else:
-        # Default inbound routing: Try to find an online agent and route to their Plivo WebRTC SIP endpoint
-        available_agent = await users_col.find_one({"status": {"$in": ["ready", "available"]}, "plivo_endpoint_username": {"$exists": True, "$ne": None}})
-        if not available_agent:
-            # Fallback to any agent if no one is explicitly "ready"
-            available_agent = await users_col.find_one({"plivo_endpoint_username": {"$exists": True, "$ne": None}})
-            
-        if available_agent and available_agent.get("plivo_endpoint_username"):
-            sip_username = available_agent["plivo_endpoint_username"]
-            sip_uri = f"sip:{sip_username}@phone.plivo.com" if "@" not in sip_username else f"sip:{sip_username}"
-            
+        if direction in ("inbound", "in"):
+            # Default inbound routing: Play IVR menu
+            base_url = str(request.base_url).rstrip("/")
+            # Note: the actual path prefix (like /api/calls) will be part of the router mount,
+            # but to be safe we can use a relative or hardcoded path if preferred.
+            # Usually request.url.path gives the current path. For now, constructing a generic IVR url:
+            ivr_action_url = f"{base_url}/api/calls/ivr-callback" 
             plivo_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<Response>\n'
-                f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
-                f'        <User>{sip_uri}</User>\n'
-                '    </Dial>\n'
+                f'    <GetInput action="{ivr_action_url}" method="POST" inputType="dtmf" numDigits="1">\n'
+                '        <Speak>Press 1 for Sales. Press 2 for Support.</Speak>\n'
+                '    </GetInput>\n'
                 '</Response>'
             )
         else:
-            # Connected single leg: keep session alive & active continuously without hanging up
-            plivo_xml = (
-                '<?xml version="1.0" encoding="UTF-8"?>\n'
-                '<Response>\n'
-                '    <Wait length="3600"/>\n'
-                '</Response>'
-            )
+            # Fallback for outbound or unknown direction: Try to find an online agent and route to their Plivo WebRTC SIP endpoint
+            available_agent = await users_col.find_one({"status": {"$in": ["ready", "available"]}, "plivo_endpoint_username": {"$exists": True, "$ne": None}})
+            if not available_agent:
+                # Fallback to any agent if no one is explicitly "ready"
+                available_agent = await users_col.find_one({"plivo_endpoint_username": {"$exists": True, "$ne": None}})
+                
+            if available_agent and available_agent.get("plivo_endpoint_username"):
+                sip_username = available_agent["plivo_endpoint_username"]
+                sip_uri = f"sip:{sip_username}@phone.plivo.com" if "@" not in sip_username else f"sip:{sip_username}"
+                
+                plivo_xml = (
+                    '<?xml version="1.0" encoding="UTF-8"?>\n'
+                    '<Response>\n'
+                    f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+                    f'        <User>{sip_uri}</User>\n'
+                    '    </Dial>\n'
+                    '</Response>'
+                )
+            else:
+                # Connected single leg: keep session alive & active continuously without hanging up
+                plivo_xml = (
+                    '<?xml version="1.0" encoding="UTF-8"?>\n'
+                    '<Response>\n'
+                    '    <Wait length="3600"/>\n'
+                    '</Response>'
+                )
 
+    return Response(content=plivo_xml, media_type="application/xml")
+
+
+@router.post("/ivr-callback")
+async def ivr_callback(request: Request):
+    """
+    Handles the Plivo <GetInput> callback for the IVR menu.
+    Routes to Sales (1) or Support (2).
+    """
+    form_data = {}
+    if request.method == "POST":
+        try:
+            form_data = await request.form()
+        except Exception:
+            pass
+            
+    digits = form_data.get("Digits", "")
+    plivo_number_raw = getattr(settings, "PLIVO_PHONE_NUMBER", "+918031826757")
+    plivo_caller_id  = normalize_e164(plivo_number_raw)
+    
+    if digits == "1":
+        # Sales
+        target_number = "919585712555"
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+            f'        <Number>{target_number}</Number>\n'
+            '    </Dial>\n'
+            '</Response>'
+        )
+    elif digits == "2":
+        # Support
+        target_number = "919363063276"
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+            f'        <Number>{target_number}</Number>\n'
+            '    </Dial>\n'
+            '</Response>'
+        )
+    else:
+        # Invalid or no input, replay menu
+        base_url = str(request.base_url).rstrip("/")
+        ivr_action_url = f"{base_url}/api/calls/ivr-callback" 
+        plivo_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Response>\n'
+            f'    <GetInput action="{ivr_action_url}" method="POST" inputType="dtmf" numDigits="1">\n'
+            '        <Speak>Invalid input. Press 1 for Sales. Press 2 for Support.</Speak>\n'
+            '    </GetInput>\n'
+            '</Response>'
+        )
+        
     return Response(content=plivo_xml, media_type="application/xml")
 
 
