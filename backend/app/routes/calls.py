@@ -191,7 +191,7 @@ async def plivo_answer_webhook(request: Request):
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<Response>\n'
                 f'    <GetInput action="{ivr_action_url}" method="POST" inputType="dtmf" numDigits="1">\n'
-                '        <Speak>Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
+                '        <Speak voice="Polly.Aditi" language="en-IN">Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
                 '    </GetInput>\n'
                 '</Response>'
             )
@@ -273,7 +273,7 @@ async def ivr_callback(request: Request):
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<Response>\n'
             f'    <GetInput action="{ivr_action_url}" method="POST" inputType="dtmf" numDigits="1">\n'
-            '        <Speak>Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
+            '        <Speak voice="Polly.Aditi" language="en-IN">Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
             '    </GetInput>\n'
             '</Response>'
         )
@@ -285,7 +285,7 @@ async def ivr_callback(request: Request):
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<Response>\n'
             f'    <GetInput action="{ivr_action_url}" method="POST" inputType="dtmf" numDigits="1">\n'
-            '        <Speak>Invalid input. Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
+            '        <Speak voice="Polly.Aditi" language="en-IN">Invalid input. Welcome to Forge India Connect private limited . To contact with sales team press 1 for contact customer support team press 2 to hear the message again press 3</Speak>\n'
             '    </GetInput>\n'
             '</Response>'
         )
