@@ -33,6 +33,7 @@ type CallLog = {
   transcript?: string;
   started_at: string;
   ended_at?: string;
+  recording_file?: string;
   quality_evaluation?: {
     coaching_notes: string;
     ai_quality_score: number;
@@ -280,25 +281,15 @@ export default function Quality() {
                 </div>
                 
                 {/* Audio player */}
-                <div className="flex items-center gap-3.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 px-4 py-2.5 rounded-[16px] shadow-sm self-start md:self-center">
-                  <button
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className="h-9 w-9 bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white hover:from-[#1D4ED8] hover:to-[#2563EB] rounded-full transition-all duration-200 flex items-center justify-center shadow-md shadow-blue-500/25 cursor-pointer active:scale-95"
-                    aria-label={isPlaying ? "Pause Recording" : "Play Recording"}
-                  >
-                    {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </button>
-                  <div className="w-36 bg-slate-200 dark:bg-[#172033] h-2 rounded-full overflow-hidden relative">
-                    <div
-                      className="bg-gradient-to-r from-[#2563EB] to-[#FACC15] h-full rounded-full transition-all duration-300"
-                      style={{ width: `${playProgress}%` }}
-                    />
+                {selectedCall.recording_file ? (
+                  <div className="flex items-center gap-3.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 px-4 py-2.5 rounded-[16px] shadow-sm self-start md:self-center">
+                    <audio controls src={selectedCall.recording_file} className="w-64 h-10" />
                   </div>
-                  <span className="text-[10px] text-slate-500 dark:text-[#94A3B8] font-black font-mono flex items-center gap-1">
-                    <span className={`h-2 w-2 rounded-full ${isPlaying ? "bg-emerald-500 animate-ping" : "bg-rose-500"}`} />
-                    <span>{isPlaying ? "PLAYING" : "RECORDING"}</span>
-                  </span>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-3.5 bg-white dark:bg-[#111827] border border-slate-200 dark:border-white/10 px-4 py-2.5 rounded-[16px] shadow-sm self-start md:self-center text-xs font-bold text-slate-500">
+                    <span className="flex items-center gap-2"><Volume2 className="h-4 w-4" /> No Recording Available</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

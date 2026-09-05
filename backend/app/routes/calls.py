@@ -92,6 +92,8 @@ async def plivo_answer_webhook(request: Request):
 
     plivo_number_raw = getattr(settings, "PLIVO_PHONE_NUMBER", "+918031826757")
     plivo_caller_id  = normalize_e164(plivo_number_raw)
+    base_url = str(request.base_url).rstrip("/")
+    record_callback_url = f"{base_url}/api/calls/plivo/recording-callback"
 
     # Broadcast real-time call connected status event to CRM frontend over WebSockets
     await ws_manager.broadcast_global({
@@ -163,7 +165,7 @@ async def plivo_answer_webhook(request: Request):
             plivo_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<Response>\n'
-                f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+                f'    <Dial callerId="{plivo_caller_id}" timeout="45" record="true" recordCallback="{record_callback_url}">\n'
                 f'        <User>{target_to_dial}</User>\n'
                 '    </Dial>\n'
                 '    <Wait length="3600"/>\n'
@@ -173,7 +175,7 @@ async def plivo_answer_webhook(request: Request):
             plivo_xml = (
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<Response>\n'
-                f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+                f'    <Dial callerId="{plivo_caller_id}" timeout="45" record="true" recordCallback="{record_callback_url}">\n'
                 f'        <Number>{dial_digits}</Number>\n'
                 '    </Dial>\n'
                 '    <Wait length="3600"/>\n'
@@ -209,7 +211,7 @@ async def plivo_answer_webhook(request: Request):
                 plivo_xml = (
                     '<?xml version="1.0" encoding="UTF-8"?>\n'
                     '<Response>\n'
-                    f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+                    f'    <Dial callerId="{plivo_caller_id}" timeout="45" record="true" recordCallback="{record_callback_url}">\n'
                     f'        <User>{sip_uri}</User>\n'
                     '    </Dial>\n'
                     '</Response>'
@@ -423,6 +425,39 @@ async def plivo_hangup_callback(request: Request):
         })
     except Exception as e:
         print(f"[Plivo Hangup Callback] Error: {e}")
+
+    return PlainTextResponse("OK", media_type="text/plain")
+
+
+@router.api_route("/plivo/recording-callback", methods=["GET", "POST"])
+async def plivo_recording_callback(request: Request):
+    """
+    Plivo Recording URL Callback.
+    Plivo posts to this URL when a call recording is ready.
+    """
+    try:
+        if request.method == "POST":
+            try:
+                form_data = await request.form()
+            except Exception:
+                form_data = {}
+        else:
+            form_data = request.query_params
+
+        call_uuid = form_data.get("CallUUID", "")
+        recording_url = form_data.get("RecordUrl", "")
+
+        if call_uuid and recording_url:
+            print(f"[Plivo Recording] call_uuid={call_uuid} recording_url={recording_url}")
+            res = await calls_col.update_many(
+                {"call_sid": call_uuid},
+                {"$set": {"recording_file": recording_url, "recording_status": "saved"}}
+            )
+            if res.modified_count == 0:
+                print(f"[Plivo Recording] Warning: No call found with call_sid={call_uuid}")
+
+    except Exception as e:
+        print(f"[Plivo Recording Callback] Error: {e}")
 
     return PlainTextResponse("OK", media_type="text/plain")
 
