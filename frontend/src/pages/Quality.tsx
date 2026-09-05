@@ -275,16 +275,7 @@ export default function Quality() {
                 
                 {/* Left side: transcript summary */}
                 <div className="space-y-5">
-                  {/* AI Summary */}
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-sm mb-2 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA] animate-pulse" />
-                      <span>AI Conversation Summary</span>
-                    </h4>
-                    <div className="border border-slate-200/80 dark:border-white/10 rounded-[18px] p-4.5 bg-slate-50 dark:bg-[#172033] text-xs font-semibold text-slate-700 dark:text-[#94A3B8] leading-relaxed max-h-40 overflow-y-auto shadow-xs">
-                      {selectedCall.ai_summary || "AI Summary not generated for this voice channel log."}
-                    </div>
-                  </div>
+
 
                   {/* Transcript */}
                   <div>
