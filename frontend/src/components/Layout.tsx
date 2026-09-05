@@ -102,6 +102,7 @@ export default function Layout() {
         {
           title: "VERTICAL MODULES",
           items: [
+            { to: "/quality", label: "Quality Audit", icon: <ShieldCheck className="h-5 w-5" /> },
             { to: "/users", label: "Recruitment", icon: <UserPlus className="h-5 w-5" /> },
           ],
         },
