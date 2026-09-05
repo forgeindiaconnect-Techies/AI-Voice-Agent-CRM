@@ -113,6 +113,46 @@ async def plivo_answer_webhook(request: Request):
             "call_sid": call_uuid,
             "provider": "plivo"
         })
+        
+        # INSERT INBOUND CALL LOG
+        clean_from_inbound = normalize_e164(from_number) if from_number else ""
+        raw_digits = re.sub(r"\D", "", clean_from_inbound)
+        search_regex = raw_digits[-10:] if len(raw_digits) >= 10 else raw_digits
+        caller_lead = None
+        if search_regex:
+            caller_lead = await leads_col.find_one({
+                "$or": [
+                    {"phone": clean_from_inbound},
+                    {"phone": {"$regex": search_regex}}
+                ]
+            })
+            
+        await calls_col.insert_one({
+            "call_sid": call_uuid,
+            "direction": "inbound",
+            "phone": clean_from_inbound,
+            "status": "live",
+            "started_at": utcnow(),
+            "lead_id": str(caller_lead["_id"]) if caller_lead else None,
+        })
+    else:
+        # UPDATE CALL_SID FOR OUTBOUND CALLS
+        clean_to_outbound = normalize_e164(to_number) if to_number else ""
+        if clean_to_outbound:
+            raw_digits = re.sub(r"\D", "", clean_to_outbound)
+            search_regex = raw_digits[-10:] if len(raw_digits) >= 10 else raw_digits
+            if search_regex:
+                await calls_col.update_many(
+                    {
+                        "status": "live",
+                        "$or": [
+                            {"phone": clean_to_outbound},
+                            {"phone": {"$regex": search_regex}}
+                        ],
+                        "call_sid": {"$exists": False}
+                    },
+                    {"$set": {"call_sid": call_uuid}}
+                )
 
     clean_from  = normalize_e164(from_number) if from_number else ""
     clean_to    = normalize_e164(to_number) if to_number else ""
@@ -423,6 +463,18 @@ async def plivo_hangup_callback(request: Request):
             "hangup_cause": hangup_cause,
             "provider":     "plivo",
         })
+        
+        # UPDATE DB TO COMPLETED IF NOT ALREADY ENDED BY AGENT
+        if mapped in ("completed", "busy", "no-answer", "failed", "canceled"):
+            await calls_col.update_many(
+                {"call_sid": call_uuid, "status": "live"},
+                {"$set": {
+                    "status": mapped,
+                    "ended_at": utcnow(),
+                    "duration_seconds": int(duration) if str(duration).isdigit() else 0,
+                    "outcome": mapped
+                }}
+            )
     except Exception as e:
         print(f"[Plivo Hangup Callback] Error: {e}")
 
