@@ -284,6 +284,8 @@ async def ivr_callback(request: Request):
     digits = form_data.get("Digits", "")
     plivo_number_raw = getattr(settings, "PLIVO_PHONE_NUMBER", "+918031826757")
     plivo_caller_id  = normalize_e164(plivo_number_raw)
+    base_url = str(request.base_url).rstrip("/")
+    record_callback_url = f"{base_url}/api/calls/plivo/recording-callback"
     
     if digits == "1":
         # Sales
@@ -291,7 +293,7 @@ async def ivr_callback(request: Request):
         plivo_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<Response>\n'
-            f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+            f'    <Dial callerId="{plivo_caller_id}" timeout="45" record="true" recordCallback="{record_callback_url}">\n'
             f'        <Number>{target_number}</Number>\n'
             '    </Dial>\n'
             '</Response>'
@@ -302,7 +304,7 @@ async def ivr_callback(request: Request):
         plivo_xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<Response>\n'
-            f'    <Dial callerId="{plivo_caller_id}" timeout="45">\n'
+            f'    <Dial callerId="{plivo_caller_id}" timeout="45" record="true" recordCallback="{record_callback_url}">\n'
             f'        <Number>{target_number}</Number>\n'
             '    </Dial>\n'
             '</Response>'
