@@ -56,15 +56,11 @@ export default function Quality() {
   const [selectedCall, setSelectedCall] = useState<CallLog | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Audio Playback simulation state
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playProgress, setPlayProgress] = useState(0);
-
   // Form Evaluation state
   const [coachingNotes, setCoachingNotes] = useState("");
-  const [aiQualityScore, setAiQualityScore] = useState(85);
-  const [complianceScore, setComplianceScore] = useState(90);
-  const [sentiment, setSentiment] = useState("positive");
+  const [aiQualityScore, setAiQualityScore] = useState(0);
+  const [complianceScore, setComplianceScore] = useState(0);
+  const [sentiment, setSentiment] = useState("");
 
   const loadData = useCallback(async () => {
     try {
@@ -81,27 +77,10 @@ export default function Quality() {
     loadData();
   }, [loadData]);
 
-  // Audio simulation timer
-  useEffect(() => {
-    let timer: any;
-    if (isPlaying) {
-      timer = setInterval(() => {
-        setPlayProgress(p => {
-          if (p >= 100) {
-            setIsPlaying(false);
-            return 0;
-          }
-          return p + 2;
-        });
-      }, 500);
-    }
-    return () => clearInterval(timer);
-  }, [isPlaying]);
+
 
   const selectCallToAudit = (call: CallLog) => {
     setSelectedCall(call);
-    setIsPlaying(false);
-    setPlayProgress(0);
     
     // Pre-fill form if evaluation exists
     if (call.quality_evaluation) {
@@ -111,9 +90,9 @@ export default function Quality() {
       setSentiment(call.quality_evaluation.sentiment);
     } else {
       setCoachingNotes("");
-      setAiQualityScore(80);
-      setComplianceScore(85);
-      setSentiment("neutral");
+      setAiQualityScore(0);
+      setComplianceScore(0);
+      setSentiment("");
     }
   };
 
@@ -232,7 +211,7 @@ export default function Quality() {
                     <div className="flex justify-between items-end gap-2 pt-1">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-[#2563EB] to-[#3B82F6] text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0 border border-blue-400/30">
-                          {c.agent_id[0]?.toUpperCase() || "A"}
+                          {c.agent_id ? c.agent_id[0].toUpperCase() : "A"}
                         </div>
                         <div className="min-w-0">
                           <div className="text-xs font-black text-slate-900 dark:text-[#F8FAFC] truncate">Agent: {c.agent_id}</div>
