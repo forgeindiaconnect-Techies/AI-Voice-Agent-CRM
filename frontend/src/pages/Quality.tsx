@@ -271,34 +271,10 @@ export default function Quality() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex justify-center mt-6">
                 
-                {/* Left side: transcript summary */}
-                <div className="space-y-5">
-
-
-                  {/* Transcript */}
-                  <div>
-                    <h4 className="font-extrabold text-slate-900 dark:text-[#F8FAFC] text-sm mb-2 flex items-center gap-2">
-                      <BookOpen className="h-4 w-4 text-[#2563EB] dark:text-[#60A5FA]" />
-                      <span>Call Speech Transcript</span>
-                    </h4>
-                    <div className="border border-slate-200/80 dark:border-white/10 rounded-[18px] p-4.5 bg-slate-50 dark:bg-[#172033] text-xs font-semibold text-slate-700 dark:text-[#94A3B8] leading-relaxed h-72 overflow-y-auto space-y-3 font-mono shadow-xs">
-                      {selectedCall.transcript ? (
-                        selectedCall.transcript.split("\n").map((line, idx) => (
-                          <div key={idx} className="border-b border-slate-200/60 dark:border-white/5 pb-2 last:border-b-0">
-                            {line}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-slate-400 dark:text-[#64748B] italic">No audio speech data recorded.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right side: Auditing evaluation form */}
-                <form onSubmit={handleSaveEvaluation} className="space-y-5 border-l-0 md:border-l border-slate-100 dark:border-white/10 pl-0 md:pl-6">
+                {/* Auditing evaluation form */}
+                <form onSubmit={handleSaveEvaluation} className="space-y-5 w-full max-w-2xl">
                   <h3 className="font-black text-slate-900 dark:text-[#F8FAFC] text-sm uppercase tracking-wider mb-2 flex items-center gap-2">
                     <Award className="h-5 w-5 text-[#FACC15]" />
                     <span>Evaluation Scorecard</span>
