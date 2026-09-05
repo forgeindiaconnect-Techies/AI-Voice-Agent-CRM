@@ -640,6 +640,7 @@ async def start_call(payload: CallStart, user: dict = Depends(get_current_user))
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Lead not found")
     doc = {
         "lead_id": payload.lead_id,
+        "phone": lead.get("phone", ""),
         "agent_id": uid_val,
         "pool_id": lead["pool_id"],
         "direction": payload.direction,
